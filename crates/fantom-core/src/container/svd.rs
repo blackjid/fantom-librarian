@@ -8,7 +8,7 @@ use crate::{Error, Result};
 /// A parsed SVD5 container: the file header plus its table of memory areas.
 ///
 /// This is the *envelope* only — it tells you which areas exist and where their bytes live, not
-/// what those bytes mean. Layout is documented in `docs/FORMAT.md` and confirmed against Fantom-0
+/// what those bytes mean. Layout is documented in `docs/FORMAT.md` and confirmed against FANTOM-6
 /// backups.
 #[binread]
 #[derive(Debug, Clone, PartialEq)]
@@ -34,7 +34,7 @@ pub struct Svd {
 pub struct Area {
     /// Four-character area kind, e.g. `PRFa` (Performances/Scenes) or `PATa` (Patches).
     pub tag: [u8; 4],
-    /// Format/version stamp, constant within a file (`KY19` on Fantom-0, `ZCOR` for ZEN-Core).
+    /// Format/version stamp, constant within a file (`KY19` on FANTOM-6, `ZCOR` for ZEN-Core).
     pub format: [u8; 4],
     /// Absolute byte offset of the area within the file.
     pub offset: u32,

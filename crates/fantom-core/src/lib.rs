@@ -10,9 +10,10 @@
 //! - [`codec`] — maps container bytes onto [`model`] types (read now, write later).
 //! - [`presets`] — factory ZEN-Core preset tone name lookup (bundled sound list).
 //!
-//! The layout was reverse-engineered from Fantom-0 files and validated against panel ground truth;
-//! see `docs/FORMAT.md`. [`container::Raw`] plus the CLI `inspect` command are the microscope used
-//! to learn the parts still unknown.
+//! The layout was reverse-engineered from a Roland FANTOM-6 and validated against panel ground
+//! truth; see `docs/FORMAT.md` (including a note on Roland's confusingly similar model names).
+//! [`container::Raw`] plus the CLI `inspect` command are the microscope used to learn the parts
+//! still unknown.
 
 pub mod codec;
 pub mod container;

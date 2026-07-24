@@ -11,10 +11,10 @@ GUI or WASM web UI later.
 ```
 crates/
   fantom-core/   # pure library: bytes -> typed model (no I/O policy)
-    container/   # SVD/SVZ framing (size prefix, area table, zone headers)
-    model/       # domain types: Scene, Zone, Tone, metadata
+    container/   # SVD/SVZ framing (size prefix, area table, zone/tone tables)
+    model/       # domain types: Scene, Zone, ToneRef, metadata
     codec/       # maps container bytes onto the model (read now, write later)
-    device/      # per-model quirks (Fantom-0 vs 6/7/8) behind a trait
+    presets.rs   # factory ZEN-Core preset tone name lookup (bundled sound list)
   fantom-cli/    # the `fantom` binary — first consumer of the library
 docs/FORMAT.md   # reverse-engineering notebook for the on-disk layout
 fixtures/        # sample files (gitignored by default) + golden snapshots
@@ -22,9 +22,13 @@ fixtures/        # sample files (gitignored by default) + golden snapshots
 
 ## Status
 
-Reads the SVD5 container envelope (verified on Fantom-0 backups), lists **scene names**, shows each
-scene's **comment/memo** and its **16 zones** (tone, switch, key range, level), and resolves per-zone
-**tone names** from the `PATa` tone area. Confirmed against real backups and controlled sample scenes.
+Reads the SVD5 container envelope (verified on a Roland **FANTOM-6**), lists **scene names**, shows
+each scene's **comment/memo** and its **16 zones** (tone, switch, key range, level), and resolves
+per-zone **tone names** from the `PATa` tone area. Confirmed against real backups and controlled
+sample scenes.
+
+> Only tested on a FANTOM-6. Not yet verified on the FANTOM-06/07/08 ("Fantom-0" series — a
+> different, cheaper product line despite the similar name) or FANTOM-6/7/8 EX.
 
 **Factory preset** tones are named from a bundled copy of Roland's FANTOM Sound List
 (`crates/fantom-core/src/preset_tones.tsv`, ~3.7k ZEN-Core tones). **User** tone names resolve

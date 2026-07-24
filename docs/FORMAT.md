@@ -3,6 +3,20 @@
 A living record of what we learn about the on-disk layout. Prefer confirmed facts with the sample
 file and byte offsets that prove them; mark guesses clearly.
 
+## ⚠️ Model naming — Roland uses two very similar names for different products
+
+- **FANTOM-6 / FANTOM-7 / FANTOM-8** (2019, flagship workstation, no leading zero) — **this is the
+  hardware everything in this doc was reverse-engineered and panel-verified against.**
+- **FANTOM-06 / FANTOM-07 / FANTOM-08** (2022, "Fantom-0 series", *with* a leading zero) — a
+  separate, cheaper product line. **Not tested.** The format may or may not match.
+- **FANTOM-6 EX / 7 EX / 8 EX** — a newer expanded-memory revision of the flagship line. **Not
+  tested**, though as a revision of the same tested line it's the more likely of the two to share
+  this layout.
+
+Earlier revisions of this doc (and the code) mistakenly called the tested hardware "Fantom-0" —
+that name refers to the *other*, untested product line. Everything here has only been confirmed on
+a plain FANTOM-6.
+
 ## File types
 
 | Ext    | What it holds                          | Notes                                        |
@@ -11,16 +25,16 @@ file and byte offsets that prove them; mark guesses clearly.
 | `.svz` | ZEN-Core tone data                     | Individual tones; also used by Jupiter-X etc |
 | `.sdz` | Sound pack                             | Roland Cloud sound content                   |
 
-Scenes exported from a Fantom-0 land in a `SOUND/` folder on the USB drive.
+Scenes exported from a FANTOM-6 land in a `SOUND/` folder on the USB drive.
 
 ## Data model
 
 ZEN-Core hierarchy: **Tones → Zones → Scenes**. A Scene has up to 16 Zones; each Zone references a
 Tone plus performance settings.
 
-## SVD5 container — CONFIRMED (Fantom-0, from `fixtures/backup`)
+## SVD5 container — CONFIRMED (FANTOM-6, from `fixtures/backup`)
 
-Verified against `ROLAND/SOUND/PRISMA/FANTOM.SVD` (Fantom-0 backup). All integers little-endian.
+Verified against `ROLAND/SOUND/PRISMA/FANTOM.SVD` (FANTOM-6 backup). All integers little-endian.
 
 ### File header (offset 0x00)
 | Off  | Size | Field         | Example        | Meaning                                        |

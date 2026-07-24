@@ -18,7 +18,7 @@ pub struct RawZone {
     /// +0x09 — key-range upper (MIDI note).
     pub key_high: u8,
     _c: [u8; 0x34],
-    /// +0x3e — constant `cf cd` marker on real Fantom-0 zones; used to tell a decodable zone from
+    /// +0x3e — constant `cf cd` marker on real FANTOM-6 zones; used to tell a decodable zone from
     /// an uninitialized/foreign one rather than as a hard parse assertion (see [`RawZone::MARKER`]).
     pub marker: [u8; 2],
     _d: [u8; 0x20],
@@ -29,7 +29,7 @@ impl RawZone {
     pub const LEN: usize = 0x60;
     /// Record-relative offset of the zone table.
     pub const TABLE_OFFSET: usize = 0x6d0;
-    /// The `cf cd` alignment marker a valid Fantom-0 zone carries at `+0x3e`.
+    /// The `cf cd` alignment marker a valid FANTOM-6 zone carries at `+0x3e`.
     pub const MARKER: [u8; 2] = [0xcf, 0xcd];
 
     /// Whether this looks like a real, decodable zone (correct alignment marker).

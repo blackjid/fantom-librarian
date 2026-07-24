@@ -1,8 +1,8 @@
 //! Mapping between container bytes and the [`crate::model`] types.
 //!
-//! This is where a confirmed byte layout becomes [`crate::model`] values. It reads scene *names*
-//! from the `PRFa` area today; the zone/tone contents of each record are still being
-//! reverse-engineered (see `docs/FORMAT.md`).
+//! This is where a confirmed byte layout becomes [`crate::model`] values: scene name, comment, and
+//! 16 zones (switch, key range, level, tone) from the `PRFa` area, with user-tone names resolved
+//! from `PATa` where possible (see `docs/FORMAT.md`).
 
 use std::collections::{BTreeSet, HashMap};
 use std::io::Cursor;
@@ -13,7 +13,7 @@ use crate::container::{ascii_trim, PatArea, Raw, RawZone, Svd, ZoneSettings};
 use crate::model::{Scene, ToneRef, Zone};
 use crate::{Error, Result};
 
-/// The area tag holding Performances/Scenes in a Fantom-0 SVD backup.
+/// The area tag holding Performances/Scenes in a FANTOM-6 SVD backup.
 const PRFA: &[u8; 4] = b"PRFa";
 
 /// Offset of the per-zone tone id within a settings-table record (`0x194`), read big-endian.
@@ -193,7 +193,7 @@ mod tests {
     use super::*;
 
     /// Build a synthetic SVD5 whose PRFa area holds `names`, each in a `record_size`-byte record
-    /// following a 16-byte area header. Mirrors the confirmed Fantom-0 layout.
+    /// following a 16-byte area header. Mirrors the confirmed FANTOM-6 layout.
     fn svd_with_scenes(names: &[&str], record_size: usize) -> Raw {
         let area_len = AREA_HEADER_LEN + names.len() * record_size;
 
@@ -351,7 +351,7 @@ mod tests {
     }
 
     /// Lay out `areas` (tag, format, body) as a full SVD5 file: header, area table, then bodies
-    /// back to back. Mirrors the confirmed Fantom-0 envelope (see `container::svd`).
+    /// back to back. Mirrors the confirmed FANTOM-6 envelope (see `container::svd`).
     fn build_svd(areas: &[(&[u8; 4], &[u8; 4], &[u8])]) -> Raw {
         let table_len = areas.len() * 16;
         let header_size = 14 + table_len as u16;
