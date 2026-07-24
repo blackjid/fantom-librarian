@@ -130,6 +130,9 @@ fn run_show(file: &PathBuf, scene: usize, all: bool) -> fantom_core::Result<()> 
     })?;
 
     println!("Scene {scene}: {}", s.name);
+    if !s.comment.is_empty() {
+        println!("note: {}", s.comment);
+    }
     println!(
         "{:>4}  {:<3}  {:<22}  {:>10}  {:>5}",
         "zone", "on", "tone", "range", "level"

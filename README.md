@@ -22,9 +22,9 @@ fixtures/        # sample files (gitignored by default) + golden snapshots
 
 ## Status
 
-Reads the SVD5 container envelope (verified on Fantom-0 backups), lists **scene names**, decodes
-each scene's **16 zones** (tone, switch, key range, level), and resolves per-zone **tone names**
-from the `PATa` tone area. Confirmed against real backups and controlled sample scenes.
+Reads the SVD5 container envelope (verified on Fantom-0 backups), lists **scene names**, shows each
+scene's **comment/memo** and its **16 zones** (tone, switch, key range, level), and resolves per-zone
+**tone names** from the `PATa` tone area. Confirmed against real backups and controlled sample scenes.
 
 **Factory preset** tones are named from a bundled copy of Roland's FANTOM Sound List
 (`crates/fantom-core/src/preset_tones.tsv`, ~3.7k ZEN-Core tones). **User** tone names resolve

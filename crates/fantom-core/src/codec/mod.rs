@@ -30,6 +30,10 @@ const AREA_RECORD_SIZE_OFFSET: usize = 0x04;
 /// Each record begins with its 16-byte ASCII name (space/NUL padded).
 const NAME_LEN: usize = 16;
 
+/// A 64-byte free-text scene comment/memo follows the name at this record offset.
+const COMMENT_OFFSET: usize = 0x40;
+const COMMENT_LEN: usize = 64;
+
 /// Number of zone slots in every scene.
 const ZONE_COUNT: usize = 16;
 
@@ -61,8 +65,13 @@ pub fn read_scenes(raw: &Raw) -> Result<Vec<Scene>> {
         // Empty-named slots pad the bank to a fixed capacity; keep only real scenes.
         if !name.is_empty() {
             let record = &area[pos..(pos + record_size).min(area.len())];
+            let comment = record
+                .get(COMMENT_OFFSET..COMMENT_OFFSET + COMMENT_LEN)
+                .map(ascii_trim)
+                .unwrap_or_default();
             scenes.push(Scene {
                 name,
+                comment,
                 zones: read_zones(record, pat.as_ref(), resolvable)?,
             });
         }
@@ -176,6 +185,34 @@ mod tests {
         assert_eq!(names, ["DSOTM Breathe", "On The Run"]);
         // Records too short to hold zone tables carry no zones (rather than erroring).
         assert!(scenes[0].zones.is_empty());
+    }
+
+    #[test]
+    fn reads_scene_comment_at_0x40() {
+        // One 0x80-byte record: name at 0x00, comment at 0x40.
+        let rsize = 0x80;
+        let mut area = Vec::new();
+        area.extend_from_slice(&1u32.to_le_bytes());
+        area.extend_from_slice(&(rsize as u32).to_le_bytes());
+        area.extend_from_slice(&[0u8; 8]);
+        let mut rec = vec![b' '; rsize];
+        rec[..5].copy_from_slice(b"Scene");
+        rec[COMMENT_OFFSET..COMMENT_OFFSET + 9].copy_from_slice(b"a memo   ".as_slice());
+        area.extend_from_slice(&rec);
+
+        let mut file = Vec::new();
+        file.extend_from_slice(&30u16.to_le_bytes());
+        file.extend_from_slice(b"SVD5");
+        file.extend_from_slice(&[0u8; 10]);
+        file.extend_from_slice(b"PRFa");
+        file.extend_from_slice(b"KY19");
+        file.extend_from_slice(&0x20u32.to_le_bytes());
+        file.extend_from_slice(&(area.len() as u32).to_le_bytes());
+        file.extend_from_slice(&area);
+
+        let scenes = read_scenes(&Raw::from_bytes(file)).unwrap();
+        assert_eq!(scenes[0].name, "Scene");
+        assert_eq!(scenes[0].comment, "a memo");
     }
 
     #[test]

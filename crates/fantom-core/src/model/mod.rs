@@ -9,6 +9,8 @@
 #[derive(Debug, Clone, PartialEq)]
 pub struct Scene {
     pub name: String,
+    /// Free-text scene comment/memo (empty when unset).
+    pub comment: String,
     pub zones: Vec<Zone>,
 }
 
