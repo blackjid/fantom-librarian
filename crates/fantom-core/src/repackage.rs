@@ -477,8 +477,9 @@ fn rebuild_container(
     mut replacements: HashMap<[u8; 4], ([u8; 4], Vec<u8>)>,
 ) -> Result<Raw> {
     let svd = Svd::parse(raw)?;
-    const ORDER: [&[u8; 4]; 10] = [
-        b"PRFa", b"PATa", b"RHYa", b"INSa", b"VTWa", b"SNAa", b"ZAPa", b"ZEPa", b"SYSa", b"DIFa",
+    const ORDER: [&[u8; 4]; 13] = [
+        b"PRFa", b"PATa", b"RHYa", b"INSa", b"VTWa", b"SNAa", b"ZAPa", b"ZEPa", b"ACBa", b"DCWa",
+        b"MDLa", b"SYSa", b"DIFa",
     ];
     for area in &svd.areas {
         if !ORDER.contains(&&area.tag) {
