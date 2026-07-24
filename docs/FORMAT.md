@@ -53,7 +53,8 @@ The `PRFa` area opens with a 16-byte header, then an array of fixed-stride scene
 | +8  | 8    | (unknown)     |               | TBD                                        |
 
 **Each scene record (`record_size` bytes):** starts with a 16-byte ASCII `name`, space-padded
-(e.g. `DSOTM Breathe`, `Africa Main`). It holds two parallel 16-entry per-zone tables. Offsets
+(e.g. `DSOTM Breathe`, `Africa Main`), followed at **`+0x40`** by a longer ASCII **comment/memo**
+field (e.g. `"KEY SPLIT[SPLIT POINT B4] C5 …"`). It also holds two parallel 16-entry per-zone tables. Offsets
 below were **confirmed by controlled single-variable edits** (`fixtures/tests/TEST 1..3`) and
 cross-checked against the "Africa Main" panel: zone order is 1:1 with the panel (zone 0 = Zone 1).
 
@@ -110,12 +111,17 @@ and share the same 16-bit id space, so they are omitted to avoid mislabelling.)
   out to be **user sample waveform data** — an 8-byte directory of `SMPd` (sample) sub-sections,
   not a tone directory. The gid appears to index a **de-duplicated** user-tone list while `PATa`
   stores per-scene bundles *with* duplicates (so gid ≈ raw index + a per-scene offset), and the
-  mapping between the two is still unlocated. **Open / future work** — resolving backup user tones
-  needs either that de-dup/directory table or the cross-file export trick below. Until then the code
-  resolves names only for exports and shows backup user tones as bare ids.
+  mapping between the two is still unlocated.
 
-  Cross-file trick that works today: a matching scene **export** (`SOUND/…`) resolves the same
-  tones by content, so `export ↔ backup` matching can recover names without the directory.
+  **Investigated and set aside.** Cross-referencing the backup against the NARF scene export shows
+  `gid → PATa index` *is* a well-defined many-to-one function, piecewise-linear in blocks (offsets
+  361 / 489 / 255 / 127 over contiguous gid ranges). But it is **not reliably shippable**: (a) the
+  block offsets/boundaries can only be recovered with a matching export as an oracle (they aren't
+  derivable from the backup alone), and (b) after this user renamed imported tones, the backup holds
+  **content-identical duplicates under different names** (`Africa Brass` @1 vs `Uptown Brass 3` @572),
+  so a "correct" index can still show a different name than the panel. Resolving backups faithfully
+  would need the synth's actual gid→tone resolution rule (likely tied to how the USER bank is
+  loaded), which isn't in the file in a form we've found. Backups keep showing `user #id`.
 
 **Validation** — "Africa Main" (scene 385) decodes to exactly the panel's 4 zones:
 Z1 Brass 0–71 · Z2 Kalimba 73–127 · Z3 Kalimba 72–72 · Z4 JX-Cream 0–71 (levels 107/107/100/82).
