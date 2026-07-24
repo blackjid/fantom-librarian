@@ -35,6 +35,11 @@ sample scenes.
 directly for **scene exports** (`SOUND/…`); in **full backups** user tones use a global address that
 isn't fully mapped yet, so they show as `user #id`. See [`docs/FORMAT.md`](docs/FORMAT.md).
 
+**Write path (in place, byte-faithful):** `rename` and `comment` overwrite only the scene's
+name/comment field and nothing else (verified byte-diff; round-trip is byte-identical). The `DIFa`
+checksum is left as-is — evidence (svd5tool) says the hardware doesn't enforce it, but this is **not
+yet verified on a FANTOM-6**, so test one edited file before trusting it.
+
 ## Usage
 
 ```sh
@@ -52,6 +57,10 @@ cargo run -p fantom-cli -- show path/to/FANTOM.SVD 385
 
 # List the tones bundled in a file.
 cargo run -p fantom-cli -- tones path/to/FANTOM.SVD
+
+# Edit scene metadata (dry run without -o; pass -o to write a copy).
+cargo run -p fantom-cli -- rename  path/to/FANTOM.SVD 44 "My Scene"   -o out.svd
+cargo run -p fantom-cli -- comment path/to/FANTOM.SVD 44 "split at B4" -o out.svd
 
 cargo build            # build everything
 cargo test             # run tests

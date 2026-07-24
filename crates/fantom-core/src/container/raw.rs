@@ -29,6 +29,27 @@ impl Raw {
         &self.bytes
     }
 
+    /// Overwrite a fixed-length ASCII field at `at` with `text`, space-padding the remainder to
+    /// match Fantom's field convention. Longer text is truncated; the range is clamped to the file.
+    /// This is the in-place primitive behind metadata edits — it changes only `[at, at+len)`.
+    pub fn patch_ascii(&mut self, at: usize, len: usize, text: &str) {
+        let end = (at + len).min(self.bytes.len());
+        if at >= end {
+            return;
+        }
+        let field = &mut self.bytes[at..end];
+        let src = text.as_bytes();
+        let n = src.len().min(field.len());
+        field[..n].copy_from_slice(&src[..n]);
+        field[n..].fill(b' ');
+    }
+
+    /// Write the (possibly edited) bytes back to a file.
+    pub fn save(&self, path: impl AsRef<Path>) -> Result<()> {
+        std::fs::write(path, &self.bytes)?;
+        Ok(())
+    }
+
     /// Total length in bytes.
     pub fn len(&self) -> usize {
         self.bytes.len()

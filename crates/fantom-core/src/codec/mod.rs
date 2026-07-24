@@ -105,6 +105,61 @@ pub fn read_scenes(raw: &Raw) -> Result<Vec<Scene>> {
         .collect()
 }
 
+/// Absolute file offset of each scene record, in the same order and filtering as [`read_scenes`]
+/// (empty-named slots skipped). The Nth entry is the record for scene `N+1`.
+pub fn scene_offsets(raw: &Raw) -> Result<Vec<usize>> {
+    let svd = Svd::parse(raw)?;
+    let prfa = svd
+        .area(PRFA)
+        .ok_or_else(|| Error::Unrecognized("no PRFa (performance) area in file".into()))?;
+    let base = prfa.offset as usize;
+    let area = svd.area_bytes(raw, prfa)?;
+    let declared = read_u32(area, AREA_COUNT_OFFSET)? as usize;
+    let record_size = read_u32(area, AREA_RECORD_SIZE_OFFSET)? as usize;
+    if record_size == 0 {
+        return Err(Error::Unrecognized("PRFa record size is zero".into()));
+    }
+
+    let mut offsets = Vec::new();
+    let mut pos = AREA_HEADER_LEN;
+    while pos + NAME_LEN <= area.len() && offsets.len() < declared {
+        if !ascii_trim(&area[pos..pos + NAME_LEN]).is_empty() {
+            offsets.push(base + pos);
+        }
+        pos += record_size;
+    }
+    Ok(offsets)
+}
+
+/// The absolute file offset of the `scene_number` (1-based) scene record.
+fn scene_record_offset(raw: &Raw, scene_number: usize) -> Result<usize> {
+    let offsets = scene_offsets(raw)?;
+    offsets
+        .get(scene_number.wrapping_sub(1))
+        .copied()
+        .ok_or_else(|| {
+            Error::Unrecognized(format!(
+                "scene {scene_number} out of range (file has {})",
+                offsets.len()
+            ))
+        })
+}
+
+/// Rename scene `scene_number` (1-based) in place. The 16-byte name field is overwritten and
+/// space-padded; call [`Raw::save`] to persist. Only the name bytes change (see `docs/FORMAT.md`).
+pub fn set_scene_name(raw: &mut Raw, scene_number: usize, name: &str) -> Result<()> {
+    let at = scene_record_offset(raw, scene_number)?;
+    raw.patch_ascii(at, NAME_LEN, name);
+    Ok(())
+}
+
+/// Set scene `scene_number`'s (1-based) 64-byte comment/memo in place; call [`Raw::save`] to persist.
+pub fn set_scene_comment(raw: &mut Raw, scene_number: usize, comment: &str) -> Result<()> {
+    let at = scene_record_offset(raw, scene_number)?;
+    raw.patch_ascii(at + COMMENT_OFFSET, COMMENT_LEN, comment);
+    Ok(())
+}
+
 /// Resolves user-tone gids to `PATa` names for one file (see [`read_scenes`]).
 struct ToneResolver<'a> {
     pat: &'a PatArea,
@@ -452,5 +507,43 @@ mod tests {
         assert_eq!(s2.name, "Second Scene");
         assert_eq!(s2.comment, "");
         assert!(s2.zones.is_empty());
+    }
+
+    #[test]
+    fn edit_scene_name_and_comment_touches_only_those_fields() {
+        let scene1 = golden_record("Old Name", "old comment");
+        let scene2 = golden_record("Keep Me", "keep");
+        let mut prfa = Vec::new();
+        prfa.extend_from_slice(&2u32.to_le_bytes());
+        prfa.extend_from_slice(&(scene1.len() as u32).to_le_bytes());
+        prfa.extend_from_slice(&[0u8; 8]);
+        prfa.extend_from_slice(&scene1);
+        prfa.extend_from_slice(&scene2);
+        let raw0 = build_svd(&[(b"PRFa", b"KY19", &prfa)]);
+        let before = raw0.bytes().to_vec();
+
+        let mut raw = raw0.clone();
+        set_scene_name(&mut raw, 1, "New Name").unwrap();
+        set_scene_comment(&mut raw, 1, "new comment").unwrap();
+
+        // Re-parsing shows the edits, and scene 2 is untouched.
+        let scenes = read_scenes(&raw).unwrap();
+        assert_eq!((scenes[0].name.as_str(), scenes[0].comment.as_str()), ("New Name", "new comment"));
+        assert_eq!((scenes[1].name.as_str(), scenes[1].comment.as_str()), ("Keep Me", "keep"));
+
+        // Byte-faithful: same length, and every changed byte lies inside scene 1's name or comment.
+        let after = raw.bytes();
+        assert_eq!(after.len(), before.len());
+        let rec = scene_record_offset(&raw0, 1).unwrap();
+        let name_field = rec..rec + NAME_LEN;
+        let comment_field = rec + COMMENT_OFFSET..rec + COMMENT_OFFSET + COMMENT_LEN;
+        for (i, (a, b)) in before.iter().zip(after).enumerate() {
+            if a != b {
+                assert!(
+                    name_field.contains(&i) || comment_field.contains(&i),
+                    "byte {i:#x} changed outside the name/comment fields"
+                );
+            }
+        }
     }
 }

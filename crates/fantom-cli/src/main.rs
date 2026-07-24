@@ -60,6 +60,32 @@ enum Command {
         /// Path to a `.svd` file.
         file: PathBuf,
     },
+
+    /// Rename a scene. Without --output this is a dry run.
+    Rename {
+        /// Path to a `.svd` file.
+        file: PathBuf,
+        /// Scene number, 1-based (as printed by `scenes`).
+        scene: usize,
+        /// New scene name (max 16 chars; longer is truncated).
+        name: String,
+        /// Write the edited file here (omit for a dry run; pass the input path to edit in place).
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
+
+    /// Set a scene's comment/memo. Without --output this is a dry run.
+    Comment {
+        /// Path to a `.svd` file.
+        file: PathBuf,
+        /// Scene number, 1-based.
+        scene: usize,
+        /// New comment (max 64 chars; longer is truncated).
+        text: String,
+        /// Write the edited file here (omit for a dry run).
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
 }
 
 fn main() -> ExitCode {
@@ -69,6 +95,16 @@ fn main() -> ExitCode {
         Command::Scenes { file } => run_scenes(&file),
         Command::Show { file, scene, all } => run_show(&file, scene, all),
         Command::Tones { file } => run_tones(&file),
+        Command::Rename { file, scene, name, output } => {
+            run_edit(&file, output.as_ref(), &format!("renamed scene {scene} to {name:?}"), |raw| {
+                fantom_core::codec::set_scene_name(raw, scene, &name)
+            })
+        }
+        Command::Comment { file, scene, text, output } => {
+            run_edit(&file, output.as_ref(), &format!("set comment on scene {scene}"), |raw| {
+                fantom_core::codec::set_scene_comment(raw, scene, &text)
+            })
+        }
     };
     match result {
         Ok(text) => print_output(&text),
@@ -182,6 +218,29 @@ fn run_tones(file: &PathBuf) -> fantom_core::Result<String> {
     let _ = writeln!(out, "{} tones:", pat.tones().len());
     for (i, tone) in pat.tones().iter().enumerate() {
         let _ = writeln!(out, "{i:>5}  {}", tone.name);
+    }
+    Ok(out)
+}
+
+/// Apply an in-place edit to a file, then either write it (with `--output`) or report a dry run.
+fn run_edit(
+    file: &PathBuf,
+    output: Option<&PathBuf>,
+    what: &str,
+    edit: impl FnOnce(&mut Raw) -> fantom_core::Result<()>,
+) -> fantom_core::Result<String> {
+    let mut raw = Raw::open(file)?;
+    edit(&mut raw)?;
+    let mut out = String::new();
+    let _ = writeln!(out, "{what}");
+    match output {
+        Some(path) => {
+            raw.save(path)?;
+            let _ = writeln!(out, "wrote {}", path.display());
+        }
+        None => {
+            let _ = writeln!(out, "(dry run — pass --output <file> to write)");
+        }
     }
     Ok(out)
 }

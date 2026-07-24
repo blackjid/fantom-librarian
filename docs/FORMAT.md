@@ -174,9 +174,30 @@ cargo run -p fantom-cli -- inspect fixtures/your-file.svd --len 512
 cargo run -p fantom-cli -- inspect fixtures/your-file.svd --offset 0x40 --len 128
 ```
 
+## Writing / metadata edits (DIFa checksum)
+
+The `DIFa` area holds a 32-byte value that looks like a checksum (high-entropy on freshly exported
+files, e.g. TONEMAP `05 00 ac 0a 84 0a c4 1e …`; **all-zero** on older exports like PRISMA). It does
+**not** match SHA-1/256/512, MD5, or BLAKE over any obvious region — likely keyed or proprietary.
+
+**It appears the FANTOM does not hard-enforce it.** [Smirnov75/svd5tool](https://github.com/Smirnov75/svd5tool)
+unpacks and **repacks** SVD5 backups without recomputing `DIFa`, and that workflow is used
+successfully — so an edited file with a stale (or zeroed) `DIFa` should still load. (Its `[xxxx]`
+filename tag is **CRC-16/CCITT**, poly `0x1021`, init `0xFFFF`, over each area body from `+0x10` — a
+convenience label, not the file checksum.) svd5tool also independently confirms this doc's structure:
+header + record table of `id / signature / offset / length`, each area prefixed with
+`count / record_length / info_length`.
+
+Metadata edits are therefore done **in place**: a scene rename overwrites the 16-byte name field, a
+comment overwrites the 64-byte field at `+0x40`, and nothing else changes (verified: renaming a
+7-char scene touches exactly the differing name bytes). **Unverified on hardware** — load one edited
+file on a FANTOM-6 to confirm before trusting it.
+
 ## Prior art
 
 - [kimsand/Jupiter80Librarian](https://github.com/kimsand/Jupiter80Librarian) — Swift; `Model/`
   split into `SVDFile` / `SVDType` / `SVDTone` / `SVDLiveSet` / `SVDRegistration`.
 - [sagamusix/JDTools](https://github.com/sagamusix/JDTools) — C++20; reads **and writes** JD-08 SVD
   banks (round-trip reference).
+- [Smirnov75/svd5tool](https://github.com/Smirnov75/svd5tool) — Pascal; unpack/repack SVD5 backups.
+  Confirms the container structure and that repacking without touching `DIFa` is accepted.
