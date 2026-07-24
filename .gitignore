@@ -1,0 +1,6 @@
+/target
+
+# Real synth backups may be personal — keep sample files out of git by default.
+# Track specific redistributable fixtures by force-adding them.
+/fixtures/*
+!/fixtures/.gitkeep

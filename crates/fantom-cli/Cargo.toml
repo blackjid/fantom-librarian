@@ -1,0 +1,15 @@
+[package]
+name = "fantom-cli"
+description = "Command-line librarian for Roland Fantom data files."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "fantom"
+path = "src/main.rs"
+
+[dependencies]
+fantom-core.workspace = true
+clap.workspace = true
