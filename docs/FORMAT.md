@@ -239,6 +239,24 @@ The edits also change a small number of neighboring/derived fields. No scene or 
 changed in these captures. The offsets are relative to the area start (including its 16-byte
 area header), and must not be applied to multi-record areas without first locating the record.
 
+### Opaque user-tone areas are record tables (TONEMAP6/7)
+
+The earlier conservative description of `ACBa`, `DCWa`, and `MDLa` as indivisible payloads is
+superseded for scene exports. Each is an area with the standard 16-byte count/record-size header
+and fixed-size user-tone records. `TONEMAP7V_ACB2` contains two ACB USER scenes and proves the
+indexing rule: `ACBa` has count `2`, record size `9984`, and the scenes reference PC `0` and `1`.
+The single-tone TONEMAP6 exports establish the corresponding record sizes:
+
+| Area | Engine | Single-record area size | Record size |
+|------|--------|-------------------------|-------------|
+| `ACBa` | ACB USER | `10000` | `9984` |
+| `DCWa` | V-Piano USER | `700` | `684` |
+| `MDLa` | Model USER | `2064` | `2048` |
+
+For scene exports, USER references use the record's zero-based PC index. This makes record-level
+deduplication and index rebasing possible; multi-record V-Piano and Model captures are still
+needed before enabling those two families in the merger.
+
 Confirmed across banks: PRISMA 16, NARF 50, TOP80 83, full backup **512** scenes
 (PRFa size 1828880 = 16-byte header + 512 × 3572). Two adjacent names sit 0xdf4 apart
 (`DSOTM Breathe` @0xc0, `On The Run` @0xeb4).
