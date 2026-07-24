@@ -98,6 +98,8 @@ struct OutputFamily {
     indexes: HashMap<Vec<Vec<u8>>, usize>,
 }
 
+type AreaReplacement = ([u8; 4], Vec<u8>);
+
 impl OutputFamily {
     fn from_family(family: &Family) -> Self {
         Self {
@@ -196,6 +198,8 @@ pub fn merge_scenes(target: &Raw, source: &Raw) -> Result<Raw> {
         ));
     }
 
+    let opaque = compatible_opaque_areas(target, source)?;
+
     let records = target_bank
         .scenes
         .iter()
@@ -207,7 +211,50 @@ pub fn merge_scenes(target: &Raw, source: &Raw) -> Result<Raw> {
                 .map(|record| (&source_bank, record)),
         )
         .collect();
-    rebuild(target, &target_bank, records)
+    let merged = rebuild(target, &target_bank, records)?;
+    if opaque.is_empty() {
+        Ok(merged)
+    } else {
+        rebuild_container(&merged, opaque)
+    }
+}
+
+const OPAQUE_DEPENDENCY_TAGS: [&[u8; 4]; 3] = [b"ACBa", b"DCWa", b"MDLa"];
+
+fn compatible_opaque_areas(
+    target: &Raw,
+    source: &Raw,
+) -> Result<HashMap<[u8; 4], AreaReplacement>> {
+    let target_svd = Svd::parse(target)?;
+    let source_svd = Svd::parse(source)?;
+    let mut source_only = HashMap::new();
+    for tag in OPAQUE_DEPENDENCY_TAGS {
+        let target_area = target_svd.area(tag);
+        let source_area = source_svd.area(tag);
+        match (target_area, source_area) {
+            (Some(target_area), Some(source_area)) => {
+                let target_bytes = target_svd.area_bytes(target, target_area)?;
+                let source_bytes = source_svd.area_bytes(source, source_area)?;
+                if target_area.format != source_area.format || target_bytes != source_bytes {
+                    return Err(Error::Unrecognized(format!(
+                        "opaque dependency area {} differs between target and source",
+                        String::from_utf8_lossy(tag)
+                    )));
+                }
+            }
+            (None, Some(source_area)) => {
+                source_only.insert(
+                    *tag,
+                    (
+                        source_area.format,
+                        source_svd.area_bytes(source, source_area)?.to_vec(),
+                    ),
+                );
+            }
+            _ => {}
+        }
+    }
+    Ok(source_only)
 }
 
 struct ExportBank {
@@ -803,6 +850,71 @@ mod tests {
             })
             .collect();
         assert_eq!(banks, [&[87, 0, 1][..], &[89, 0, 0], &[105, 1, 0]]);
+    }
+
+    #[test]
+    fn merge_preserves_identical_opaque_dependency_areas() {
+        let target = build_svd(&[
+            (
+                b"PRFa",
+                record_area(&[scene_with_banks("Target", &[(107, 0, 0)])], SCENE_SIZE),
+            ),
+            (b"ACBa", vec![0x11, 0x22, 0x33]),
+        ]);
+        let source = build_svd(&[
+            (
+                b"PRFa",
+                record_area(&[scene_with_banks("Source", &[(107, 0, 0)])], SCENE_SIZE),
+            ),
+            (b"ACBa", vec![0x11, 0x22, 0x33]),
+        ]);
+
+        let merged = merge_scenes(&target, &source).unwrap();
+        assert_eq!(area_bytes(&merged, b"ACBa"), vec![0x11, 0x22, 0x33]);
+        assert_eq!(read_scenes(&merged).unwrap().len(), 2);
+    }
+
+    #[test]
+    fn merge_rejects_conflicting_opaque_dependency_areas() {
+        let target = build_svd(&[
+            (
+                b"PRFa",
+                record_area(&[scene_with_banks("Target", &[(107, 0, 0)])], SCENE_SIZE),
+            ),
+            (b"ACBa", vec![0x11, 0x22, 0x33]),
+        ]);
+        let source = build_svd(&[
+            (
+                b"PRFa",
+                record_area(&[scene_with_banks("Source", &[(107, 0, 0)])], SCENE_SIZE),
+            ),
+            (b"ACBa", vec![0x11, 0x22, 0x44]),
+        ]);
+
+        let error = merge_scenes(&target, &source).unwrap_err().to_string();
+        assert!(error.contains("ACBa"));
+        assert!(error.contains("differs"));
+    }
+
+    #[test]
+    fn merge_copies_source_only_opaque_dependency_areas() {
+        let target = build_svd(&[
+            (
+                b"PRFa",
+                record_area(&[scene_with_banks("Target", &[(87, 0, 0)])], SCENE_SIZE),
+            ),
+            (b"PATa", record_area(&[tone("Target", 0x11)], TONE_SIZE)),
+        ]);
+        let source = build_svd(&[
+            (
+                b"PRFa",
+                record_area(&[scene_with_banks("Source", &[(107, 0, 0)])], SCENE_SIZE),
+            ),
+            (b"ACBa", vec![0x44, 0x55, 0x66]),
+        ]);
+
+        let merged = merge_scenes(&target, &source).unwrap();
+        assert_eq!(area_bytes(&merged, b"ACBa"), vec![0x44, 0x55, 0x66]);
     }
 
     #[test]
