@@ -98,7 +98,48 @@ struct OutputFamily {
     indexes: HashMap<Vec<Vec<u8>>, usize>,
 }
 
-type AreaReplacement = ([u8; 4], Vec<u8>);
+struct OpaqueFamily {
+    area: RecordArea,
+}
+
+struct OutputOpaque {
+    header: [u8; HEADER_LEN],
+    format: [u8; 4],
+    record_size: usize,
+    entries: Vec<Vec<u8>>,
+    indexes: HashMap<Vec<u8>, usize>,
+}
+
+impl OutputOpaque {
+    fn from_family(family: &OpaqueFamily) -> Self {
+        Self {
+            header: family.area.header,
+            format: family.area.format,
+            record_size: family.area.record_size,
+            entries: Vec::new(),
+            indexes: HashMap::new(),
+        }
+    }
+
+    fn add(&mut self, family: &OpaqueFamily, index: usize) -> Result<usize> {
+        if self.format != family.area.format || self.record_size != family.area.record_size {
+            return Err(Error::Unrecognized(
+                "opaque dependency record formats differ".into(),
+            ));
+        }
+        let record = family.area.records.get(index).ok_or_else(|| {
+            Error::Unrecognized(format!("{} record {index} is out of range", "ACBa"))
+        })?;
+        if let Some(index) = self.indexes.get(record) {
+            return Ok(*index);
+        }
+        let output_index = self.entries.len();
+        let owned = record.clone();
+        self.entries.push(owned.clone());
+        self.indexes.insert(owned, output_index);
+        Ok(output_index)
+    }
+}
 
 impl OutputFamily {
     fn from_family(family: &Family) -> Self {
@@ -198,8 +239,6 @@ pub fn merge_scenes(target: &Raw, source: &Raw) -> Result<Raw> {
         ));
     }
 
-    let opaque = compatible_opaque_areas(target, source)?;
-
     let records = target_bank
         .scenes
         .iter()
@@ -211,55 +250,13 @@ pub fn merge_scenes(target: &Raw, source: &Raw) -> Result<Raw> {
                 .map(|record| (&source_bank, record)),
         )
         .collect();
-    let merged = rebuild(target, &target_bank, records)?;
-    if opaque.is_empty() {
-        Ok(merged)
-    } else {
-        rebuild_container(&merged, opaque)
-    }
-}
-
-const OPAQUE_DEPENDENCY_TAGS: [&[u8; 4]; 3] = [b"ACBa", b"DCWa", b"MDLa"];
-
-fn compatible_opaque_areas(
-    target: &Raw,
-    source: &Raw,
-) -> Result<HashMap<[u8; 4], AreaReplacement>> {
-    let target_svd = Svd::parse(target)?;
-    let source_svd = Svd::parse(source)?;
-    let mut source_only = HashMap::new();
-    for tag in OPAQUE_DEPENDENCY_TAGS {
-        let target_area = target_svd.area(tag);
-        let source_area = source_svd.area(tag);
-        match (target_area, source_area) {
-            (Some(target_area), Some(source_area)) => {
-                let target_bytes = target_svd.area_bytes(target, target_area)?;
-                let source_bytes = source_svd.area_bytes(source, source_area)?;
-                if target_area.format != source_area.format || target_bytes != source_bytes {
-                    return Err(Error::Unrecognized(format!(
-                        "opaque dependency area {} differs between target and source",
-                        String::from_utf8_lossy(tag)
-                    )));
-                }
-            }
-            (None, Some(source_area)) => {
-                source_only.insert(
-                    *tag,
-                    (
-                        source_area.format,
-                        source_svd.area_bytes(source, source_area)?.to_vec(),
-                    ),
-                );
-            }
-            _ => {}
-        }
-    }
-    Ok(source_only)
+    rebuild(target, &target_bank, records)
 }
 
 struct ExportBank {
     scenes: Vec<Vec<u8>>,
     families: HashMap<FamilyKind, Family>,
+    opaque: HashMap<[u8; 4], OpaqueFamily>,
     scene_header: [u8; HEADER_LEN],
     scene_format: [u8; 4],
     scene_record_size: usize,
@@ -338,9 +335,27 @@ impl ExportBank {
             families.insert(kind, Family { areas, entries });
         }
 
+        let mut opaque = HashMap::new();
+        if let Some(area) = svd.area(b"ACBa") {
+            let (header, record_size, records) =
+                parse_records(svd.area_bytes(raw, area)?, "ACBa", false)?;
+            opaque.insert(
+                *b"ACBa",
+                OpaqueFamily {
+                    area: RecordArea {
+                        header,
+                        format: area.format,
+                        record_size,
+                        records,
+                    },
+                },
+            );
+        }
+
         Ok(Self {
             scenes,
             families,
+            opaque,
             scene_header,
             scene_format: prfa.format,
             scene_record_size,
@@ -393,6 +408,7 @@ fn rebuild<'a>(
     records: Vec<(&'a ExportBank, &'a Vec<u8>)>,
 ) -> Result<Raw> {
     let mut outputs: HashMap<FamilyKind, OutputFamily> = HashMap::new();
+    let mut opaque_outputs: HashMap<[u8; 4], OutputOpaque> = HashMap::new();
     let mut scenes = Vec::with_capacity(records.len());
 
     for (bank, original) in records {
@@ -400,6 +416,19 @@ fn rebuild<'a>(
         let slots: Vec<_> = valid_zone_slots(&scene).collect();
         for slot in slots {
             let at = tone_bank_offset(slot);
+            if scene[at] == 107 && scene[at + 1] == 0 {
+                let tag = *b"ACBa";
+                let family = bank.opaque.get(&tag).ok_or_else(|| {
+                    Error::Unrecognized("scene references missing ACBa dependency".into())
+                })?;
+                let output = opaque_outputs
+                    .entry(tag)
+                    .or_insert_with(|| OutputOpaque::from_family(family));
+                let new_index = output.add(family, scene[at + 2] as usize)?;
+                scene[at + 2] = u8::try_from(new_index)
+                    .map_err(|_| Error::Unrecognized("too many ACBa records to encode".into()))?;
+                continue;
+            }
             let Some((kind, old_index)) =
                 FamilyKind::reference(scene[at], scene[at + 1], scene[at + 2])
             else {
@@ -453,6 +482,10 @@ fn rebuild<'a>(
             )?;
             replacements.insert(**tag, (output.formats[area_index], body));
         }
+    }
+    for (tag, output) in opaque_outputs {
+        let body = build_area(output.header, output.record_size, &output.entries)?;
+        replacements.insert(tag, (output.format, body));
     }
     rebuild_container(base, replacements)
 }
@@ -859,41 +892,44 @@ mod tests {
                 b"PRFa",
                 record_area(&[scene_with_banks("Target", &[(107, 0, 0)])], SCENE_SIZE),
             ),
-            (b"ACBa", vec![0x11, 0x22, 0x33]),
+            (b"ACBa", record_area(&[tone("A", 0x11)], TONE_SIZE)),
         ]);
         let source = build_svd(&[
             (
                 b"PRFa",
                 record_area(&[scene_with_banks("Source", &[(107, 0, 0)])], SCENE_SIZE),
             ),
-            (b"ACBa", vec![0x11, 0x22, 0x33]),
+            (b"ACBa", record_area(&[tone("A", 0x11)], TONE_SIZE)),
         ]);
 
         let merged = merge_scenes(&target, &source).unwrap();
-        assert_eq!(area_bytes(&merged, b"ACBa"), vec![0x11, 0x22, 0x33]);
+        assert_eq!(area_bytes(&merged, b"ACBa")[..4], [1, 0, 0, 0]);
         assert_eq!(read_scenes(&merged).unwrap().len(), 2);
     }
 
     #[test]
-    fn merge_rejects_conflicting_opaque_dependency_areas() {
+    fn merge_rebases_different_opaque_dependency_records() {
         let target = build_svd(&[
             (
                 b"PRFa",
                 record_area(&[scene_with_banks("Target", &[(107, 0, 0)])], SCENE_SIZE),
             ),
-            (b"ACBa", vec![0x11, 0x22, 0x33]),
+            (b"ACBa", record_area(&[tone("A", 0x11)], TONE_SIZE)),
         ]);
         let source = build_svd(&[
             (
                 b"PRFa",
                 record_area(&[scene_with_banks("Source", &[(107, 0, 0)])], SCENE_SIZE),
             ),
-            (b"ACBa", vec![0x11, 0x22, 0x44]),
+            (b"ACBa", record_area(&[tone("B", 0x44)], TONE_SIZE)),
         ]);
 
-        let error = merge_scenes(&target, &source).unwrap_err().to_string();
-        assert!(error.contains("ACBa"));
-        assert!(error.contains("differs"));
+        let merged = merge_scenes(&target, &source).unwrap();
+        let area = area_bytes(&merged, b"ACBa");
+        assert_eq!(read_u32(&area, 0, "ACBa").unwrap(), 2);
+        let scenes = read_scenes(&merged).unwrap();
+        assert_eq!(scenes[0].zones[0].tone.address.pc, 0);
+        assert_eq!(scenes[1].zones[0].tone.address.pc, 1);
     }
 
     #[test]
@@ -910,11 +946,14 @@ mod tests {
                 b"PRFa",
                 record_area(&[scene_with_banks("Source", &[(107, 0, 0)])], SCENE_SIZE),
             ),
-            (b"ACBa", vec![0x44, 0x55, 0x66]),
+            (b"ACBa", record_area(&[tone("A", 0x44)], TONE_SIZE)),
         ]);
 
         let merged = merge_scenes(&target, &source).unwrap();
-        assert_eq!(area_bytes(&merged, b"ACBa"), vec![0x44, 0x55, 0x66]);
+        assert_eq!(
+            read_u32(&area_bytes(&merged, b"ACBa"), 0, "ACBa").unwrap(),
+            1
+        );
     }
 
     #[test]
