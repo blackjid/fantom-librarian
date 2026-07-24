@@ -142,7 +142,7 @@ impl ToneRef {
             (ToneType::Exz, 65) if self.address.msb == 101 => Some("EXZ002"),
             (ToneType::Drum, 64) if self.address.msb == 100 => Some("EXZ003"),
             (ToneType::Drum, 65) if self.address.msb == 100 => Some("EXZ004"),
-            (ToneType::Model, 64) => Some("USER"),
+            (ToneType::Model, 0 | 64) => Some("USER"),
             (ToneType::Model, 66) => Some("JP8"),
             (ToneType::Model, 68) => Some("JU106"),
             (ToneType::Model, 70) => Some("JX8P"),
