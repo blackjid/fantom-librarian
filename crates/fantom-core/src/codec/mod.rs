@@ -168,6 +168,7 @@ fn bundled_tone_names(raw: &Raw, svd: &Svd) -> HashMap<(u8, u8, u8), String> {
         (b"VTWa", 91, 0),
         (b"ZAPa", 105, 0),
         (b"ZEPa", 105, 1),
+        (b"DCWa", 90, 0),
         (b"MDLa", 97, 0),
     ]
     .into_iter()
@@ -176,7 +177,7 @@ fn bundled_tone_names(raw: &Raw, svd: &Svd) -> HashMap<(u8, u8, u8), String> {
             .area(tag)
             .and_then(|area| svd.area_bytes(raw, area).ok())
             .and_then(|area| {
-                let offset = if tag == b"MDLa" { 0x10 } else { 0 };
+                let offset = if tag == b"MDLa" { 0x10 } else { 0x0c };
                 record_names_at(area, offset)
             })
             .unwrap_or_default();
