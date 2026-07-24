@@ -286,10 +286,13 @@ fn run_scenes(file: &PathBuf) -> fantom_core::Result<String> {
             let tone = &zone.tone;
             let bank = tone.bank().unwrap_or("raw");
             let reference = format!(
-                "{} {} PC {:03}",
+                "{} {} PC {:03}{}",
                 tone.tone_type().label(),
                 bank,
-                tone.address.pc
+                tone.address.pc,
+                tone.name()
+                    .map(|name| format!(" \"{name}\""))
+                    .unwrap_or_default()
             );
             if !references.contains(&reference) {
                 references.push(reference);
