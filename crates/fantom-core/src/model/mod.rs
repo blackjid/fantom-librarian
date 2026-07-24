@@ -115,7 +115,8 @@ impl ToneRef {
     pub fn bank(&self) -> Option<&str> {
         match (self.tone_type(), self.address.lsb) {
             (ToneType::ZenCore, lsb) if lsb < 64 => Some("USER"),
-            (ToneType::Drum | ToneType::SnA | ToneType::SnAp | ToneType::Vtw, 0)
+            (ToneType::Drum | ToneType::SnAp | ToneType::Vtw, 0)
+            | (ToneType::SnA, 0..=1)
             | (ToneType::SnEp, 1) => Some("USER"),
             (ToneType::VPiano, 0) if self.address.msb == 90 => Some("USER"),
             (ToneType::Drum, 64) if self.address.msb == 86 => Some("PR-A"),
@@ -191,6 +192,7 @@ mod tests {
             (97, 64, ToneType::Model, Some("USER")),
             (97, 66, ToneType::Model, Some("JP8")),
             (107, 66, ToneType::Acb, Some("SH101")),
+            (89, 1, ToneType::SnA, Some("USER")),
             (93, 2, ToneType::Exz, Some("EXZ005")),
             (101, 64, ToneType::Exz, Some("EXZ001")),
             (100, 65, ToneType::Drum, Some("EXZ004")),
