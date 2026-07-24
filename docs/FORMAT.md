@@ -83,12 +83,73 @@ cross-checked against the "Africa Main" panel: zone order is 1:1 with the panel 
 **B) Zone settings table — record-relative `0x194`, 16 × 0x48 (72) bytes** (partly decoded):
 | Off   | Field       | Evidence                                                          |
 |-------|-------------|-------------------------------------------------------------------|
-| +0x00 | marker      | Constant `0x57`                                                   |
+| +0x00 | tone MSB    | MIDI Bank Select MSB; selects the sound engine/area                |
+| +0x01 | tone LSB    | MIDI Bank Select LSB; user page or factory bank                    |
+| +0x02 | tone PC     | Zero-based program/index within the bank                           |
 | +0x03 | zone index  | 0..15                                                             |
 | +0x07 | `level`     | 0..127. TEST2→TEST3 set zone0 level `64`→`32` (100→50) at 0x19b   |
 
-The **tone reference** is a **16-bit big-endian value at table A `+0x01`** (bytes `+0x01/+0x02`).
-It uniquely identifies the zone's tone but is **bank-relative** — not the plain display number:
+The tone reference is the three-byte **MSB / LSB / PC** tuple at table B `+0x00..+0x02`.
+Earlier analysis treated LSB/PC alone as a big-endian `tone_id`; that representation remains useful
+for ZEN-Core preset lookup, but the MSB is essential for distinguishing engines:
+
+| MSB | User LSB | Bundled area | Engine/data |
+|-----|----------|--------------|-------------|
+| 86  | 0        | `RHYa` + same-index `INSa` | Rhythm kit and instruments |
+| 87  | 0..63    | `PATa`       | ZEN-Core tone |
+| 89  | 0        | `SNAa`       | SN-A (SuperNATURAL Acoustic) |
+| 91  | 0        | `VTWa`       | Virtual ToneWheel organ |
+| 105 | 0        | `ZAPa`       | SN-AP (SuperNATURAL Acoustic Piano) |
+| 105 | 1        | `ZEPa`       | SN-EP (SuperNATURAL Electric Piano) |
+
+Confirmed across NARF, TOP80, and PRISMA: every user tuple directly indexes its area record as
+`(LSB - first_user_LSB) × 128 + PC`. Factory-bank LSBs are left unchanged.
+
+The FANTOM EX MIDI Implementation makes the broader engine selector authoritative:
+
+| MSB | Engine/group |
+|-----|--------------|
+| 86 | Drum Kit |
+| 87 | ZEN-Core |
+| 89 | SN-A |
+| 90 | V-Piano |
+| 91 | VTW |
+| 92, 100 | EXZ Drum Kit |
+| 93, 101 | EXZ Tone |
+| 97 | MODEL |
+| 103 | Expansion V-Piano |
+| 105 | EXSN |
+| 107 | ACB |
+
+It also confirms `89/65 = SN-A PRST`, `90/64 = V-Piano PRST`, and `91/65 = VTW PRST`.
+The EX Sound List further confirms `86/64 = Drum PR-A`, `86/65 = Drum CMN`,
+`105/64 = EXSN01 (SN-AP)`, `105/65 = EXSN02 (SN-EP)`,
+`105/66 = EXSN03 (SN-AP)`, and `107/64 = ACB JP8`. Manual PC values are one-based;
+the scene's stored PC byte is zero-based. These facts identify references for display but do not
+by themselves prove how USER records for the newer engines are bundled in an SVD export.
+
+The `fixtures/TONEMAP/FANTOM.SVD` export adds these observed bank mappings:
+
+| Engine | MSB/LSB | Bank |
+|--------|---------|------|
+| VPiano | 90/0 | USER |
+| VPiano | 90/64 | PRST |
+| Expansion VPiano | 103/64 | M09X01 |
+| MODEL | 97/64 | USER |
+| MODEL | 97/66 | JP8 |
+| MODEL | 97/68 | JU106 |
+| MODEL | 97/70 | JX8P |
+| MODEL | 97/72 | n/zyme |
+| MODEL | 97/79 | SH101 |
+| ACB | 107/0 | USER |
+| ACB | 107/64 | JP8 |
+| ACB | 107/66 | SH101 |
+| ACB | 107/70 | JU106 |
+| ACB | 107/76 | JX3P |
+
+The export did not contain a JD-800 MODEL zone, so its bank address remains unknown.
+
+For historical comparison, the old LSB/PC-as-BE16 representation looked like this:
 | Tone (panel)        | tone_id (BE16) | hi   | lo   |
 |---------------------|----------------|------|------|
 | USER 448 (Brass)    | 827  (0x033b)  | 0x03 | 0x3b |
@@ -96,9 +157,9 @@ It uniquely identifies the zone's tone but is **bank-relative** — not the plai
 | PR-AA 61 (JX Cream) | 23612 (0x5c3c) | 0x5c | 0x3c |
 | INIT default (TEST) | 23868 (0x5d3c) | 0x5d | 0x3c |
 
-**Resolved (mechanism confirmed via TONEMAP controlled capture):** `tone_id` is NOT a global tone
-number. When a scene is saved, the Fantom **bundles the USER tones it references into the file's
-`PATa` area and renumbers them**, so for user tones `tone_id` is an **index into `PATa`**. Verified:
+**Resolved (mechanism confirmed via TONEMAP controlled capture):** the reference is NOT a global
+tone number. When a scene is saved, the Fantom **bundles the USER tones it references into the
+corresponding area and renumbers them**. For ZEN-Core, `(LSB × 128) + PC` indexes `PATa`. Verified:
 TONEMAP `PATa` holds exactly its 3 referenced USER tones, and `tone_id` 0/1/2 → `Strings Fall` /
 `Thriller trillo` / `Jump Brass EmA` (= panel USER 1/2/129).
 
@@ -114,9 +175,8 @@ and share the same 16-bit id space, so they are omitted to avoid mislabelling.)
 `+0x10` is the tone **category** (`0x23` = brass).
 
 - **Scene exports** (`SOUND/…`, single/multi-scene): `PATa` holds exactly the referenced user tones,
-  stored **gid-sorted and de-duplicated**, so a tone's `PATa` index is the **rank of its `tone_id`
-  among all user gids referenced in the file** (not a fixed offset — gids are sparse, e.g. the NARF
-  export uses gids 0–603 for 348 tones). Detected by `unique user gids == PATa count`. Verified
+  directly indexed by 7-bit PC pages (`LSB × 128 + PC`; NARF's 348 tones end at LSB 2 / PC 91).
+  The old BE16 interpretation made those same references appear sparse. Verified
   end-to-end: NARF scene 44 "Sledgehammer" → `Sledgehammer Sha / Sledge + Hammer / …` matching the
   panel; TONEMAP (gids 0/1/2) still direct.
 - **Full backups**: the reference is **per-scene**, not global. Each scene's user tones are a
@@ -146,13 +206,13 @@ and share the same 16-bit id space, so they are omitted to avoid mislabelling.)
   **content-identical duplicates under different names** (`Africa Brass` @1 vs `Uptown Brass 3` @572),
   so a "correct" index can still show a different name than the panel. Resolving backups faithfully
   would need the synth's actual gid→tone resolution rule (likely tied to how the USER bank is
-  loaded), which isn't in the file in a form we've found. Backups keep showing `user #id`.
+  loaded), which isn't in the file in a form we've found. The reader therefore shows the raw
+  MSB/LSB/PC address for unresolved backup tones.
 
 **Validation** — "Africa Main" (scene 385) decodes to exactly the panel's 4 zones:
 Z1 Brass 0–71 · Z2 Kalimba 73–127 · Z3 Kalimba 72–72 · Z4 JX-Cream 0–71 (levels 107/107/100/82).
 
-**Still TBD:** the tone-reference encoding (table B); pan and other per-zone params; the
-scene-common block before `0x194`.
+**Still TBD:** pan and other per-zone params; the scene-common block before `0x194`.
 
 Confirmed across banks: PRISMA 16, NARF 50, TOP80 83, full backup **512** scenes
 (PRFa size 1828880 = 16-byte header + 512 × 3572). Two adjacent names sit 0xdf4 apart
@@ -193,18 +253,16 @@ comment overwrites the 64-byte field at `+0x40`, and nothing else changes (verif
 7-char scene touches exactly the differing name bytes). A renamed scene-export bank was loaded
 successfully on a FANTOM-6 and displayed the edited name.
 
-Scene-export repackaging uses the confirmed gid-rank rule above. Extract/merge copy complete opaque
-scene and tone records, assign a fresh dense user-tone id set, rewrite the settings-table user-tone
-ids, and rebuild `PRFa`/`PATa`; preset ids and every other area are retained. Identical full tone
-records are de-duplicated. Repackaging requires `unique referenced user gids == PATa count`; full
-backups are rejected because their gid mapping is unresolved. The older PRISMA export is also
-rejected safely (18 apparent user gids but only 15 `PATa` records), indicating that at least one
-additional reference kind or mapping remains to be decoded.
+Scene-export repackaging uses the confirmed MSB/LSB/PC mapping above. Extract/merge copy complete
+opaque records, de-duplicate identical dependency bundles, assign fresh dense per-engine indexes,
+rewrite zone LSB/PC bytes, and rebuild the area table. `RHYa` and `INSa` records remain paired.
+Source-only engine areas are added to the output. Full backups remain rejected because their
+ZEN-Core mapping is unresolved.
 
 The `canary` command strengthens that hardware test without changing synthesis parameters: it
-extracts one scene, prefixes its name with `CNY`, and renames its bundled tones `CNY01…CNYNN`.
-Seeing those names in the imported scene's zones proves that the FANTOM read the rebuilt `PATa`
-bundle rather than merely resolving pre-existing tone names.
+extracts one scene, prefixes its name with `CNY`, and renames records in every recognized bundled
+dependency area `CNY01…CNYNN`. Seeing those names in the imported scene's zones proves that the
+FANTOM read the rebuilt bundle rather than merely resolving pre-existing tone names.
 
 **Hardware-confirmed on a FANTOM-6:** extracting NARF scene 44 produced one `CNY Sledgehammer`
 scene with its eight renamed bundled tones; the names appeared on the instrument and its zones,
@@ -213,11 +271,24 @@ keyboard groups, tones, and samples worked. Merging independently extracted `CNY
 This confirms `PRFa` rebuilding, `PATa` rebuilding, tone-id rebasing, and same-origin multi-scene
 merging.
 
-**Merge boundary:** only `PRFa` and `PATa` are rebuilt. All other areas come from the target file;
-source `RHYa`, `INSa`, `VTWa`, `SNAa`, `ZAPa`, `ZEPa`, sample data, and other still-opaque
-dependencies are not merged. The hardware test used two scenes derived from the same NARF export,
-so arbitrary cross-bank merging of scenes with source-only non-`PATa` dependencies remains
-unverified and may be incomplete.
+**Cross-bank status:** `RHYa`/`INSa`, `VTWa`, `SNAa`, `ZAPa`, and `ZEPa` are now dependency-aware
+and mergeable. NARF, TOP80, and PRISMA round-trip locally with identical decoded ZEN-Core
+assignments; extracting PRISMA `Time` produces exactly two `PATa`, one `SNAa`, and one `ZEPa`
+record. A NARF/PRISMA canary was hardware-confirmed with working keyboard groups and sounds,
+including `Time`'s SN-A and SN-EP zones. External sample waveform files and any unknown future area
+kinds are not copied.
+
+The typed reader retains the complete MSB/LSB/PC tuple and reports the documented panel-facing
+types `Drum`, `ZEN-Core`, `SN-A`, `SN-AP`, `SN-EP`, `EXSN`, `VTW`, `VPiano`, `MODEL`, `EXZ`,
+and `ACB`. Confirmed USER dependency areas resolve their record names. Unknown types and
+unconfirmed banks deliberately display their raw MSB/LSB/PC values.
+
+**Unsupported newer/model families:** full backups contain `DCWa` (128 piano records, likely the
+VPiano USER bank) and `MDLa` (1024 opaque model records). The manual confirms MSB 90 is VPiano and
+MSB 97 is MODEL, but their SVD scene-export dependency mapping is not yet confirmed. VPiano USER,
+MODEL/ABM USER, ACB USER, and newer EX-only model data are therefore not bundled.
+Factory/installed expansion references are left unchanged, but only work on a destination
+instrument that has the same engine/model/expansion installed.
 
 ## Prior art
 

@@ -22,30 +22,32 @@ fixtures/        # sample files (gitignored by default) + golden snapshots
 
 ## Status
 
-Reads the SVD5 container envelope (verified on a Roland **FANTOM-6**), lists **scene names**, shows
-each scene's **comment/memo** and its **16 zones** (tone, switch, key range, level), and resolves
-per-zone **tone names** from the `PATa` tone area. Confirmed against real backups and controlled
-sample scenes.
+Reads the SVD5 container envelope (verified on a Roland **FANTOM-6**), lists **scene names**, and
+shows each scene's **comment/memo** and its **16 zones** (type, bank, tone, switch, key range,
+level). It retains every zone's raw MSB/LSB/PC address and resolves bundled names for ZEN-Core,
+Drum, SN-A, SN-AP, SN-EP, and VTW USER sounds. Documented EX engine selectors are recognized as
+VPiano, MODEL, EXZ, EXSN, and ACB even when their exact bank or bundled name remains unresolved.
 
 > Only tested on a FANTOM-6. Not yet verified on the FANTOM-06/07/08 ("Fantom-0" series — a
 > different, cheaper product line despite the similar name) or FANTOM-6/7/8 EX.
 
-**Factory preset** tones are named from a bundled copy of Roland's FANTOM Sound List
-(`crates/fantom-core/src/preset_tones.tsv`, ~3.7k ZEN-Core tones). **User** tone names resolve
-directly for **scene exports** (`SOUND/…`); in **full backups** user tones use a global address that
-isn't fully mapped yet, so they show as `user #id`. See [`docs/FORMAT.md`](docs/FORMAT.md).
+**Factory preset** ZEN-Core tones are named from a bundled copy of Roland's FANTOM Sound List
+(`crates/fantom-core/src/preset_tones.tsv`, ~3.7k tones). **User** names resolve directly for
+**scene exports** (`SOUND/…`); unresolved types/banks are shown as their raw `MSB`, `LSB`, and `PC`
+instead of being mislabeled. See [`docs/FORMAT.md`](docs/FORMAT.md).
 
 **Write path:** `rename` and `comment` overwrite only the scene's name/comment field and nothing
 else (verified by byte diff and confirmed on a FANTOM-6). `extract` and `merge` rebuild scene-export
-banks with an exact referenced-user-tone to `PATa` mapping, copy complete opaque scene/tone records,
-and rewrite only bundled user-tone references. Repackaging rejects files where that mapping cannot
-be proven, including full backups and some older exports.
+banks with exact per-engine dependency mappings. They rebundle `PATa`, paired `RHYa`/`INSa`,
+`VTWa`, `SNAa`, `ZAPa`, and `ZEPa` records and rewrite their zone references. Full backups remain
+unsupported because their ZEN-Core mapping cannot be derived safely.
 
-Extraction and a two-scene merge were hardware-confirmed on a FANTOM-6 using NARF: canary tone names
-proved that the rebuilt `PATa` was imported, while zones, keyboard groups, tones, and samples
-continued to work. Merge currently rebundles `PATa` only and retains every other area from the
-target file. A source scene that depends on source-only rhythm, sample, or other engine data may
-therefore need additional area-specific bundling; arbitrary cross-bank merges are not yet claimed.
+Extraction and merging were hardware-confirmed on a FANTOM-6 using NARF and a cross-bank
+NARF/PRISMA canary: zones, keyboard groups, tones, and samples continued to work, including the
+PRISMA scene's SN-A and SN-EP dependencies. Copying external sample waveform files remains open.
+VPiano, MODEL/ABM, ACB, and newer EX-only USER dependencies are not yet mapped for repackaging;
+references to installed factory/model/expansion banks are preserved but require the same content
+on the destination.
 
 ## Usage
 
@@ -59,7 +61,8 @@ cargo run -p fantom-cli -- areas path/to/FANTOM.SVD
 # List the scene names in an SVD backup.
 cargo run -p fantom-cli -- scenes path/to/FANTOM.SVD
 
-# Show one scene with its zones (tone, switch, key range, level). Use --all for off zones.
+# Show one scene with its zones (type, bank, tone, switch, key range, level).
+# Use --all for off zones.
 cargo run -p fantom-cli -- show path/to/FANTOM.SVD 385
 
 # List the tones bundled in a file.

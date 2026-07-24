@@ -1,9 +1,8 @@
 //! Extract and merge scenes from FANTOM scene-export SVD files.
 //!
-//! Self-contained scene exports bundle exactly the user tones referenced by their scenes in
-//! `PATa`. Repackaging rebuilds that bundle and rewrites user-tone ids while leaving factory preset
-//! ids untouched. Files without that exact mapping (including full backups) are deliberately
-//! rejected.
+//! Self-contained scene exports bundle the user sounds referenced by their scenes in engine areas
+//! such as `PATa`, `RHYa`, and `ZEPa`. Repackaging rebuilds those bundles and rewrites their indexes
+//! while leaving factory preset references untouched. Full backups are deliberately rejected.
 
 use std::collections::{BTreeSet, HashMap};
 
@@ -14,11 +13,129 @@ const HEADER_LEN: usize = 0x10;
 const COUNT_OFFSET: usize = 0;
 const RECORD_SIZE_OFFSET: usize = 4;
 const NAME_LEN: usize = 16;
-const TONE_ID_OFFSET: usize = 1;
-const PRESET_FLAG: u16 = 0x4000;
+const PC_VALUES_PER_BANK: usize = 128;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+enum FamilyKind {
+    Pat,
+    Rhy,
+    Sna,
+    Vtw,
+    Zap,
+    Zep,
+}
+
+impl FamilyKind {
+    const ALL: [Self; 6] = [
+        Self::Pat,
+        Self::Rhy,
+        Self::Vtw,
+        Self::Sna,
+        Self::Zap,
+        Self::Zep,
+    ];
+
+    fn tags(self) -> &'static [&'static [u8; 4]] {
+        match self {
+            Self::Pat => &[b"PATa"],
+            Self::Rhy => &[b"RHYa", b"INSa"],
+            Self::Sna => &[b"SNAa"],
+            Self::Vtw => &[b"VTWa"],
+            Self::Zap => &[b"ZAPa"],
+            Self::Zep => &[b"ZEPa"],
+        }
+    }
+
+    fn reference(msb: u8, lsb: u8, pc: u8) -> Option<(Self, usize)> {
+        let (kind, first_lsb) = match (msb, lsb) {
+            (87, 0..=63) => (Self::Pat, 0),
+            (86, 0) => (Self::Rhy, 0),
+            (89, 0) => (Self::Sna, 0),
+            (91, 0) => (Self::Vtw, 0),
+            (105, 0) => (Self::Zap, 0),
+            (105, 1) => (Self::Zep, 1),
+            _ => return None,
+        };
+        (pc < 128).then_some((
+            kind,
+            (lsb - first_lsb) as usize * PC_VALUES_PER_BANK + pc as usize,
+        ))
+    }
+
+    fn encode(self, index: usize) -> Result<(u8, u8)> {
+        let first_lsb = if self == Self::Zep { 1 } else { 0 };
+        let pages = if self == Self::Pat { 64 } else { 1 };
+        if index >= pages * PC_VALUES_PER_BANK {
+            return Err(Error::Unrecognized(format!(
+                "too many {} records to encode",
+                String::from_utf8_lossy(self.tags()[0])
+            )));
+        }
+        Ok((
+            first_lsb + (index / PC_VALUES_PER_BANK) as u8,
+            (index % PC_VALUES_PER_BANK) as u8,
+        ))
+    }
+}
+
+struct RecordArea {
+    header: [u8; HEADER_LEN],
+    format: [u8; 4],
+    record_size: usize,
+    records: Vec<Vec<u8>>,
+}
+
+struct Family {
+    areas: Vec<RecordArea>,
+    entries: Vec<Vec<Vec<u8>>>,
+}
+
+struct OutputFamily {
+    headers: Vec<[u8; HEADER_LEN]>,
+    formats: Vec<[u8; 4]>,
+    record_sizes: Vec<usize>,
+    entries: Vec<Vec<Vec<u8>>>,
+    indexes: HashMap<Vec<Vec<u8>>, usize>,
+}
+
+impl OutputFamily {
+    fn from_family(family: &Family) -> Self {
+        Self {
+            headers: family.areas.iter().map(|area| area.header).collect(),
+            formats: family.areas.iter().map(|area| area.format).collect(),
+            record_sizes: family.areas.iter().map(|area| area.record_size).collect(),
+            entries: Vec::new(),
+            indexes: HashMap::new(),
+        }
+    }
+
+    fn add(&mut self, family: &Family, entry: &[Vec<u8>]) -> Result<usize> {
+        let compatible = self
+            .formats
+            .iter()
+            .eq(family.areas.iter().map(|area| &area.format))
+            && self
+                .record_sizes
+                .iter()
+                .eq(family.areas.iter().map(|area| &area.record_size));
+        if !compatible {
+            return Err(Error::Unrecognized(
+                "dependency area formats or record sizes differ".into(),
+            ));
+        }
+        if let Some(index) = self.indexes.get(entry) {
+            return Ok(*index);
+        }
+        let index = self.entries.len();
+        let owned = entry.to_vec();
+        self.entries.push(owned.clone());
+        self.indexes.insert(owned, index);
+        Ok(index)
+    }
+}
 
 /// Build a scene-export SVD containing only the requested 1-based scene numbers, in the order
-/// given. All referenced user tones are copied and their ids are rebased for the new bank.
+/// given. All recognized bundled dependencies are copied and rebased for the new bank.
 pub fn extract_scenes(raw: &Raw, scene_numbers: &[usize]) -> Result<Raw> {
     if scene_numbers.is_empty() {
         return Err(Error::Unrecognized(
@@ -62,8 +179,8 @@ pub fn canary_scene(raw: &Raw, scene_number: usize) -> Result<Raw> {
     Ok(canary)
 }
 
-/// Append every scene from `source` to `target`, rebundling and de-duplicating user tones. Both
-/// inputs must be self-contained scene exports with matching scene/tone record sizes.
+/// Append every scene from `source` to `target`, rebundling and de-duplicating recognized engine
+/// dependencies. Both inputs must be self-contained scene exports with matching scene records.
 pub fn merge_scenes(target: &Raw, source: &Raw) -> Result<Raw> {
     let target_bank = ExportBank::parse(target)?;
     let source_bank = ExportBank::parse(source)?;
@@ -73,17 +190,9 @@ pub fn merge_scenes(target: &Raw, source: &Raw) -> Result<Raw> {
             target_bank.scene_record_size, source_bank.scene_record_size
         )));
     }
-    if target_bank.tone_record_size != source_bank.tone_record_size {
-        return Err(Error::Unrecognized(format!(
-            "PATa record sizes differ (target {}, source {})",
-            target_bank.tone_record_size, source_bank.tone_record_size
-        )));
-    }
-    if target_bank.scene_format != source_bank.scene_format
-        || target_bank.tone_format != source_bank.tone_format
-    {
+    if target_bank.scene_format != source_bank.scene_format {
         return Err(Error::Unrecognized(
-            "source and target use different PRFa/PATa format versions".into(),
+            "source and target use different PRFa format versions".into(),
         ));
     }
 
@@ -103,14 +212,10 @@ pub fn merge_scenes(target: &Raw, source: &Raw) -> Result<Raw> {
 
 struct ExportBank {
     scenes: Vec<Vec<u8>>,
-    tones: Vec<Vec<u8>>,
-    tone_by_gid: HashMap<u16, usize>,
+    families: HashMap<FamilyKind, Family>,
     scene_header: [u8; HEADER_LEN],
-    tone_header: [u8; HEADER_LEN],
     scene_format: [u8; 4],
-    tone_format: [u8; 4],
     scene_record_size: usize,
-    tone_record_size: usize,
 }
 
 impl ExportBank {
@@ -125,50 +230,74 @@ impl ExportBank {
         let prfa = svd
             .area(b"PRFa")
             .ok_or_else(|| Error::Unrecognized("no PRFa (performance) area in file".into()))?;
-        let pata = svd
-            .area(b"PATa")
-            .ok_or_else(|| Error::Unrecognized("no PATa (tone) area in file".into()))?;
         let (scene_header, scene_record_size, scenes) =
             parse_records(svd.area_bytes(raw, prfa)?, "PRFa", true)?;
-        let (tone_header, tone_record_size, tones) =
-            parse_records(svd.area_bytes(raw, pata)?, "PATa", false)?;
+        let references = dependency_references(&scenes);
+        let mut families = HashMap::new();
+        for kind in FamilyKind::ALL {
+            let expected = references.get(&kind).cloned().unwrap_or_default();
+            let Some(first) = svd.area(kind.tags()[0]) else {
+                if expected.is_empty() {
+                    continue;
+                }
+                return Err(Error::Unrecognized(format!(
+                    "scene references missing {} area",
+                    String::from_utf8_lossy(kind.tags()[0])
+                )));
+            };
 
-        let gids: BTreeSet<u16> = scenes
-            .iter()
-            .flat_map(|record| user_tone_ids(record))
-            .collect();
-        if gids.len() != tones.len() {
-            return Err(Error::Unrecognized(format!(
-                "not a self-contained scene export: {} referenced user-tone ids but PATa has {} records",
-                gids.len(),
-                tones.len()
-            )));
+            let mut areas = Vec::new();
+            for tag in kind.tags() {
+                let area = svd.area(tag).ok_or_else(|| {
+                    Error::Unrecognized(format!(
+                        "{} requires paired {} area",
+                        String::from_utf8_lossy(kind.tags()[0]),
+                        String::from_utf8_lossy(*tag)
+                    ))
+                })?;
+                let (header, record_size, records) =
+                    parse_records(svd.area_bytes(raw, area)?, &area.tag_str(), false)?;
+                areas.push(RecordArea {
+                    header,
+                    format: area.format,
+                    record_size,
+                    records,
+                });
+            }
+            let count = areas[0].records.len();
+            if areas.iter().any(|area| area.records.len() != count) {
+                return Err(Error::Unrecognized(format!(
+                    "{} paired area counts differ",
+                    first.tag_str()
+                )));
+            }
+            let complete: BTreeSet<_> = (0..count).collect();
+            if expected != complete {
+                return Err(Error::Unrecognized(format!(
+                    "not a self-contained scene export: {} references {:?}, area has 0..{}",
+                    first.tag_str(),
+                    expected,
+                    count.saturating_sub(1)
+                )));
+            }
+            let entries = (0..count)
+                .map(|index| {
+                    areas
+                        .iter()
+                        .map(|area| area.records[index].clone())
+                        .collect()
+                })
+                .collect();
+            families.insert(kind, Family { areas, entries });
         }
-        let tone_by_gid = gids
-            .into_iter()
-            .enumerate()
-            .map(|(index, gid)| (gid, index))
-            .collect();
 
         Ok(Self {
             scenes,
-            tones,
-            tone_by_gid,
+            families,
             scene_header,
-            tone_header,
             scene_format: prfa.format,
-            tone_format: pata.format,
             scene_record_size,
-            tone_record_size,
         })
-    }
-
-    fn tone_for_gid(&self, gid: u16) -> Result<&[u8]> {
-        let index = self
-            .tone_by_gid
-            .get(&gid)
-            .ok_or_else(|| Error::Unrecognized(format!("user-tone id {gid} has no PATa record")))?;
-        Ok(&self.tones[*index])
     }
 }
 
@@ -216,36 +345,39 @@ fn rebuild<'a>(
     header_bank: &ExportBank,
     records: Vec<(&'a ExportBank, &'a Vec<u8>)>,
 ) -> Result<Raw> {
-    let mut tones: Vec<Vec<u8>> = Vec::new();
-    let mut tone_ids: HashMap<Vec<u8>, u16> = HashMap::new();
+    let mut outputs: HashMap<FamilyKind, OutputFamily> = HashMap::new();
     let mut scenes = Vec::with_capacity(records.len());
 
     for (bank, original) in records {
         let mut scene = original.clone();
         let slots: Vec<_> = valid_zone_slots(&scene).collect();
         for slot in slots {
-            let at = tone_id_offset(slot);
-            let old_id = u16::from_be_bytes([scene[at], scene[at + 1]]);
-            if old_id & PRESET_FLAG != 0 {
+            let at = tone_bank_offset(slot);
+            let Some((kind, old_index)) =
+                FamilyKind::reference(scene[at], scene[at + 1], scene[at + 2])
+            else {
                 continue;
-            }
-            let tone = bank.tone_for_gid(old_id)?;
-            let new_id = match tone_ids.get(tone) {
-                Some(id) => *id,
-                None => {
-                    let id = u16::try_from(tones.len())
-                        .map_err(|_| Error::Unrecognized("too many bundled user tones".into()))?;
-                    if id & PRESET_FLAG != 0 {
-                        return Err(Error::Unrecognized(
-                            "too many bundled user tones for the 14-bit id space".into(),
-                        ));
-                    }
-                    tones.push(tone.to_vec());
-                    tone_ids.insert(tone.to_vec(), id);
-                    id
-                }
             };
-            scene[at..at + 2].copy_from_slice(&new_id.to_be_bytes());
+            let family = bank.families.get(&kind).ok_or_else(|| {
+                Error::Unrecognized(format!(
+                    "scene references missing {} dependency",
+                    String::from_utf8_lossy(kind.tags()[0])
+                ))
+            })?;
+            let entry = family.entries.get(old_index).ok_or_else(|| {
+                Error::Unrecognized(format!(
+                    "{} record {} is out of range",
+                    String::from_utf8_lossy(kind.tags()[0]),
+                    old_index
+                ))
+            })?;
+            let output = outputs
+                .entry(kind)
+                .or_insert_with(|| OutputFamily::from_family(family));
+            let new_index = output.add(family, entry)?;
+            let (lsb, pc) = kind.encode(new_index)?;
+            scene[at + 1] = lsb;
+            scene[at + 2] = pc;
         }
         scenes.push(scene);
     }
@@ -255,12 +387,27 @@ fn rebuild<'a>(
         header_bank.scene_record_size,
         &scenes,
     )?;
-    let pata = build_area(
-        header_bank.tone_header,
-        header_bank.tone_record_size,
-        &tones,
-    )?;
-    replace_areas(base, &[(b"PRFa", prfa), (b"PATa", pata)])
+    let mut replacements = HashMap::new();
+    replacements.insert(*b"PRFa", (header_bank.scene_format, prfa));
+    for kind in FamilyKind::ALL {
+        let Some(output) = outputs.remove(&kind) else {
+            continue;
+        };
+        for (area_index, tag) in kind.tags().iter().enumerate() {
+            let records: Vec<_> = output
+                .entries
+                .iter()
+                .map(|entry| entry[area_index].clone())
+                .collect();
+            let body = build_area(
+                output.headers[area_index],
+                output.record_sizes[area_index],
+                &records,
+            )?;
+            replacements.insert(**tag, (output.formats[area_index], body));
+        }
+    }
+    rebuild_container(base, replacements)
 }
 
 fn build_area(
@@ -288,28 +435,36 @@ fn build_area(
 
 fn mark_bundled_tone_names(raw: &mut Raw) -> Result<()> {
     let svd = Svd::parse(raw)?;
-    let pata = svd
-        .area(b"PATa")
-        .ok_or_else(|| Error::Unrecognized("no PATa (tone) area in file".into()))?;
-    let area = svd.area_bytes(raw, pata)?;
-    let count = read_u32(area, COUNT_OFFSET, "PATa")? as usize;
-    let record_size = read_u32(area, RECORD_SIZE_OFFSET, "PATa")? as usize;
-    if record_size < NAME_LEN {
-        return Err(Error::Unrecognized(
-            "PATa record is shorter than its tone-name field".into(),
-        ));
-    }
-
-    let mut names = Vec::with_capacity(count);
-    for index in 0..count {
-        let start = HEADER_LEN + index * record_size;
-        let name = area.get(start..start + NAME_LEN).ok_or_else(|| {
-            Error::Unrecognized(format!("PATa record {} is truncated", index + 1))
-        })?;
-        names.push((
-            pata.offset as usize + start,
-            format!("CNY{:02} {}", index + 1, ascii_trim(name)),
-        ));
+    let mut names = Vec::new();
+    for kind in FamilyKind::ALL {
+        for tag in kind.tags() {
+            let Some(area_info) = svd.area(tag) else {
+                continue;
+            };
+            let area = svd.area_bytes(raw, area_info)?;
+            let count = read_u32(area, COUNT_OFFSET, &area_info.tag_str())? as usize;
+            let record_size = read_u32(area, RECORD_SIZE_OFFSET, &area_info.tag_str())? as usize;
+            if record_size < NAME_LEN {
+                return Err(Error::Unrecognized(format!(
+                    "{} record is shorter than its name field",
+                    area_info.tag_str()
+                )));
+            }
+            for index in 0..count {
+                let start = HEADER_LEN + index * record_size;
+                let name = area.get(start..start + NAME_LEN).ok_or_else(|| {
+                    Error::Unrecognized(format!(
+                        "{} record {} is truncated",
+                        area_info.tag_str(),
+                        index + 1
+                    ))
+                })?;
+                names.push((
+                    area_info.offset as usize + start,
+                    format!("CNY{:02} {}", index + 1, ascii_trim(name)),
+                ));
+            }
+        }
     }
     for (offset, name) in names {
         raw.patch_ascii(offset, NAME_LEN, &name);
@@ -317,58 +472,57 @@ fn mark_bundled_tone_names(raw: &mut Raw) -> Result<()> {
     Ok(())
 }
 
-fn replace_areas(raw: &Raw, replacements: &[(&[u8; 4], Vec<u8>)]) -> Result<Raw> {
+fn rebuild_container(
+    raw: &Raw,
+    mut replacements: HashMap<[u8; 4], ([u8; 4], Vec<u8>)>,
+) -> Result<Raw> {
     let svd = Svd::parse(raw)?;
-    let mut ordered: Vec<_> = svd.areas.iter().enumerate().collect();
-    ordered.sort_by_key(|(_, area)| area.offset);
-    let first_offset = ordered
-        .first()
-        .map(|(_, area)| area.offset as usize)
-        .ok_or_else(|| Error::Unrecognized("SVD has no areas".into()))?;
-    if first_offset > raw.len() {
-        return Err(Error::Unrecognized(
-            "first SVD area begins beyond the end of the file".into(),
-        ));
-    }
-    let table_end = 0x10 + svd.areas.len() * 16;
-    if first_offset < table_end {
-        return Err(Error::Unrecognized(
-            "first SVD area overlaps the area table".into(),
-        ));
-    }
-    let mut bytes = raw.bytes()[..first_offset].to_vec();
-
-    for (position, (table_index, area)) in ordered.iter().enumerate() {
-        svd.area_bytes(raw, area)?;
-        let new_offset = u32::try_from(bytes.len())
-            .map_err(|_| Error::Unrecognized("repackaged file is too large".into()))?;
-        let body = replacements
-            .iter()
-            .find(|(tag, _)| *tag == &area.tag)
-            .map(|(_, body)| body.as_slice())
-            .unwrap_or(svd.area_bytes(raw, area)?);
-        let new_size = u32::try_from(body.len())
-            .map_err(|_| Error::Unrecognized("repackaged area is too large".into()))?;
-        bytes.extend_from_slice(body);
-
-        let original_end = area.range().end;
-        let next_offset = ordered
-            .get(position + 1)
-            .map(|(_, next)| next.offset as usize)
-            .unwrap_or(raw.len());
-        if next_offset < original_end {
-            return Err(Error::Unrecognized("SVD areas overlap".into()));
+    const ORDER: [&[u8; 4]; 10] = [
+        b"PRFa", b"PATa", b"RHYa", b"INSa", b"VTWa", b"SNAa", b"ZAPa", b"ZEPa", b"SYSa", b"DIFa",
+    ];
+    for area in &svd.areas {
+        if !ORDER.contains(&&area.tag) {
+            return Err(Error::Unrecognized(format!(
+                "cannot preserve unknown area {} while rebuilding the area table",
+                area.tag_str()
+            )));
         }
-        if next_offset > raw.len() {
-            return Err(Error::Unrecognized(
-                "SVD area gap extends beyond the end of the file".into(),
-            ));
-        }
-        bytes.extend_from_slice(&raw.bytes()[original_end..next_offset]);
+    }
 
-        let entry = 0x10 + *table_index * 16;
-        bytes[entry + 8..entry + 12].copy_from_slice(&new_offset.to_le_bytes());
-        bytes[entry + 12..entry + 16].copy_from_slice(&new_size.to_le_bytes());
+    let dependency_tags: BTreeSet<[u8; 4]> = FamilyKind::ALL
+        .into_iter()
+        .flat_map(|kind| kind.tags().iter().map(|tag| **tag))
+        .collect();
+    let mut areas = Vec::new();
+    for tag in ORDER {
+        if let Some((format, body)) = replacements.remove(tag) {
+            areas.push((*tag, format, body));
+        } else if !dependency_tags.contains(tag) && tag != b"PRFa" {
+            if let Some(area) = svd.area(tag) {
+                areas.push((area.tag, area.format, svd.area_bytes(raw, area)?.to_vec()));
+            }
+        }
+    }
+
+    let header_size = u16::try_from(14 + areas.len() * 16)
+        .map_err(|_| Error::Unrecognized("too many SVD areas".into()))?;
+    let first_offset = 0x10 + areas.len() * 16;
+    let mut bytes = raw
+        .bytes()
+        .get(..0x10)
+        .ok_or_else(|| Error::Unrecognized("SVD header is truncated".into()))?
+        .to_vec();
+    bytes[0..2].copy_from_slice(&header_size.to_le_bytes());
+    let mut offset = first_offset;
+    for (tag, format, body) in &areas {
+        bytes.extend_from_slice(tag);
+        bytes.extend_from_slice(format);
+        bytes.extend_from_slice(&(offset as u32).to_le_bytes());
+        bytes.extend_from_slice(&(body.len() as u32).to_le_bytes());
+        offset += body.len();
+    }
+    for (_, _, body) in areas {
+        bytes.extend_from_slice(&body);
     }
     Ok(Raw::from_bytes(bytes))
 }
@@ -376,21 +530,28 @@ fn replace_areas(raw: &Raw, replacements: &[(&[u8; 4], Vec<u8>)]) -> Result<Raw>
 fn valid_zone_slots(record: &[u8]) -> impl Iterator<Item = usize> + '_ {
     (0..16).filter(|slot| {
         let marker = RawZone::TABLE_OFFSET + slot * RawZone::LEN + 0x3e;
-        let tone = tone_id_offset(*slot);
-        record.get(marker..marker + 2) == Some(&RawZone::MARKER) && tone + 2 <= record.len()
+        let tone = tone_bank_offset(*slot);
+        record.get(marker..marker + 2) == Some(&RawZone::MARKER) && tone + 3 <= record.len()
     })
 }
 
-fn user_tone_ids(record: &[u8]) -> impl Iterator<Item = u16> + '_ {
-    valid_zone_slots(record).filter_map(|slot| {
-        let at = tone_id_offset(slot);
-        let id = u16::from_be_bytes([record[at], record[at + 1]]);
-        (id & PRESET_FLAG == 0).then_some(id)
-    })
+fn dependency_references(scenes: &[Vec<u8>]) -> HashMap<FamilyKind, BTreeSet<usize>> {
+    let mut references: HashMap<FamilyKind, BTreeSet<usize>> = HashMap::new();
+    for record in scenes {
+        for slot in valid_zone_slots(record) {
+            let at = tone_bank_offset(slot);
+            if let Some((kind, index)) =
+                FamilyKind::reference(record[at], record[at + 1], record[at + 2])
+            {
+                references.entry(kind).or_default().insert(index);
+            }
+        }
+    }
+    references
 }
 
-fn tone_id_offset(slot: usize) -> usize {
-    ZoneSettings::TABLE_OFFSET + slot * ZoneSettings::LEN + TONE_ID_OFFSET
+fn tone_bank_offset(slot: usize) -> usize {
+    ZoneSettings::TABLE_OFFSET + slot * ZoneSettings::LEN
 }
 
 fn read_u32(bytes: &[u8], at: usize, tag: &str) -> Result<u32> {
@@ -409,14 +570,28 @@ mod tests {
     const SCENE_SIZE: usize = 3572;
     const TONE_SIZE: usize = 32;
 
-    fn scene(name: &str, tone_ids: &[u16]) -> Vec<u8> {
+    fn scene(name: &str, tone_ids: &[usize]) -> Vec<u8> {
+        let banks: Vec<_> = tone_ids
+            .iter()
+            .map(|index| {
+                (
+                    87,
+                    (index / PC_VALUES_PER_BANK) as u8,
+                    (index % PC_VALUES_PER_BANK) as u8,
+                )
+            })
+            .collect();
+        scene_with_banks(name, &banks)
+    }
+
+    fn scene_with_banks(name: &str, banks: &[(u8, u8, u8)]) -> Vec<u8> {
         let mut record = vec![0u8; SCENE_SIZE];
         record[..name.len()].copy_from_slice(name.as_bytes());
-        for (slot, tone_id) in tone_ids.iter().enumerate() {
+        for (slot, &(msb, lsb, pc)) in banks.iter().enumerate() {
             let marker = RawZone::TABLE_OFFSET + slot * RawZone::LEN + 0x3e;
             record[marker..marker + 2].copy_from_slice(&RawZone::MARKER);
-            let at = tone_id_offset(slot);
-            record[at..at + 2].copy_from_slice(&tone_id.to_be_bytes());
+            let at = tone_bank_offset(slot);
+            record[at..at + 3].copy_from_slice(&[msb, lsb, pc]);
         }
         record
     }
@@ -478,7 +653,7 @@ mod tests {
     #[test]
     fn extract_keeps_selected_scenes_and_rebundles_their_tones() {
         let raw = bank(
-            vec![scene("First", &[10]), scene("Second", &[20, 30])],
+            vec![scene("First", &[0]), scene("Second", &[1, 2])],
             vec![
                 tone("Tone A", 0xa1),
                 tone("Tone B", 0xb2),
@@ -493,17 +668,11 @@ mod tests {
         assert_eq!(scenes[0].name, "Second");
         assert_eq!(
             scenes[0].zones[0].tone,
-            ToneRef::User {
-                id: 0,
-                name: Some("Tone B".into())
-            }
+            ToneRef::new(87, 0, 0, Some("Tone B".into()))
         );
         assert_eq!(
             scenes[0].zones[1].tone,
-            ToneRef::User {
-                id: 1,
-                name: Some("Tone C".into())
-            }
+            ToneRef::new(87, 0, 1, Some("Tone C".into()))
         );
 
         let pat = crate::container::PatArea::from_svd(&extracted, &Svd::parse(&extracted).unwrap())
@@ -517,12 +686,12 @@ mod tests {
     fn merge_appends_scenes_and_deduplicates_identical_tone_records() {
         let shared = tone("Shared", 0x44);
         let target = bank(
-            vec![scene("Target", &[100])],
+            vec![scene("Target", &[0])],
             vec![shared.clone()],
             b"target system",
         );
         let source = bank(
-            vec![scene("Source", &[10, 20])],
+            vec![scene("Source", &[0, 1])],
             vec![tone("Other", 0x22), shared],
             b"source system",
         );
@@ -538,24 +707,15 @@ mod tests {
         );
         assert_eq!(
             scenes[0].zones[0].tone,
-            ToneRef::User {
-                id: 0,
-                name: Some("Shared".into())
-            }
+            ToneRef::new(87, 0, 0, Some("Shared".into()))
         );
         assert_eq!(
             scenes[1].zones[0].tone,
-            ToneRef::User {
-                id: 1,
-                name: Some("Other".into())
-            }
+            ToneRef::new(87, 0, 1, Some("Other".into()))
         );
         assert_eq!(
             scenes[1].zones[1].tone,
-            ToneRef::User {
-                id: 0,
-                name: Some("Shared".into())
-            }
+            ToneRef::new(87, 0, 0, Some("Shared".into()))
         );
 
         let pat =
@@ -567,7 +727,7 @@ mod tests {
     #[test]
     fn canary_marks_scene_and_tone_names_without_changing_tone_payloads() {
         let raw = bank(
-            vec![scene("First", &[10]), scene("Sledgehammer", &[20, 30])],
+            vec![scene("First", &[0]), scene("Sledgehammer", &[1, 2])],
             vec![
                 tone("Unused", 0xa1),
                 tone("Sledgehammer Sha", 0xb2),
@@ -598,11 +758,100 @@ mod tests {
     #[test]
     fn rejects_files_whose_user_tones_cannot_be_resolved() {
         let raw = bank(
-            vec![scene("Broken", &[10, 20])],
+            vec![scene("Broken", &[0, 1])],
             vec![tone("Only one", 0x11)],
             b"",
         );
         let error = extract_scenes(&raw, &[1]).unwrap_err().to_string();
         assert!(error.contains("not a self-contained scene export"));
+    }
+
+    #[test]
+    fn merge_adds_source_only_engine_areas_and_rewrites_each_family() {
+        let target = bank(
+            vec![scene("Target", &[0])],
+            vec![tone("Target Tone", 0x11)],
+            b"target system",
+        );
+        let source_scene = scene_with_banks("Source", &[(87, 0, 0), (89, 0, 0), (105, 1, 0)]);
+        let source = build_svd(&[
+            (b"PRFa", record_area(&[source_scene], SCENE_SIZE)),
+            (
+                b"PATa",
+                record_area(&[tone("Source Tone", 0x22)], TONE_SIZE),
+            ),
+            (b"SNAa", record_area(&[tone("Source SNA", 0x33)], TONE_SIZE)),
+            (b"ZEPa", record_area(&[tone("Source ZEP", 0x44)], TONE_SIZE)),
+            (b"SYSa", b"source system".to_vec()),
+        ]);
+
+        let merged = merge_scenes(&target, &source).unwrap();
+        let svd = Svd::parse(&merged).unwrap();
+        assert!(svd.area(b"SNAa").is_some());
+        assert!(svd.area(b"ZEPa").is_some());
+        assert_eq!(area_bytes(&merged, b"SYSa"), b"target system");
+
+        let scenes = read_scenes(&merged).unwrap();
+        assert_eq!(scenes[1].zones[0].tone.name(), Some("Source Tone"));
+        let prfa = area_bytes(&merged, b"PRFa");
+        let source_record = &prfa[HEADER_LEN + SCENE_SIZE..];
+        let banks: Vec<_> = (0..3)
+            .map(|slot| {
+                let at = tone_bank_offset(slot);
+                &source_record[at..at + 3]
+            })
+            .collect();
+        assert_eq!(banks, [&[87, 0, 1][..], &[89, 0, 0], &[105, 1, 0]]);
+    }
+
+    #[test]
+    fn rhythm_dependencies_keep_rhya_and_insa_records_paired() {
+        let raw = build_svd(&[
+            (
+                b"PRFa",
+                record_area(&[scene_with_banks("Drums", &[(86, 0, 0)])], SCENE_SIZE),
+            ),
+            (b"RHYa", record_area(&[tone("User Kit", 0x55)], TONE_SIZE)),
+            (
+                b"INSa",
+                record_area(&[tone("Kit Instruments", 0x66)], TONE_SIZE),
+            ),
+            (b"SYSa", b"system".to_vec()),
+        ]);
+
+        let extracted = extract_scenes(&raw, &[1]).unwrap();
+        assert_eq!(
+            &area_bytes(&extracted, b"RHYa")[HEADER_LEN..HEADER_LEN + NAME_LEN],
+            &tone("User Kit", 0x55)[..NAME_LEN]
+        );
+        assert_eq!(
+            &area_bytes(&extracted, b"INSa")[HEADER_LEN..HEADER_LEN + NAME_LEN],
+            &tone("Kit Instruments", 0x66)[..NAME_LEN]
+        );
+    }
+
+    #[test]
+    fn zen_core_indices_roll_to_the_next_lsb_after_128_records() {
+        let scenes: Vec<_> = (0..130)
+            .collect::<Vec<_>>()
+            .chunks(16)
+            .enumerate()
+            .map(|(number, ids)| scene(&format!("Scene {number}"), ids))
+            .collect();
+        let tones: Vec<_> = (0..130)
+            .map(|index| tone(&format!("Tone {index}"), index as u8))
+            .collect();
+        let raw = bank(scenes, tones, b"system");
+        let scene_numbers: Vec<_> = (1..=9).collect();
+
+        let extracted = extract_scenes(&raw, &scene_numbers).unwrap();
+        let prfa = area_bytes(&extracted, b"PRFa");
+        let ninth_scene = &prfa[HEADER_LEN + 8 * SCENE_SIZE..];
+        let at = tone_bank_offset(0);
+        assert_eq!(&ninth_scene[at..at + 3], &[87, 1, 0]);
+        assert_eq!(
+            read_scenes(&extracted).unwrap()[8].zones[0].tone.name(),
+            Some("Tone 128")
+        );
     }
 }

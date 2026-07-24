@@ -16,11 +16,10 @@ use crate::{Error, Result};
 /// The area tag holding Performances/Scenes in a FANTOM-6 SVD backup.
 const PRFA: &[u8; 4] = b"PRFa";
 
-/// Offset of the per-zone tone id within a settings-table record (`0x194`), read big-endian.
+/// Offsets of the per-zone MIDI bank/program tuple within a settings-table record (`0x194`).
 const TONE_ID_OFFSET: usize = 0x01;
-
-/// Tone ids with this bit set are factory ROM presets, not stored in the file's `PATa`.
-const PRESET_FLAG: u16 = 0x4000;
+const TONE_MSB_OFFSET: usize = 0x00;
+const ZEN_CORE_MSB: u8 = 87;
 
 /// The `PRFa` area opens with a fixed 16-byte header, then fixed-stride records begin.
 /// `+0x00` = declared scene count; `+0x04` = record stride in bytes.
@@ -61,8 +60,8 @@ pub fn read_scenes(raw: &Raw) -> Result<Vec<Scene>> {
     let mut user_gids: BTreeSet<u16> = BTreeSet::new();
     for &(_, record) in &records {
         for n in 0..ZONE_COUNT {
-            if let Some((_, _, id)) = decode_zone_slot(record, n) {
-                if id & PRESET_FLAG == 0 {
+            if let Some((_, _, msb, id)) = decode_zone_slot(record, n) {
+                if msb == ZEN_CORE_MSB && id.to_be_bytes()[0] < 64 {
                     user_gids.insert(id);
                 }
             }
@@ -75,11 +74,15 @@ pub fn read_scenes(raw: &Raw) -> Result<Vec<Scene>> {
     // unique-gid count matching the `PATa` count. Full backups keep every tone in `PATa` (and carry
     // an `MDLa` area), so the rank does not apply and their user tones stay unresolved.
     let rank: HashMap<u16, usize> = user_gids.iter().enumerate().map(|(i, &g)| (g, i)).collect();
-    let resolver = pat
+    let pat = pat
         .as_ref()
         .filter(|_| !is_backup)
-        .filter(|p| p.tones().len() == rank.len())
-        .map(|p| ToneResolver { pat: p, rank: &rank });
+        .filter(|p| p.tones().len() == rank.len());
+    let resolver = ToneResolver {
+        pat,
+        rank: &rank,
+        bundled: bundled_tone_names(raw, &svd),
+    };
 
     records
         .into_iter()
@@ -90,7 +93,7 @@ pub fn read_scenes(raw: &Raw) -> Result<Vec<Scene>> {
                     .get(COMMENT_OFFSET..COMMENT_OFFSET + COMMENT_LEN)
                     .map(ascii_trim)
                     .unwrap_or_default(),
-                zones: read_zones(record, resolver.as_ref())?,
+                zones: read_zones(record, Some(&resolver))?,
             })
         })
         .collect()
@@ -153,14 +156,57 @@ pub fn set_scene_comment(raw: &mut Raw, scene_number: usize, comment: &str) -> R
 
 /// Resolves user-tone gids to `PATa` names for one file (see [`read_scenes`]).
 struct ToneResolver<'a> {
-    pat: &'a PatArea,
+    pat: Option<&'a PatArea>,
     rank: &'a HashMap<u16, usize>,
+    bundled: HashMap<(u8, u8, u8), String>,
 }
 
-/// Read a zone's raw tone id (settings table `+0x01`, big-endian), if the record is long enough.
-fn zone_tone_id(record: &[u8], n: usize) -> Option<u16> {
+fn bundled_tone_names(raw: &Raw, svd: &Svd) -> HashMap<(u8, u8, u8), String> {
+    [
+        (b"RHYa", 86, 0),
+        (b"SNAa", 89, 0),
+        (b"VTWa", 91, 0),
+        (b"ZAPa", 105, 0),
+        (b"ZEPa", 105, 1),
+    ]
+    .into_iter()
+    .flat_map(|(tag, msb, lsb)| {
+        let names = svd
+            .area(tag)
+            .and_then(|area| svd.area_bytes(raw, area).ok())
+            .and_then(record_names)
+            .unwrap_or_default();
+        names
+            .into_iter()
+            .take(128)
+            .enumerate()
+            .map(move |(pc, name)| ((msb, lsb, pc as u8), name))
+    })
+    .collect()
+}
+
+fn record_names(area: &[u8]) -> Option<Vec<String>> {
+    let count = read_u32(area, AREA_COUNT_OFFSET).ok()? as usize;
+    let record_size = read_u32(area, AREA_RECORD_SIZE_OFFSET).ok()? as usize;
+    if record_size < NAME_LEN {
+        return None;
+    }
+    (0..count)
+        .map(|index| {
+            let start = AREA_HEADER_LEN + index * record_size;
+            area.get(start..start + NAME_LEN).map(ascii_trim)
+        })
+        .collect()
+}
+
+/// Read a zone's raw MSB plus LSB/PC pair, if the record is long enough.
+fn zone_tone_bank(record: &[u8], n: usize) -> Option<(u8, u16)> {
     let at = ZoneSettings::TABLE_OFFSET + n * ZoneSettings::LEN + TONE_ID_OFFSET;
-    record.get(at..at + 2).map(|s| u16::from_be_bytes([s[0], s[1]]))
+    let msb_at = ZoneSettings::TABLE_OFFSET + n * ZoneSettings::LEN + TONE_MSB_OFFSET;
+    let id = record
+        .get(at..at + 2)
+        .map(|s| u16::from_be_bytes([s[0], s[1]]))?;
+    Some((*record.get(msb_at)?, id))
 }
 
 /// Decode zone slot `n` of a scene `record`, or `None` when the record is too short to hold it or
@@ -168,7 +214,7 @@ fn zone_tone_id(record: &[u8], n: usize) -> Option<u16> {
 /// recognise). This is the single gate for "is this a real zone" — used both to decide which zones
 /// to emit ([`read_zones`]) and which tone ids count toward the gid-rank resolver ([`read_scenes`]),
 /// so an unpopulated slot can never leak a spurious tone id into the resolver.
-fn decode_zone_slot(record: &[u8], n: usize) -> Option<(RawZone, ZoneSettings, u16)> {
+fn decode_zone_slot(record: &[u8], n: usize) -> Option<(RawZone, ZoneSettings, u8, u16)> {
     let zone_off = RawZone::TABLE_OFFSET + n * RawZone::LEN;
     let settings_off = ZoneSettings::TABLE_OFFSET + n * ZoneSettings::LEN;
     if record.len() < (zone_off + RawZone::LEN).max(settings_off + ZoneSettings::LEN) {
@@ -179,8 +225,8 @@ fn decode_zone_slot(record: &[u8], n: usize) -> Option<(RawZone, ZoneSettings, u
         return None;
     }
     let s = ZoneSettings::read(&mut cursor_at(record, settings_off)).ok()?;
-    let tone_id = zone_tone_id(record, n).unwrap_or(0);
-    Some((z, s, tone_id))
+    let (msb, tone_id) = zone_tone_bank(record, n).unwrap_or((0, 0));
+    Some((z, s, msb, tone_id))
 }
 
 /// Decode the 16 zones from a single scene `record` (the slice starting at the zone name).
@@ -195,13 +241,13 @@ fn decode_zone_slot(record: &[u8], n: usize) -> Option<(RawZone, ZoneSettings, u
 fn read_zones(record: &[u8], resolver: Option<&ToneResolver>) -> Result<Vec<Zone>> {
     let mut zones = Vec::with_capacity(ZONE_COUNT);
     for n in 0..ZONE_COUNT {
-        let Some((z, s, tone_id)) = decode_zone_slot(record, n) else {
+        let Some((z, s, msb, tone_id)) = decode_zone_slot(record, n) else {
             continue;
         };
         zones.push(Zone {
             number: n as u8,
             enabled: z.enable != 0,
-            tone: resolve_tone(tone_id, resolver),
+            tone: resolve_tone(msb, tone_id, resolver),
             key_low: z.key_low,
             key_high: z.key_high,
             level: s.level,
@@ -210,17 +256,20 @@ fn read_zones(record: &[u8], resolver: Option<&ToneResolver>) -> Result<Vec<Zone
     Ok(zones)
 }
 
-/// Resolve a raw 16-bit tone id into a [`ToneRef`].
-fn resolve_tone(id: u16, resolver: Option<&ToneResolver>) -> ToneRef {
-    if id & PRESET_FLAG != 0 {
-        ToneRef::Preset { id }
-    } else {
-        let name = resolver.and_then(|r| {
+/// Resolve a ZEN-Core LSB/PC pair into a [`ToneRef`]; other engines retain their raw address.
+fn resolve_tone(msb: u8, id: u16, resolver: Option<&ToneResolver>) -> ToneRef {
+    let [lsb, pc] = id.to_be_bytes();
+    let name = if msb == ZEN_CORE_MSB && lsb < 64 {
+        resolver.and_then(|r| {
             let idx = *r.rank.get(&id)?;
-            Some(r.pat.get(idx)?.name.clone())
-        });
-        ToneRef::User { id, name }
-    }
+            Some(r.pat?.get(idx)?.name.clone())
+        })
+    } else if msb == ZEN_CORE_MSB {
+        crate::presets::lookup(id).map(|preset| preset.name.to_owned())
+    } else {
+        resolver.and_then(|r| r.bundled.get(&(msb, lsb, pc)).cloned())
+    };
+    ToneRef::new(msb, lsb, pc, name)
 }
 
 fn cursor_at(bytes: &[u8], at: usize) -> Cursor<&[u8]> {
@@ -320,21 +369,51 @@ mod tests {
         let pat = PatArea::parse(&area).unwrap();
         // gids 10 and 42 rank to PATa[0] and PATa[1].
         let rank: HashMap<u16, usize> = [(10u16, 0usize), (42, 1)].into_iter().collect();
-        let r = ToneResolver { pat: &pat, rank: &rank };
+        let r = ToneResolver {
+            pat: Some(&pat),
+            rank: &rank,
+            bundled: HashMap::new(),
+        };
 
         assert_eq!(
-            resolve_tone(42, Some(&r)),
-            ToneRef::User { id: 42, name: Some("Jump Brass EmA".into()) }
+            resolve_tone(ZEN_CORE_MSB, 42, Some(&r)),
+            ToneRef::new(87, 0, 42, Some("Jump Brass EmA".into()))
         );
         // A gid not in the rank map, or no resolver at all → id only.
-        assert_eq!(resolve_tone(99, Some(&r)), ToneRef::User { id: 99, name: None });
-        assert_eq!(resolve_tone(10, None), ToneRef::User { id: 10, name: None });
+        assert_eq!(
+            resolve_tone(ZEN_CORE_MSB, 99, Some(&r)),
+            ToneRef::new(87, 0, 99, None)
+        );
+        assert_eq!(
+            resolve_tone(ZEN_CORE_MSB, 10, None),
+            ToneRef::new(87, 0, 10, None)
+        );
         // Preset flag set → Preset regardless.
-        assert_eq!(resolve_tone(0x5c00, Some(&r)), ToneRef::Preset { id: 0x5c00 });
+        assert_eq!(
+            resolve_tone(ZEN_CORE_MSB, 0x5c00, Some(&r)),
+            ToneRef::new(87, 0x5c, 0, Some("AnalogAtmosphere".into()))
+        );
+
+        let bundled = HashMap::from([((105, 1, 7), "Time Intro EP".into())]);
+        let r = ToneResolver {
+            pat: None,
+            rank: &rank,
+            bundled,
+        };
+        let sn_ep = resolve_tone(105, 0x0107, Some(&r));
+        assert_eq!(sn_ep.name(), Some("Time Intro EP"));
+        assert_eq!(sn_ep.tone_type(), crate::model::ToneType::SnEp);
+        assert_eq!(sn_ep.bank(), Some("USER"));
     }
 
     /// Build a full-size (3572-byte) record with valid markers, so `read_zones` runs the real path.
-    fn record_with_zone(number: usize, enable: u8, key_low: u8, key_high: u8, level: u8) -> Vec<u8> {
+    fn record_with_zone(
+        number: usize,
+        enable: u8,
+        key_low: u8,
+        key_high: u8,
+        level: u8,
+    ) -> Vec<u8> {
         use crate::container::{RawZone, ZoneSettings};
         let mut rec = vec![0u8; 3572];
         // Every zone slot needs a valid marker or parsing fails.
@@ -384,7 +463,15 @@ mod tests {
     }
 
     /// Populate zone slot `n` with a valid marker and the given switch/range/level/tone.
-    fn golden_zone(r: &mut [u8], n: usize, enabled: bool, key_low: u8, key_high: u8, level: u8, tone_id: u16) {
+    fn golden_zone(
+        r: &mut [u8],
+        n: usize,
+        enabled: bool,
+        key_low: u8,
+        key_high: u8,
+        level: u8,
+        tone_id: u16,
+    ) {
         let zb = RawZone::TABLE_OFFSET + n * RawZone::LEN;
         r[zb + 0x04] = enabled as u8;
         r[zb + 0x08] = key_low;
@@ -392,6 +479,7 @@ mod tests {
         r[zb + 0x3e..zb + 0x40].copy_from_slice(&RawZone::MARKER);
 
         let sb = ZoneSettings::TABLE_OFFSET + n * ZoneSettings::LEN;
+        r[sb + TONE_MSB_OFFSET] = ZEN_CORE_MSB;
         r[sb + 0x07] = level;
         r[sb + TONE_ID_OFFSET..sb + TONE_ID_OFFSET + 2].copy_from_slice(&tone_id.to_be_bytes());
     }
@@ -475,15 +563,21 @@ mod tests {
 
         assert_eq!(s1.zones[0].number, 0);
         assert!(s1.zones[0].enabled);
-        assert_eq!((s1.zones[0].key_low, s1.zones[0].key_high, s1.zones[0].level), (0, 60, 100));
+        assert_eq!(
+            (s1.zones[0].key_low, s1.zones[0].key_high, s1.zones[0].level),
+            (0, 60, 100)
+        );
         assert_eq!(
             s1.zones[0].tone,
-            ToneRef::User { id: USER_A_GID, name: Some("Golden User A".into()) }
+            ToneRef::new(87, 0, USER_A_GID as u8, Some("Golden User A".into()))
         );
 
         assert_eq!(s1.zones[1].number, 1);
         assert!(!s1.zones[1].enabled);
-        assert_eq!(s1.zones[1].tone, ToneRef::Preset { id: JX_CREAM });
+        assert_eq!(
+            s1.zones[1].tone,
+            ToneRef::new(87, 0x5c, 0x3c, Some("JX Cream".into()))
+        );
         assert_eq!(s1.zones[1].tone.name(), Some("JX Cream"));
         assert_eq!(s1.zones[1].tone.preset().unwrap().bank, "PR-A");
         assert_eq!(s1.zones[1].tone.preset().unwrap().number, 61);
@@ -491,7 +585,7 @@ mod tests {
         assert_eq!(s1.zones[2].number, 2);
         assert_eq!(
             s1.zones[2].tone,
-            ToneRef::User { id: USER_B_GID, name: Some("Golden User B".into()) }
+            ToneRef::new(87, 0, USER_B_GID as u8, Some("Golden User B".into()))
         );
 
         let s2 = &scenes[1];
@@ -519,8 +613,14 @@ mod tests {
 
         // Re-parsing shows the edits, and scene 2 is untouched.
         let scenes = read_scenes(&raw).unwrap();
-        assert_eq!((scenes[0].name.as_str(), scenes[0].comment.as_str()), ("New Name", "new comment"));
-        assert_eq!((scenes[1].name.as_str(), scenes[1].comment.as_str()), ("Keep Me", "keep"));
+        assert_eq!(
+            (scenes[0].name.as_str(), scenes[0].comment.as_str()),
+            ("New Name", "new comment")
+        );
+        assert_eq!(
+            (scenes[1].name.as_str(), scenes[1].comment.as_str()),
+            ("Keep Me", "keep")
+        );
 
         // Byte-faithful: same length, and every changed byte lies inside scene 1's name or comment.
         let after = raw.bytes();

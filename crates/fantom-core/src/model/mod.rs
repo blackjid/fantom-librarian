@@ -31,34 +31,163 @@ pub struct Zone {
     pub level: u8,
 }
 
-/// Which tone a zone plays.
-///
-/// A scene stores the reference as a 16-bit id. User tones are bundled into the file's `PATa`
-/// area and referenced by index (resolved to a [`name`](ToneRef::User) when the file is a scene
-/// export); factory presets keep a fixed ROM id and are not stored in the file.
+/// The raw MIDI bank/program address stored by a scene.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ToneAddress {
+    pub msb: u8,
+    pub lsb: u8,
+    /// Zero-based MIDI program number.
+    pub pc: u8,
+}
+
+/// Sound-engine type selected by a tone address.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ToneType {
+    Drum,
+    ZenCore,
+    SnA,
+    SnAp,
+    SnEp,
+    Exsn,
+    Vtw,
+    VPiano,
+    Model,
+    Exz,
+    Acb,
+    Unknown,
+}
+
+impl ToneType {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Drum => "Drum",
+            Self::ZenCore => "ZEN-Core",
+            Self::SnA => "SN-A",
+            Self::SnAp => "SN-AP",
+            Self::SnEp => "SN-EP",
+            Self::Exsn => "EXSN",
+            Self::Vtw => "VTW",
+            Self::VPiano => "VPiano",
+            Self::Model => "MODEL",
+            Self::Exz => "EXZ",
+            Self::Acb => "ACB",
+            Self::Unknown => "Unknown",
+        }
+    }
+}
+
+/// Which tone a zone plays, retaining its complete on-disk address.
 #[derive(Debug, Clone, PartialEq)]
-pub enum ToneRef {
-    /// A user tone stored in this file's tone area. `name` is `Some` once resolved from `PATa`.
-    User { id: u16, name: Option<String> },
-    /// A factory ROM preset tone (not stored in the file).
-    Preset { id: u16 },
+pub struct ToneRef {
+    pub address: ToneAddress,
+    /// Resolved bundled or factory name, when known.
+    pub name: Option<String>,
 }
 
 impl ToneRef {
-    /// The tone's display name when known: user tones resolved from `PATa`, preset tones from the
-    /// bundled factory sound list ([`crate::presets`]).
-    pub fn name(&self) -> Option<&str> {
-        match self {
-            ToneRef::User { name, .. } => name.as_deref(),
-            ToneRef::Preset { id } => crate::presets::lookup(*id).map(|p| p.name),
+    pub fn new(msb: u8, lsb: u8, pc: u8, name: Option<String>) -> Self {
+        Self {
+            address: ToneAddress { msb, lsb, pc },
+            name,
         }
     }
 
-    /// Factory preset details (bank / number / name / category), when this is a known preset.
-    pub fn preset(&self) -> Option<&'static crate::presets::PresetTone> {
-        match self {
-            ToneRef::Preset { id } => crate::presets::lookup(*id),
-            ToneRef::User { .. } => None,
+    pub fn tone_type(&self) -> ToneType {
+        match (self.address.msb, self.address.lsb) {
+            (86 | 92 | 100, _) => ToneType::Drum,
+            (87, _) => ToneType::ZenCore,
+            (89, _) => ToneType::SnA,
+            (90 | 103, _) => ToneType::VPiano,
+            (91, _) => ToneType::Vtw,
+            (93 | 101, _) => ToneType::Exz,
+            (97, _) => ToneType::Model,
+            (105, 0) => ToneType::SnAp,
+            (105, 1) => ToneType::SnEp,
+            (105, 64 | 66) => ToneType::SnAp,
+            (105, 65) => ToneType::SnEp,
+            (105, _) => ToneType::Exsn,
+            (107, _) => ToneType::Acb,
+            _ => ToneType::Unknown,
         }
+    }
+
+    /// User-facing bank label when its byte mapping is confirmed.
+    pub fn bank(&self) -> Option<&str> {
+        match (self.tone_type(), self.address.lsb) {
+            (ToneType::ZenCore, lsb) if lsb < 64 => Some("USER"),
+            (ToneType::Drum | ToneType::SnA | ToneType::SnAp | ToneType::Vtw, 0)
+            | (ToneType::SnEp, 1) => Some("USER"),
+            (ToneType::VPiano, 0) if self.address.msb == 90 => Some("USER"),
+            (ToneType::Drum, 64) if self.address.msb == 86 => Some("PR-A"),
+            (ToneType::Drum, 65) if self.address.msb == 86 => Some("CMN"),
+            (ToneType::SnA | ToneType::Vtw, 65) => Some("PRST"),
+            (ToneType::VPiano, 64) if self.address.msb == 90 => Some("PRST"),
+            (ToneType::VPiano, 64) if self.address.msb == 103 => Some("M09X01"),
+            (ToneType::SnAp, 64) => Some("EXSN01"),
+            (ToneType::SnEp, 65) => Some("EXSN02"),
+            (ToneType::SnAp, 66) => Some("EXSN03"),
+            (ToneType::Model, 64) => Some("USER"),
+            (ToneType::Model, 66) => Some("JP8"),
+            (ToneType::Model, 68) => Some("JU106"),
+            (ToneType::Model, 70) => Some("JX8P"),
+            (ToneType::Model, 72) => Some("n/zyme"),
+            (ToneType::Model, 79) => Some("SH101"),
+            (ToneType::Acb, 0) => Some("USER"),
+            (ToneType::Acb, 64) => Some("JP8"),
+            (ToneType::Acb, 66) => Some("SH101"),
+            (ToneType::Acb, 70) => Some("JU106"),
+            (ToneType::Acb, 76) => Some("JX3P"),
+            _ => self.preset().map(|p| p.bank),
+        }
+    }
+
+    /// The tone's display name when known.
+    pub fn name(&self) -> Option<&str> {
+        self.name.as_deref()
+    }
+
+    /// Factory ZEN-Core preset details, when this is a known entry in the bundled sound list.
+    pub fn preset(&self) -> Option<&'static crate::presets::PresetTone> {
+        if self.tone_type() == ToneType::ZenCore && self.address.lsb >= 64 {
+            crate::presets::lookup(u16::from_be_bytes([self.address.lsb, self.address.pc]))
+        } else {
+            None
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn classifies_documented_engine_and_bank_addresses() {
+        let cases = [
+            (86, 64, ToneType::Drum, Some("PR-A")),
+            (89, 65, ToneType::SnA, Some("PRST")),
+            (90, 64, ToneType::VPiano, Some("PRST")),
+            (91, 65, ToneType::Vtw, Some("PRST")),
+            (97, 7, ToneType::Model, None),
+            (103, 9, ToneType::VPiano, None),
+            (105, 64, ToneType::SnAp, Some("EXSN01")),
+            (105, 65, ToneType::SnEp, Some("EXSN02")),
+            (107, 64, ToneType::Acb, Some("JP8")),
+            (103, 64, ToneType::VPiano, Some("M09X01")),
+            (97, 64, ToneType::Model, Some("USER")),
+            (97, 66, ToneType::Model, Some("JP8")),
+            (107, 66, ToneType::Acb, Some("SH101")),
+        ];
+        for (msb, lsb, tone_type, bank) in cases {
+            let tone = ToneRef::new(msb, lsb, 0, None);
+            assert_eq!(tone.tone_type(), tone_type);
+            assert_eq!(tone.bank(), bank);
+        }
+    }
+
+    #[test]
+    fn leaves_undocumented_banks_raw() {
+        let tone = ToneRef::new(107, 72, 3, None);
+        assert_eq!(tone.tone_type(), ToneType::Acb);
+        assert_eq!(tone.bank(), None);
     }
 }
