@@ -22,10 +22,13 @@ fixtures/        # sample files (gitignored by default) + golden snapshots
 
 ## Status
 
-Reads the SVD5 container envelope (verified on Fantom-0 backups), lists **scene names** from the
-`PRFa` area, and decodes each scene's **16 zones** — switch, key range, and level — confirmed
-against real backups and controlled sample scenes. The per-zone **tone reference** (which sound a
-zone plays) is stored encoded and not yet decoded; see [`docs/FORMAT.md`](docs/FORMAT.md).
+Reads the SVD5 container envelope (verified on Fantom-0 backups), lists **scene names**, decodes
+each scene's **16 zones** (tone, switch, key range, level), and resolves per-zone **tone names**
+from the `PATa` tone area. Confirmed against real backups and controlled sample scenes.
+
+Tone names resolve directly for **scene exports** (`SOUND/…`); in **full backups** user tones use a
+global address that isn't fully mapped yet, so they show as `user #id` (presets show as `preset
+0x…`). See [`docs/FORMAT.md`](docs/FORMAT.md).
 
 ## Usage
 
@@ -39,8 +42,11 @@ cargo run -p fantom-cli -- areas path/to/FANTOM.SVD
 # List the scene names in an SVD backup.
 cargo run -p fantom-cli -- scenes path/to/FANTOM.SVD
 
-# Show one scene with its zones (switch, key range, level). Use --all for off zones.
+# Show one scene with its zones (tone, switch, key range, level). Use --all for off zones.
 cargo run -p fantom-cli -- show path/to/FANTOM.SVD 385
+
+# List the tones bundled in a file.
+cargo run -p fantom-cli -- tones path/to/FANTOM.SVD
 
 cargo build            # build everything
 cargo test             # run tests

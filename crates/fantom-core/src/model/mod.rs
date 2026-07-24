@@ -1,9 +1,9 @@
 //! The Fantom domain model.
 //!
 //! Roland's ZEN-Core hierarchy is **Tones → Zones → Scenes**: a [`Scene`] wires up to 16 [`Zone`]s,
-//! and each zone points at a [`Tone`] plus its performance settings. These types are what the
-//! librarian browses, renames, and packages; they are intentionally decoupled from the on-disk
-//! byte layout, which lives in [`crate::container`] and is mapped by [`crate::codec`].
+//! and each zone plays a tone ([`ToneRef`]) over a key range. These types are what the librarian
+//! browses, renames, and packages; they are intentionally decoupled from the on-disk byte layout,
+//! which lives in [`crate::container`] and is mapped by [`crate::codec`].
 
 /// A named performance: up to 16 zones plus scene-level metadata.
 #[derive(Debug, Clone, PartialEq)]
@@ -12,16 +12,15 @@ pub struct Scene {
     pub zones: Vec<Zone>,
 }
 
-/// One of a scene's 16 zone slots: whether it plays, over what key range, and how loud.
-///
-/// The per-zone **tone reference** (which sound the zone plays) is deferred — it is stored encoded
-/// in the scene record and not yet decoded (see `docs/FORMAT.md`).
+/// One of a scene's 16 zone slots: the tone it plays, its key range, and level.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Zone {
     /// 0-based index within the scene (0..16).
     pub number: u8,
     /// Whether the zone is switched on.
     pub enabled: bool,
+    /// The tone this zone plays.
+    pub tone: ToneRef,
     /// Key-range lower bound (MIDI note, 0..127).
     pub key_low: u8,
     /// Key-range upper bound (MIDI note, 0..127).
@@ -30,14 +29,25 @@ pub struct Zone {
     pub level: u8,
 }
 
-/// A reference to a tone from within a zone — either a stored tone or a factory/preset location.
+/// Which tone a zone plays.
+///
+/// A scene stores the reference as a 16-bit id. User tones are bundled into the file's `PATa`
+/// area and referenced by index (resolved to a [`name`](ToneRef::User) when the file is a scene
+/// export); factory presets keep a fixed ROM id and are not stored in the file.
 #[derive(Debug, Clone, PartialEq)]
-pub struct ToneRef {
-    pub name: String,
+pub enum ToneRef {
+    /// A user tone stored in this file's tone area. `name` is `Some` once resolved from `PATa`.
+    User { id: u16, name: Option<String> },
+    /// A factory ROM preset tone (not stored in the file).
+    Preset { id: u16 },
 }
 
-/// A ZEN-Core tone (the `.svz` unit), independent of any scene that uses it.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Tone {
-    pub name: String,
+impl ToneRef {
+    /// The tone's display name when known (user tones resolved from `PATa`).
+    pub fn name(&self) -> Option<&str> {
+        match self {
+            ToneRef::User { name, .. } => name.as_deref(),
+            ToneRef::Preset { .. } => None,
+        }
+    }
 }

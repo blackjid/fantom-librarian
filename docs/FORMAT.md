@@ -72,8 +72,31 @@ cross-checked against the "Africa Main" panel: zone order is 1:1 with the panel 
 | +0x03 | zone index  | 0..15                                                             |
 | +0x07 | `level`     | 0..127. TEST2→TEST3 set zone0 level `64`→`32` (100→50) at 0x19b   |
 
-The **tone reference** also lives in table B but is **encoded** — the displayed tone numbers
-(448/449/61) do NOT appear as plain 16-bit values, so it is bank/type/number packed. Deferred.
+The **tone reference** is a **16-bit big-endian value at table A `+0x01`** (bytes `+0x01/+0x02`).
+It uniquely identifies the zone's tone but is **bank-relative** — not the plain display number:
+| Tone (panel)        | tone_id (BE16) | hi   | lo   |
+|---------------------|----------------|------|------|
+| USER 448 (Brass)    | 827  (0x033b)  | 0x03 | 0x3b |
+| USER 449 (Kalimba)  | 828  (0x033c)  | 0x03 | 0x3c |
+| PR-AA 61 (JX Cream) | 23612 (0x5c3c) | 0x5c | 0x3c |
+| INIT default (TEST) | 23868 (0x5d3c) | 0x5d | 0x3c |
+
+**Resolved (mechanism confirmed via TONEMAP controlled capture):** `tone_id` is NOT a global tone
+number. When a scene is saved, the Fantom **bundles the USER tones it references into the file's
+`PATa` area and renumbers them**, so for user tones `tone_id` is an **index into `PATa`**; factory
+preset tones instead keep a fixed ROM reference (high bit `0x4000` set — e.g. PR-A = `0x5c00`,
+PR-B = `0x4000`). Verified: TONEMAP `PATa` holds exactly its 3 referenced USER tones, and
+`tone_id` 0/1/2 → `Strings Fall` / `Thriller trillo` / `Jump Brass EmA` (= panel USER 1/2/129).
+
+`PATa` layout mirrors `PRFa`: 16-byte header (`count`, `record_size`, `data_start=0x10`), then
+`count` records of `record_size` bytes; the tone **name** is the first 16 ASCII bytes, and byte
+`+0x10` is the tone **category** (`0x23` = brass).
+
+- **Scene exports** (`SOUND/…`, single/multi-scene): `tone_id` indexes `PATa` directly (offset 0).
+- **Full backups**: `PATa` holds all 2048 tone slots and scenes use a *global* address — user tones
+  sit at `PATa index + 826` (e.g. `Africa Brass` = `PATa[1]`, referenced `827`), and ROM/expansion
+  tones (id beyond the `PATa` range) are not resolvable without Roland's ROM tone list. The `826`
+  base (preset-tone count) is not yet located in the file — **remaining TODO for backups**.
 
 **Validation** — "Africa Main" (scene 385) decodes to exactly the panel's 4 zones:
 Z1 Brass 0–71 · Z2 Kalimba 73–127 · Z3 Kalimba 72–72 · Z4 JX-Cream 0–71 (levels 107/107/100/82).

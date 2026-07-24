@@ -8,12 +8,18 @@ use std::io::Cursor;
 
 use binrw::BinRead as _;
 
-use crate::container::{ascii_trim, Raw, RawZone, Svd, ZoneSettings};
-use crate::model::{Scene, Zone};
+use crate::container::{ascii_trim, PatArea, Raw, RawZone, Svd, ZoneSettings};
+use crate::model::{Scene, ToneRef, Zone};
 use crate::{Error, Result};
 
 /// The area tag holding Performances/Scenes in a Fantom-0 SVD backup.
 const PRFA: &[u8; 4] = b"PRFa";
+
+/// Offset of the per-zone tone id within a settings-table record (`0x194`), read big-endian.
+const TONE_ID_OFFSET: usize = 0x01;
+
+/// Tone ids with this bit set are factory ROM presets, not stored in the file's `PATa`.
+const PRESET_FLAG: u16 = 0x4000;
 
 /// The `PRFa` area opens with a fixed 16-byte header, then fixed-stride records begin.
 /// `+0x00` = declared scene count; `+0x04` = record stride in bytes.
@@ -41,6 +47,12 @@ pub fn read_scenes(raw: &Raw) -> Result<Vec<Scene>> {
         return Err(Error::Unrecognized("PRFa record size is zero".into()));
     }
 
+    // User-tone names live in the PATa area. `tone_id` indexes it directly only in scene exports;
+    // full backups (which carry an `MDLa` model-tone area) use a global address we don't map yet,
+    // so we resolve names only for exports and leave backup user tones as bare ids.
+    let pat = PatArea::from_svd(raw, &svd).ok();
+    let resolvable = svd.area(b"MDLa").is_none();
+
     let mut scenes = Vec::new();
     // Records start right after the header and are capped by the declared count.
     let mut pos = AREA_HEADER_LEN;
@@ -51,7 +63,7 @@ pub fn read_scenes(raw: &Raw) -> Result<Vec<Scene>> {
             let record = &area[pos..(pos + record_size).min(area.len())];
             scenes.push(Scene {
                 name,
-                zones: read_zones(record)?,
+                zones: read_zones(record, pat.as_ref(), resolvable)?,
             });
         }
         pos += record_size;
@@ -61,10 +73,13 @@ pub fn read_scenes(raw: &Raw) -> Result<Vec<Scene>> {
 
 /// Decode the 16 zones from a single scene `record` (the slice starting at the zone name).
 ///
-/// Combines the zone table (`0x6d0`, switch + key range) with the settings table (`0x194`, level).
-/// Returns an empty vector when the record is too short to hold the zone tables — real Fantom
-/// records are 3572 bytes; synthetic/truncated records simply carry no zones.
-pub fn read_zones(record: &[u8]) -> Result<Vec<Zone>> {
+/// Combines the zone table (`0x6d0`, switch + key range) with the settings table (`0x194`, level +
+/// tone id). Returns an empty vector when the record is too short to hold the zone tables — real
+/// Fantom records are 3572 bytes; synthetic/truncated records simply carry no zones.
+///
+/// `pat` supplies user-tone names; `resolvable` gates whether `tone_id` may be used as a direct
+/// `PATa` index (true for scene exports, false for full backups).
+pub fn read_zones(record: &[u8], pat: Option<&PatArea>, resolvable: bool) -> Result<Vec<Zone>> {
     let zones_end = RawZone::TABLE_OFFSET + ZONE_COUNT * RawZone::LEN;
     let settings_end = ZoneSettings::TABLE_OFFSET + ZONE_COUNT * ZoneSettings::LEN;
     if record.len() < zones_end.max(settings_end) {
@@ -74,19 +89,40 @@ pub fn read_zones(record: &[u8]) -> Result<Vec<Zone>> {
     let mut zones = Vec::with_capacity(ZONE_COUNT);
     for n in 0..ZONE_COUNT {
         let z = RawZone::read(&mut cursor_at(record, RawZone::TABLE_OFFSET + n * RawZone::LEN))?;
-        let s = ZoneSettings::read(&mut cursor_at(
-            record,
-            ZoneSettings::TABLE_OFFSET + n * ZoneSettings::LEN,
-        ))?;
+        let settings_off = ZoneSettings::TABLE_OFFSET + n * ZoneSettings::LEN;
+        let s = ZoneSettings::read(&mut cursor_at(record, settings_off))?;
+        let tone_id = read_u16_be(record, settings_off + TONE_ID_OFFSET)?;
         zones.push(Zone {
             number: n as u8,
             enabled: z.enable != 0,
+            tone: resolve_tone(tone_id, pat, resolvable),
             key_low: z.key_low,
             key_high: z.key_high,
             level: s.level,
         });
     }
     Ok(zones)
+}
+
+/// Resolve a raw 16-bit tone id into a [`ToneRef`].
+fn resolve_tone(id: u16, pat: Option<&PatArea>, resolvable: bool) -> ToneRef {
+    if id & PRESET_FLAG != 0 {
+        ToneRef::Preset { id }
+    } else {
+        let name = if resolvable {
+            pat.and_then(|p| p.get(id as usize)).map(|t| t.name.clone())
+        } else {
+            None
+        };
+        ToneRef::User { id, name }
+    }
+}
+
+fn read_u16_be(bytes: &[u8], at: usize) -> Result<u16> {
+    let slice = bytes
+        .get(at..at + 2)
+        .ok_or_else(|| Error::Unrecognized(format!("record truncated at offset {at}")))?;
+    Ok(u16::from_be_bytes(slice.try_into().unwrap()))
 }
 
 fn cursor_at(bytes: &[u8], at: usize) -> Cursor<&[u8]> {
@@ -142,6 +178,35 @@ mod tests {
         assert!(scenes[0].zones.is_empty());
     }
 
+    #[test]
+    fn resolve_tone_distinguishes_user_and_preset() {
+        use crate::container::PatArea;
+        // A tiny PATa with two tones.
+        let mut area = Vec::new();
+        area.extend_from_slice(&2u32.to_le_bytes()); // count
+        area.extend_from_slice(&32u32.to_le_bytes()); // record_size
+        area.extend_from_slice(&[0u8; 8]);
+        for name in ["Strings Fall", "Jump Brass EmA"] {
+            let mut rec = vec![0u8; 32];
+            rec[..name.len()].copy_from_slice(name.as_bytes());
+            area.extend_from_slice(&rec);
+        }
+        let pat = PatArea::parse(&area).unwrap();
+
+        // User tone, resolvable export → named.
+        assert_eq!(
+            resolve_tone(1, Some(&pat), true),
+            ToneRef::User { id: 1, name: Some("Jump Brass EmA".into()) }
+        );
+        // User tone in a backup (not resolvable) → id only.
+        assert_eq!(
+            resolve_tone(1, Some(&pat), false),
+            ToneRef::User { id: 1, name: None }
+        );
+        // Preset flag set → Preset regardless of PATa.
+        assert_eq!(resolve_tone(0x5c00, Some(&pat), true), ToneRef::Preset { id: 0x5c00 });
+    }
+
     /// Build a full-size (3572-byte) record with valid markers, so `read_zones` runs the real path.
     fn record_with_zone(number: usize, enable: u8, key_low: u8, key_high: u8, level: u8) -> Vec<u8> {
         use crate::container::{RawZone, ZoneSettings};
@@ -164,7 +229,7 @@ mod tests {
     #[test]
     fn read_zones_decodes_switch_key_range_and_level() {
         let rec = record_with_zone(2, 1, 60, 72, 50);
-        let zones = read_zones(&rec).unwrap();
+        let zones = read_zones(&rec, None, false).unwrap();
         assert_eq!(zones.len(), 16);
         let z = &zones[2];
         assert_eq!(

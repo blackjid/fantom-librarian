@@ -6,10 +6,12 @@
 //! real sample files. Until a field is confirmed, prefer [`Raw`], which loads a file verbatim and
 //! exposes generic inspection helpers.
 
+mod pat;
 mod raw;
 mod svd;
 mod zone;
 
+pub use pat::{PatArea, Tone};
 pub use raw::Raw;
 pub use svd::{Area, Svd};
 pub use zone::{RawZone, ZoneSettings};

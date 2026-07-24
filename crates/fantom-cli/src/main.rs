@@ -43,7 +43,7 @@ enum Command {
         file: PathBuf,
     },
 
-    /// Show one scene with its 16 zones (switch, key range, level).
+    /// Show one scene with its 16 zones (tone, switch, key range, level).
     Show {
         /// Path to a `.svd` file.
         file: PathBuf,
@@ -53,6 +53,12 @@ enum Command {
         #[arg(long)]
         all: bool,
     },
+
+    /// List the tones bundled in a file's PATa area.
+    Tones {
+        /// Path to a `.svd` file.
+        file: PathBuf,
+    },
 }
 
 fn main() -> ExitCode {
@@ -61,6 +67,7 @@ fn main() -> ExitCode {
         Command::Areas { file } => run_areas(&file),
         Command::Scenes { file } => run_scenes(&file),
         Command::Show { file, scene, all } => run_show(&file, scene, all),
+        Command::Tones { file } => run_tones(&file),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,
@@ -123,21 +130,46 @@ fn run_show(file: &PathBuf, scene: usize, all: bool) -> fantom_core::Result<()> 
     })?;
 
     println!("Scene {scene}: {}", s.name);
-    println!("{:>4}  {:<3}  {:>10}  {:>5}", "zone", "on", "range", "level");
+    println!(
+        "{:>4}  {:<3}  {:<16}  {:>10}  {:>5}",
+        "zone", "on", "tone", "range", "level"
+    );
     for z in &s.zones {
         if !z.enabled && !all {
             continue;
         }
         let range = format!("{}..{}", note_name(z.key_low), note_name(z.key_high));
         println!(
-            "{:>4}  {:<3}  {:>10}  {:>5}",
+            "{:>4}  {:<3}  {:<16}  {:>10}  {:>5}",
             z.number + 1,
             if z.enabled { "on" } else { "off" },
+            tone_label(&z.tone),
             range,
             z.level,
         );
     }
     Ok(())
+}
+
+fn run_tones(file: &PathBuf) -> fantom_core::Result<()> {
+    let raw = Raw::open(file)?;
+    let svd = fantom_core::container::Svd::parse(&raw)?;
+    let pat = fantom_core::container::PatArea::from_svd(&raw, &svd)?;
+    println!("{} tones:", pat.tones().len());
+    for (i, tone) in pat.tones().iter().enumerate() {
+        println!("{i:>5}  {}", tone.name);
+    }
+    Ok(())
+}
+
+/// Render a zone's tone reference for display.
+fn tone_label(tone: &fantom_core::model::ToneRef) -> String {
+    use fantom_core::model::ToneRef;
+    match tone {
+        ToneRef::User { name: Some(n), .. } => n.clone(),
+        ToneRef::User { id, name: None } => format!("user #{id}"),
+        ToneRef::Preset { id } => format!("preset {id:#06x}"),
+    }
 }
 
 /// Render a MIDI note number as a name, e.g. 60 -> `C4` (Roland convention: middle C = C4).
