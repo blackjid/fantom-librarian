@@ -42,6 +42,17 @@ enum Command {
         /// Path to a `.svd` file.
         file: PathBuf,
     },
+
+    /// Show one scene with its 16 zones (switch, key range, level).
+    Show {
+        /// Path to a `.svd` file.
+        file: PathBuf,
+        /// Scene number, 1-based (as printed by `scenes`).
+        scene: usize,
+        /// Include zones that are switched off.
+        #[arg(long)]
+        all: bool,
+    },
 }
 
 fn main() -> ExitCode {
@@ -49,6 +60,7 @@ fn main() -> ExitCode {
         Command::Inspect { file, len, offset } => run_inspect(&file, offset, len),
         Command::Areas { file } => run_areas(&file),
         Command::Scenes { file } => run_scenes(&file),
+        Command::Show { file, scene, all } => run_show(&file, scene, all),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,
@@ -98,4 +110,40 @@ fn run_scenes(file: &PathBuf) -> fantom_core::Result<()> {
         println!("{:>4}  {}", i + 1, scene.name);
     }
     Ok(())
+}
+
+fn run_show(file: &PathBuf, scene: usize, all: bool) -> fantom_core::Result<()> {
+    let raw = Raw::open(file)?;
+    let scenes = fantom_core::codec::read_scenes(&raw)?;
+    let s = scenes.get(scene.wrapping_sub(1)).ok_or_else(|| {
+        fantom_core::Error::Unrecognized(format!(
+            "scene {scene} out of range (file has {})",
+            scenes.len()
+        ))
+    })?;
+
+    println!("Scene {scene}: {}", s.name);
+    println!("{:>4}  {:<3}  {:>10}  {:>5}", "zone", "on", "range", "level");
+    for z in &s.zones {
+        if !z.enabled && !all {
+            continue;
+        }
+        let range = format!("{}..{}", note_name(z.key_low), note_name(z.key_high));
+        println!(
+            "{:>4}  {:<3}  {:>10}  {:>5}",
+            z.number + 1,
+            if z.enabled { "on" } else { "off" },
+            range,
+            z.level,
+        );
+    }
+    Ok(())
+}
+
+/// Render a MIDI note number as a name, e.g. 60 -> `C4` (Roland convention: middle C = C4).
+fn note_name(n: u8) -> String {
+    const NAMES: [&str; 12] = [
+        "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B",
+    ];
+    format!("{}{}", NAMES[(n % 12) as usize], (n / 12) as i16 - 1)
 }

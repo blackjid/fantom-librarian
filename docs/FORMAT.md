@@ -53,7 +53,33 @@ The `PRFa` area opens with a 16-byte header, then an array of fixed-stride scene
 | +8  | 8    | (unknown)     |               | TBD                                        |
 
 **Each scene record (`record_size` bytes):** starts with a 16-byte ASCII `name`, space-padded
-(e.g. `DSOTM Breathe`, `Africa Main`); the remaining ~3556 bytes are the zones/settings (TBD).
+(e.g. `DSOTM Breathe`, `Africa Main`). It holds two parallel 16-entry per-zone tables. Offsets
+below were **confirmed by controlled single-variable edits** (`fixtures/tests/TEST 1..3`) and
+cross-checked against the "Africa Main" panel: zone order is 1:1 with the panel (zone 0 = Zone 1).
+
+**A) Zone table — record-relative `0x6d0`, 16 × 0x60 (96) bytes** (CONFIRMED):
+| Off   | Field       | Evidence                                                          |
+|-------|-------------|-------------------------------------------------------------------|
+| +0x04 | `enable`    | 0/1. TEST1→TEST2 flipped zone1's byte 0x734 (`0x6d0+0x60+4`) 0→1  |
+| +0x08 | `key_low`   | MIDI note. TEST3 set zone0 to `3c` (C4=60) at 0x6d8               |
+| +0x09 | `key_high`  | MIDI note. TEST3 set zone0 to `48` (C5=72) at 0x6d9               |
+| +0x3e | `marker`    | Constant `cf cd` (16 of them at stride 0x60, from 0x70e)          |
+
+**B) Zone settings table — record-relative `0x194`, 16 × 0x48 (72) bytes** (partly decoded):
+| Off   | Field       | Evidence                                                          |
+|-------|-------------|-------------------------------------------------------------------|
+| +0x00 | marker      | Constant `0x57`                                                   |
+| +0x03 | zone index  | 0..15                                                             |
+| +0x07 | `level`     | 0..127. TEST2→TEST3 set zone0 level `64`→`32` (100→50) at 0x19b   |
+
+The **tone reference** also lives in table B but is **encoded** — the displayed tone numbers
+(448/449/61) do NOT appear as plain 16-bit values, so it is bank/type/number packed. Deferred.
+
+**Validation** — "Africa Main" (scene 385) decodes to exactly the panel's 4 zones:
+Z1 Brass 0–71 · Z2 Kalimba 73–127 · Z3 Kalimba 72–72 · Z4 JX-Cream 0–71 (levels 107/107/100/82).
+
+**Still TBD:** the tone-reference encoding (table B); pan and other per-zone params; the
+scene-common block before `0x194`.
 
 Confirmed across banks: PRISMA 16, NARF 50, TOP80 83, full backup **512** scenes
 (PRFa size 1828880 = 16-byte header + 512 × 3572). Two adjacent names sit 0xdf4 apart

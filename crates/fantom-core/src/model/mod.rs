@@ -12,12 +12,22 @@ pub struct Scene {
     pub zones: Vec<Zone>,
 }
 
-/// One slot within a scene, referencing a tone and how it is played.
+/// One of a scene's 16 zone slots: whether it plays, over what key range, and how loud.
+///
+/// The per-zone **tone reference** (which sound the zone plays) is deferred — it is stored encoded
+/// in the scene record and not yet decoded (see `docs/FORMAT.md`).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Zone {
     /// 0-based index within the scene (0..16).
-    pub index: u8,
-    pub tone: ToneRef,
+    pub number: u8,
+    /// Whether the zone is switched on.
+    pub enabled: bool,
+    /// Key-range lower bound (MIDI note, 0..127).
+    pub key_low: u8,
+    /// Key-range upper bound (MIDI note, 0..127).
+    pub key_high: u8,
+    /// Zone level (0..127).
+    pub level: u8,
 }
 
 /// A reference to a tone from within a zone — either a stored tone or a factory/preset location.

@@ -8,7 +8,9 @@
 
 mod raw;
 mod svd;
+mod zone;
 
 pub use raw::Raw;
 pub use svd::{Area, Svd};
+pub use zone::{RawZone, ZoneSettings};
 pub(crate) use svd::ascii_trim;
