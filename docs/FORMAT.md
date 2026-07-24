@@ -117,6 +117,13 @@ and share the same 16-bit id space, so they are omitted to avoid mislabelling.)
   stores per-scene bundles *with* duplicates (so gid ≈ raw index + a per-scene offset), and the
   mapping between the two is still unlocated.
 
+  **Revisited with the export rank rule — does not transfer.** The rank trick works for exports
+  because their `PATa` *is* gid-sorted and equals the referenced set. A backup's `PATa` holds all
+  ~2048 user tones and is **not** gid-sorted (panel-confirmed `Africa Brass` is gid 827 yet index 1),
+  so `rank(gid) == index` fails on every one of 349 oracle-matched pairs, and the gids are reassigned
+  on import (export gid 565 ≠ backup gid 1058 for the same tone). Combined with the heavy duplication
+  from user editing, no derivable rule emerged.
+
   **Investigated and set aside.** Cross-referencing the backup against the NARF scene export shows
   `gid → PATa index` *is* a well-defined many-to-one function, piecewise-linear in blocks (offsets
   361 / 489 / 255 / 127 over contiguous gid ranges). But it is **not reliably shippable**: (a) the

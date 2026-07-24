@@ -1,5 +1,6 @@
 //! `fantom` — command-line librarian for Roland Fantom data files.
 
+use std::fmt::Write as _;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -70,7 +71,7 @@ fn main() -> ExitCode {
         Command::Tones { file } => run_tones(&file),
     };
     match result {
-        Ok(()) => ExitCode::SUCCESS,
+        Ok(text) => print_output(&text),
         Err(err) => {
             eprintln!("error: {err}");
             ExitCode::FAILURE
@@ -78,27 +79,42 @@ fn main() -> ExitCode {
     }
 }
 
-fn run_inspect(file: &PathBuf, offset: usize, len: usize) -> fantom_core::Result<()> {
-    let raw = Raw::open(file)?;
-
-    println!("file:  {}", file.display());
-    println!("size:  {} bytes", raw.len());
-    match raw.ascii_magic(4) {
-        Some(magic) => println!("magic: {magic:?} (printable)"),
-        None => println!("magic: <non-printable>"),
+/// Write built output to stdout, treating a closed pipe (e.g. `| head`) as a clean exit.
+fn print_output(text: &str) -> ExitCode {
+    use std::io::Write;
+    match std::io::stdout().write_all(text.as_bytes()) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("error: {e}");
+            ExitCode::FAILURE
+        }
     }
-    println!();
-    print!("{}", raw.hexdump(offset, len));
-
-    Ok(())
 }
 
-fn run_areas(file: &PathBuf) -> fantom_core::Result<()> {
+fn run_inspect(file: &PathBuf, offset: usize, len: usize) -> fantom_core::Result<String> {
+    let raw = Raw::open(file)?;
+    let mut out = String::new();
+    let _ = writeln!(out, "file:  {}", file.display());
+    let _ = writeln!(out, "size:  {} bytes", raw.len());
+    match raw.ascii_magic(4) {
+        Some(magic) => writeln!(out, "magic: {magic:?} (printable)"),
+        None => writeln!(out, "magic: <non-printable>"),
+    }
+    .ok();
+    let _ = writeln!(out);
+    out.push_str(&raw.hexdump(offset, len));
+    Ok(out)
+}
+
+fn run_areas(file: &PathBuf) -> fantom_core::Result<String> {
     let raw = Raw::open(file)?;
     let svd = fantom_core::container::Svd::parse(&raw)?;
-    println!("{:<6} {:<6} {:>10} {:>10}", "TAG", "FORMAT", "OFFSET", "SIZE");
+    let mut out = String::new();
+    let _ = writeln!(out, "{:<6} {:<6} {:>10} {:>10}", "TAG", "FORMAT", "OFFSET", "SIZE");
     for area in &svd.areas {
-        println!(
+        let _ = writeln!(
+            out,
             "{:<6} {:<6} {:>10} {:>10}",
             area.tag_str(),
             area.format_str(),
@@ -106,20 +122,21 @@ fn run_areas(file: &PathBuf) -> fantom_core::Result<()> {
             area.size,
         );
     }
-    Ok(())
+    Ok(out)
 }
 
-fn run_scenes(file: &PathBuf) -> fantom_core::Result<()> {
+fn run_scenes(file: &PathBuf) -> fantom_core::Result<String> {
     let raw = Raw::open(file)?;
     let scenes = fantom_core::codec::read_scenes(&raw)?;
-    println!("{} scenes:", scenes.len());
+    let mut out = String::new();
+    let _ = writeln!(out, "{} scenes:", scenes.len());
     for (i, scene) in scenes.iter().enumerate() {
-        println!("{:>4}  {}", i + 1, scene.name);
+        let _ = writeln!(out, "{:>4}  {}", i + 1, scene.name);
     }
-    Ok(())
+    Ok(out)
 }
 
-fn run_show(file: &PathBuf, scene: usize, all: bool) -> fantom_core::Result<()> {
+fn run_show(file: &PathBuf, scene: usize, all: bool) -> fantom_core::Result<String> {
     let raw = Raw::open(file)?;
     let scenes = fantom_core::codec::read_scenes(&raw)?;
     let s = scenes.get(scene.wrapping_sub(1)).ok_or_else(|| {
@@ -129,11 +146,13 @@ fn run_show(file: &PathBuf, scene: usize, all: bool) -> fantom_core::Result<()> 
         ))
     })?;
 
-    println!("Scene {scene}: {}", s.name);
+    let mut out = String::new();
+    let _ = writeln!(out, "Scene {scene}: {}", s.name);
     if !s.comment.is_empty() {
-        println!("note: {}", s.comment);
+        let _ = writeln!(out, "note: {}", s.comment);
     }
-    println!(
+    let _ = writeln!(
+        out,
         "{:>4}  {:<3}  {:<22}  {:>10}  {:>5}",
         "zone", "on", "tone", "range", "level"
     );
@@ -142,7 +161,8 @@ fn run_show(file: &PathBuf, scene: usize, all: bool) -> fantom_core::Result<()> 
             continue;
         }
         let range = format!("{}..{}", note_name(z.key_low), note_name(z.key_high));
-        println!(
+        let _ = writeln!(
+            out,
             "{:>4}  {:<3}  {:<22}  {:>10}  {:>5}",
             z.number + 1,
             if z.enabled { "on" } else { "off" },
@@ -151,18 +171,19 @@ fn run_show(file: &PathBuf, scene: usize, all: bool) -> fantom_core::Result<()> 
             z.level,
         );
     }
-    Ok(())
+    Ok(out)
 }
 
-fn run_tones(file: &PathBuf) -> fantom_core::Result<()> {
+fn run_tones(file: &PathBuf) -> fantom_core::Result<String> {
     let raw = Raw::open(file)?;
     let svd = fantom_core::container::Svd::parse(&raw)?;
     let pat = fantom_core::container::PatArea::from_svd(&raw, &svd)?;
-    println!("{} tones:", pat.tones().len());
+    let mut out = String::new();
+    let _ = writeln!(out, "{} tones:", pat.tones().len());
     for (i, tone) in pat.tones().iter().enumerate() {
-        println!("{i:>5}  {}", tone.name);
+        let _ = writeln!(out, "{i:>5}  {}", tone.name);
     }
-    Ok(())
+    Ok(out)
 }
 
 /// Render a zone's tone reference for display.
