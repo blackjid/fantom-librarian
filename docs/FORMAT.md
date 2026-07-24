@@ -106,9 +106,13 @@ and share the same 16-bit id space, so they are omitted to avoid mislabelling.)
   Brass/Kalimba); `Sledgehammer` offset 512 (gid 1058.. → `PATa[546..]` = Sledgehammer Sha…). Proof
   it is per-scene: the *same* tone `Sledge Syn Vox` (`PATa[551]`) is gid 806 in one scene and 1063
   in another. `PATa` holds many **duplicate** tones, records don't embed their gid, and the
-  per-scene offset is **not** stored in the scene record — so a backup resolver needs the per-scene
-  tone directory, most likely inside the large `USDa` ("user data") area. **Open / future work.**
-  Until then the code resolves names only for exports and shows backup user tones as bare ids.
+  per-scene offset is **not** stored in the scene record. `USDa` was the prime suspect but turned
+  out to be **user sample waveform data** — an 8-byte directory of `SMPd` (sample) sub-sections,
+  not a tone directory. The gid appears to index a **de-duplicated** user-tone list while `PATa`
+  stores per-scene bundles *with* duplicates (so gid ≈ raw index + a per-scene offset), and the
+  mapping between the two is still unlocated. **Open / future work** — resolving backup user tones
+  needs either that de-dup/directory table or the cross-file export trick below. Until then the code
+  resolves names only for exports and shows backup user tones as bare ids.
 
   Cross-file trick that works today: a matching scene **export** (`SOUND/…`) resolves the same
   tones by content, so `export ↔ backup` matching can recover names without the directory.
