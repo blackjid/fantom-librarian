@@ -168,8 +168,6 @@ fn bundled_tone_names(raw: &Raw, svd: &Svd) -> HashMap<(u8, u8, u8), String> {
         (b"VTWa", 91, 0),
         (b"ZAPa", 105, 0),
         (b"ZEPa", 105, 1),
-        (b"ACBa", 107, 0),
-        (b"DCWa", 90, 0),
         (b"MDLa", 97, 0),
     ]
     .into_iter()
@@ -177,7 +175,10 @@ fn bundled_tone_names(raw: &Raw, svd: &Svd) -> HashMap<(u8, u8, u8), String> {
         let names = svd
             .area(tag)
             .and_then(|area| svd.area_bytes(raw, area).ok())
-            .and_then(record_names)
+            .and_then(|area| {
+                let offset = if tag == b"MDLa" { 0x10 } else { 0 };
+                record_names_at(area, offset)
+            })
             .unwrap_or_default();
         names
             .into_iter()
@@ -188,7 +189,7 @@ fn bundled_tone_names(raw: &Raw, svd: &Svd) -> HashMap<(u8, u8, u8), String> {
     .collect()
 }
 
-fn record_names(area: &[u8]) -> Option<Vec<String>> {
+fn record_names_at(area: &[u8], name_offset: usize) -> Option<Vec<String>> {
     let count = read_u32(area, AREA_COUNT_OFFSET).ok()? as usize;
     let record_size = read_u32(area, AREA_RECORD_SIZE_OFFSET).ok()? as usize;
     if record_size < NAME_LEN {
@@ -196,7 +197,7 @@ fn record_names(area: &[u8]) -> Option<Vec<String>> {
     }
     (0..count)
         .map(|index| {
-            let start = AREA_HEADER_LEN + index * record_size;
+            let start = AREA_HEADER_LEN + index * record_size + name_offset;
             area.get(start..start + NAME_LEN).map(ascii_trim)
         })
         .collect()
