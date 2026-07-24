@@ -43,11 +43,20 @@ pub enum ToneRef {
 }
 
 impl ToneRef {
-    /// The tone's display name when known (user tones resolved from `PATa`).
+    /// The tone's display name when known: user tones resolved from `PATa`, preset tones from the
+    /// bundled factory sound list ([`crate::presets`]).
     pub fn name(&self) -> Option<&str> {
         match self {
             ToneRef::User { name, .. } => name.as_deref(),
-            ToneRef::Preset { .. } => None,
+            ToneRef::Preset { id } => crate::presets::lookup(*id).map(|p| p.name),
+        }
+    }
+
+    /// Factory preset details (bank / number / name / category), when this is a known preset.
+    pub fn preset(&self) -> Option<&'static crate::presets::PresetTone> {
+        match self {
+            ToneRef::Preset { id } => crate::presets::lookup(*id),
+            ToneRef::User { .. } => None,
         }
     }
 }

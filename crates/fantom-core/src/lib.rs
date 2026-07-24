@@ -18,6 +18,7 @@ pub mod codec;
 pub mod container;
 pub mod device;
 pub mod model;
+pub mod presets;
 
 mod error;
 

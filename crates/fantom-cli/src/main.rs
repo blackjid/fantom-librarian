@@ -131,7 +131,7 @@ fn run_show(file: &PathBuf, scene: usize, all: bool) -> fantom_core::Result<()> 
 
     println!("Scene {scene}: {}", s.name);
     println!(
-        "{:>4}  {:<3}  {:<16}  {:>10}  {:>5}",
+        "{:>4}  {:<3}  {:<22}  {:>10}  {:>5}",
         "zone", "on", "tone", "range", "level"
     );
     for z in &s.zones {
@@ -140,7 +140,7 @@ fn run_show(file: &PathBuf, scene: usize, all: bool) -> fantom_core::Result<()> 
         }
         let range = format!("{}..{}", note_name(z.key_low), note_name(z.key_high));
         println!(
-            "{:>4}  {:<3}  {:<16}  {:>10}  {:>5}",
+            "{:>4}  {:<3}  {:<22}  {:>10}  {:>5}",
             z.number + 1,
             if z.enabled { "on" } else { "off" },
             tone_label(&z.tone),
@@ -168,7 +168,10 @@ fn tone_label(tone: &fantom_core::model::ToneRef) -> String {
     match tone {
         ToneRef::User { name: Some(n), .. } => n.clone(),
         ToneRef::User { id, name: None } => format!("user #{id}"),
-        ToneRef::Preset { id } => format!("preset {id:#06x}"),
+        ToneRef::Preset { id } => match tone.preset() {
+            Some(p) => format!("{} {:04} {}", p.bank, p.number, p.name),
+            None => format!("preset {id:#06x}"),
+        },
     }
 }
 

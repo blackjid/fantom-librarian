@@ -26,9 +26,10 @@ Reads the SVD5 container envelope (verified on Fantom-0 backups), lists **scene 
 each scene's **16 zones** (tone, switch, key range, level), and resolves per-zone **tone names**
 from the `PATa` tone area. Confirmed against real backups and controlled sample scenes.
 
-Tone names resolve directly for **scene exports** (`SOUND/…`); in **full backups** user tones use a
-global address that isn't fully mapped yet, so they show as `user #id` (presets show as `preset
-0x…`). See [`docs/FORMAT.md`](docs/FORMAT.md).
+**Factory preset** tones are named from a bundled copy of Roland's FANTOM Sound List
+(`crates/fantom-core/src/preset_tones.tsv`, ~3.7k ZEN-Core tones). **User** tone names resolve
+directly for **scene exports** (`SOUND/…`); in **full backups** user tones use a global address that
+isn't fully mapped yet, so they show as `user #id`. See [`docs/FORMAT.md`](docs/FORMAT.md).
 
 ## Usage
 

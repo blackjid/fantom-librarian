@@ -1,0 +1,3668 @@
+tone_id	bank	number	name	category
+16384	PR-B	1	AX Classic Lead	34:Synth Lead
+16385	PR-B	2	AX Jupiter Ld 1	34:Synth Lead
+16386	PR-B	3	Alpha Split	34:Synth Lead
+16387	PR-B	4	AX Warm Lead	34:Synth Lead
+16388	PR-B	5	AX Saw Lead 1	34:Synth Lead
+16389	PR-B	6	AX Saw Lead 2	34:Synth Lead
+16390	PR-B	7	Edge Boost	34:Synth Lead
+16391	PR-B	8	AX Delayed Lead	34:Synth Lead
+16392	PR-B	9	Follow Me	34:Synth Lead
+16393	PR-B	10	HPF Mod Lead	34:Synth Lead
+16394	PR-B	11	Hot Coffee	34:Synth Lead
+16395	PR-B	12	Phase Lead	34:Synth Lead
+16396	PR-B	13	Porta Saw Lead	34:Synth Lead
+16397	PR-B	14	Windy Lead	34:Synth Lead
+16398	PR-B	15	Pulstar Lead	34:Synth Lead
+16399	PR-B	16	Dist TB Lead	34:Synth Lead
+16400	PR-B	17	GR-300 Lead 1	34:Synth Lead
+16401	PR-B	18	GR-300 Lead 2	34:Synth Lead
+16402	PR-B	19	AX Saw Lead 3	34:Synth Lead
+16403	PR-B	20	AX Saw Lead 4	34:Synth Lead
+16404	PR-B	21	Bright Pulse	34:Synth Lead
+16405	PR-B	22	AX Waspy Lead	34:Synth Lead
+16406	PR-B	23	Bright Square	34:Synth Lead
+16407	PR-B	24	Simple Square	34:Synth Lead
+16408	PR-B	25	Square Edge	34:Synth Lead
+16409	PR-B	26	X-Mod Lead	34:Synth Lead
+16410	PR-B	27	AX 5th Saw Lead	34:Synth Lead
+16411	PR-B	28	Oct Solid Saw	34:Synth Lead
+16412	PR-B	29	Oct Saw Lead	34:Synth Lead
+16413	PR-B	30	AX Fat GR Lead	34:Synth Lead
+16414	PR-B	31	Oct Juice	34:Synth Lead
+16415	PR-B	32	AX Juicy Lead	34:Synth Lead
+16416	PR-B	33	Square Stack	34:Synth Lead
+16417	PR-B	34	7th Stack Lead	34:Synth Lead
+16418	PR-B	35	Oct Square	34:Synth Lead
+16419	PR-B	36	Tri Stack	34:Synth Lead
+16420	PR-B	37	Digi Lead	34:Synth Lead
+16421	PR-B	38	Fireball Lead	34:Synth Lead
+16422	PR-B	39	AX Jupiter Ld 2	34:Synth Lead
+16423	PR-B	40	AX Saw Lead 5	34:Synth Lead
+16424	PR-B	41	Pro Fat Lead	34:Synth Lead
+16425	PR-B	42	Mid Saw Lead	34:Synth Lead
+16426	PR-B	43	Reso Saw Lead	34:Synth Lead
+16427	PR-B	44	AX Square Lead	34:Synth Lead
+16428	PR-B	45	Simple Tri Lead	34:Synth Lead
+16429	PR-B	46	2 krazy Soft	34:Synth Lead
+16430	PR-B	47	AX Ramp Lead	34:Synth Lead
+16431	PR-B	48	Pulse Lead 1	34:Synth Lead
+16432	PR-B	49	Pulse Lead 2	34:Synth Lead
+16433	PR-B	50	Digi-Rip Lead	34:Synth Lead
+16434	PR-B	51	Theramax	34:Synth Lead
+16435	PR-B	52	On Air Lead	34:Synth Lead
+16436	PR-B	53	Air Lead	34:Synth Lead
+16437	PR-B	54	AX Soft Lead	34:Synth Lead
+16438	PR-B	55	Soft Sqr Lead	34:Synth Lead
+16439	PR-B	56	Tri Lead 1	34:Synth Lead
+16440	PR-B	57	Tri Lead 2	34:Synth Lead
+16441	PR-B	58	Solo Nz Peaker	34:Synth Lead
+16442	PR-B	59	Whistle Lead	34:Synth Lead
+16443	PR-B	60	AX Spooky Lead	34:Synth Lead
+16444	PR-B	61	Sine Lead 1	34:Synth Lead
+16445	PR-B	62	Sine Lead 2	34:Synth Lead
+16446	PR-B	63	Simple Sine	34:Synth Lead
+16447	PR-B	64	Sine Atk Lead	34:Synth Lead
+16448	PR-B	65	Dist Stack	34:Synth Lead
+16449	PR-B	66	Buzz Saw	34:Synth Lead
+16450	PR-B	67	Buzz Nation	34:Synth Lead
+16451	PR-B	68	OSC Sync 1	34:Synth Lead
+16452	PR-B	69	OSC Sync 2	34:Synth Lead
+16453	PR-B	70	OSC Sync 3	34:Synth Lead
+16454	PR-B	71	OSC Sync 4	34:Synth Lead
+16455	PR-B	72	AX Sync Lead	34:Synth Lead
+16456	PR-B	73	Sync Lead	34:Synth Lead
+16457	PR-B	74	Sync Tank	34:Synth Lead
+16458	PR-B	75	2 krazy Bright	34:Synth Lead
+16459	PR-B	76	Dist Sync Lead	34:Synth Lead
+16460	PR-B	77	Oct Sync	34:Synth Lead
+16461	PR-B	78	Sync Mod	34:Synth Lead
+16462	PR-B	79	Metal Sync Lead	34:Synth Lead
+16463	PR-B	80	Saw Cross	34:Synth Lead
+16464	PR-B	81	Unison Lead	34:Synth Lead
+16465	PR-B	82	Unison Fat Mod	34:Synth Lead
+16466	PR-B	83	Oct Stack	34:Synth Lead
+16467	PR-B	84	Unison Soft	34:Synth Lead
+16468	PR-B	85	Growl Lead	34:Synth Lead
+16469	PR-B	86	Super Saw Lead	34:Synth Lead
+16470	PR-B	87	Unison Reso	34:Synth Lead
+16471	PR-B	88	Hoover Lead	34:Synth Lead
+16472	PR-B	89	Vintage Lead	34:Synth Lead
+16473	PR-B	90	Hardstyle	34:Synth Lead
+16474	PR-B	91	Vowel /Mod	34:Synth Lead
+16475	PR-B	92	Saw Boost Bs	21:Synth Bass
+16476	PR-B	93	Hard House Bs	21:Synth Bass
+16477	PR-B	94	Rubber Bs 1	21:Synth Bass
+16478	PR-B	95	Punch MG Bs	21:Synth Bass
+16479	PR-B	96	Rubber Bs 2	21:Synth Bass
+16480	PR-B	97	Spike Bass	21:Synth Bass
+16481	PR-B	98	Fat MG Bass	21:Synth Bass
+16482	PR-B	99	AX Reso Bass 1	21:Synth Bass
+16483	PR-B	100	TB Dist Bass	21:Synth Bass
+16484	PR-B	101	MKS-50 SBs	21:Synth Bass
+16485	PR-B	102	AX Alpha Bass	21:Synth Bass
+16486	PR-B	103	AX MG Bass 1	21:Synth Bass
+16487	PR-B	104	AX Modular Bs 1	21:Synth Bass
+16488	PR-B	105	Acdg Bass	21:Synth Bass
+16489	PR-B	106	7th Stack Bass	21:Synth Bass
+16490	PR-B	107	101 Bass	21:Synth Bass
+16491	PR-B	108	Compu Bs	21:Synth Bass
+16492	PR-B	109	Fat Analog Bs	21:Synth Bass
+16493	PR-B	110	Rubber Bs 3	21:Synth Bass
+16494	PR-B	111	Long Sweep Bs	21:Synth Bass
+16495	PR-B	112	MG Deep Bass	21:Synth Bass
+16496	PR-B	113	Round Bass	21:Synth Bass
+16497	PR-B	114	AX Reso Bass 2	21:Synth Bass
+16498	PR-B	115	AX MG Bass 2	21:Synth Bass
+16499	PR-B	116	Juno Sqr Bs	21:Synth Bass
+16500	PR-B	117	Reso Sqr Bass	21:Synth Bass
+16501	PR-B	118	TB Sqr Sweep Bs	21:Synth Bass
+16502	PR-B	119	AX Reso Bass 3	21:Synth Bass
+16503	PR-B	120	Detune Tri Bs	21:Synth Bass
+16504	PR-B	121	Triangle Bass	21:Synth Bass
+16505	PR-B	122	Sine Bass	21:Synth Bass
+16506	PR-B	123	AX Garage Bass	21:Synth Bass
+16507	PR-B	124	Monster Bs	21:Synth Bass
+16508	PR-B	125	AX Modular Bs 2	21:Synth Bass
+16509	PR-B	126	Unison Bass 1	21:Synth Bass
+16510	PR-B	127	Unison Bass 2	21:Synth Bass
+16511	PR-B	128	Unison Atk Bs 1	21:Synth Bass
+16640	PR-B	129	Unison Atk Bs 2	21:Synth Bass
+16641	PR-B	130	Unison Atk Bs 3	21:Synth Bass
+16642	PR-B	131	Lazor Bass	21:Synth Bass
+16643	PR-B	132	Nz Sync Bass	21:Synth Bass
+16644	PR-B	133	Dist Bass	21:Synth Bass
+16645	PR-B	134	Delta Bass	21:Synth Bass
+16646	PR-B	135	Sine Bend Dn Bs	21:Synth Bass
+16647	PR-B	136	A-i-e-i Bs	21:Synth Bass
+16648	PR-B	137	Dist Atk Bs	21:Synth Bass
+16649	PR-B	138	Acoustic Bs 1	19:Ac.Bass
+16650	PR-B	139	Acoustic Bs 2	19:Ac.Bass
+16651	PR-B	140	Finger E Bs 1	20:E.Bass
+16652	PR-B	141	Finger E Bs 2	20:E.Bass
+16653	PR-B	142	Finger E Bs 3	20:E.Bass
+16654	PR-B	143	Finger E Bs 4	20:E.Bass
+16655	PR-B	144	Pick Bass 1	20:E.Bass
+16656	PR-B	145	Pick Bass 2	20:E.Bass
+16657	PR-B	146	AX Fretless Bs	20:E.Bass
+16658	PR-B	147	AX Slap Bass	20:E.Bass
+16659	PR-B	148	AX JP Strings	36:Synth Pad/Str
+16660	PR-B	149	OB Strings	36:Synth Pad/Str
+16661	PR-B	150	106 Strings	36:Synth Pad/Str
+16662	PR-B	151	AX Syn Strings 1	36:Synth Pad/Str
+16663	PR-B	152	PW Paradise	36:Synth Pad/Str
+16664	PR-B	153	AX Syn Strings 2	36:Synth Pad/Str
+16665	PR-B	154	Soft Saw Pad	36:Synth Pad/Str
+16666	PR-B	155	Juno P13 Str	36:Synth Pad/Str
+16667	PR-B	156	5th DLA Pad	36:Synth Pad/Str
+16668	PR-B	157	Nu Epic Pad	36:Synth Pad/Str
+16669	PR-B	158	PWM Basic Pad	36:Synth Pad/Str
+16670	PR-B	159	PWM Hard Pad	36:Synth Pad/Str
+16671	PR-B	160	Sawtooth Str	36:Synth Pad/Str
+16672	PR-B	161	PWM Soft Pad 1	36:Synth Pad/Str
+16673	PR-B	162	Soft Pad 1	36:Synth Pad/Str
+16674	PR-B	163	PWM Soft Pad 2	36:Synth Pad/Str
+16675	PR-B	164	PWM Soft Pad 3	36:Synth Pad/Str
+16676	PR-B	165	Soft Pad 2	36:Synth Pad/Str
+16677	PR-B	166	Chorus Pad	36:Synth Pad/Str
+16678	PR-B	167	AX Hollow Pad	36:Synth Pad/Str
+16679	PR-B	168	AX Heaven Pad	36:Synth Pad/Str
+16680	PR-B	169	Shimmer Pad	36:Synth Pad/Str
+16681	PR-B	170	Scape Pad	36:Synth Pad/Str
+16682	PR-B	171	Str of Breath	36:Synth Pad/Str
+16683	PR-B	172	Angels Pad	36:Synth Pad/Str
+16684	PR-B	173	JX Strings	36:Synth Pad/Str
+16685	PR-B	174	PWM Sweep Pad 1	36:Synth Pad/Str
+16686	PR-B	175	PWM Sweep Pad 2	36:Synth Pad/Str
+16687	PR-B	176	Trance Sweep Pad	36:Synth Pad/Str
+16688	PR-B	177	Phase Pad	36:Synth Pad/Str
+16689	PR-B	178	Cosmic Rays	36:Synth Pad/Str
+16690	PR-B	179	Phase Super Saw	36:Synth Pad/Str
+16691	PR-B	180	Phase PWM Pad	36:Synth Pad/Str
+16692	PR-B	181	AX Voyager	36:Synth Pad/Str
+16693	PR-B	182	Bend Pad	36:Synth Pad/Str
+16694	PR-B	183	Tuned Nz 1	36:Synth Pad/Str
+16695	PR-B	184	Tuned Nz 2	36:Synth Pad/Str
+16696	PR-B	185	Tuned Nz 3	36:Synth Pad/Str
+16697	PR-B	186	Strings 1	
+16698	PR-B	187	Strings 2	
+16699	PR-B	188	AX Mood Strings	
+16700	PR-B	189	AX 60s Strings	
+16701	PR-B	190	AX Small Strings	
+16702	PR-B	191	Tape Strings	
+16703	PR-B	192	AX Strings Stacc	
+16704	PR-B	193	AX Pizzicato	
+16705	PR-B	194	D-50 Pizz	
+16706	PR-B	195	AX Violin	23:Solo Strings
+16707	PR-B	196	AX Viola	23:Solo Strings
+16708	PR-B	197	AX Cello	23:Solo Strings
+16709	PR-B	198	AX Contrabass	23:Solo Strings
+16710	PR-B	199	Square Saw	38:Synth PolyKey
+16711	PR-B	200	Juno SAW	38:Synth PolyKey
+16712	PR-B	201	Filter Env Key	38:Synth PolyKey
+16713	PR-B	202	Mini Growl	38:Synth PolyKey
+16714	PR-B	203	Round SQR	38:Synth PolyKey
+16715	PR-B	204	SQR Atk Pop	38:Synth PolyKey
+16716	PR-B	205	Touchy Key	38:Synth PolyKey
+16717	PR-B	206	Poly Synth 1	38:Synth PolyKey
+16718	PR-B	207	Poly Synth 2	38:Synth PolyKey
+16719	PR-B	208	Poly Synth 3	38:Synth PolyKey
+16720	PR-B	209	Ox Synth	38:Synth PolyKey
+16721	PR-B	210	Trance Synth	38:Synth PolyKey
+16722	PR-B	211	Super Saw Key 1	38:Synth PolyKey
+16723	PR-B	212	Super Saw Key 2	38:Synth PolyKey
+16724	PR-B	213	AX Digitaless	38:Synth PolyKey
+16725	PR-B	214	S-Saw Stac Pluck	38:Synth PolyKey
+16726	PR-B	215	Syn Vox Key	38:Synth PolyKey
+16727	PR-B	216	Freeze Synth	38:Synth PolyKey
+16728	PR-B	217	Mallet Pipes	38:Synth PolyKey
+16729	PR-B	218	Saw Pluck	38:Synth PolyKey
+16730	PR-B	219	PW Pluck	38:Synth PolyKey
+16731	PR-B	220	Super Saw Pluck	38:Synth PolyKey
+16732	PR-B	221	Echo Pluck	38:Synth PolyKey
+16733	PR-B	222	AX Vintage Key	38:Synth PolyKey
+16734	PR-B	223	Poly Synth 4	38:Synth PolyKey
+16735	PR-B	224	AX Saws Key	38:Synth PolyKey
+16736	PR-B	225	Sync staccato	38:Synth PolyKey
+16737	PR-B	226	AX Analog Dream	38:Synth PolyKey
+16738	PR-B	227	AX Dreaming Box	37:Synth Bellpad
+16739	PR-B	228	D-50 Fantasia	37:Synth Bellpad
+16740	PR-B	229	AX Fantasia	37:Synth Bellpad
+16741	PR-B	230	AX Stacc Heaven	37:Synth Bellpad
+16742	PR-B	231	AX Org Bell	37:Synth Bellpad
+16743	PR-B	232	FM Sparkles	14:Bell
+16744	PR-B	233	Snowflakes	14:Bell
+16745	PR-B	234	X-Mod Bell 1	14:Bell
+16746	PR-B	235	X-Mod Bell 2	14:Bell
+16747	PR-B	236	AX Tubular Bells	14:Bell
+16748	PR-B	237	Short Sqr Pluck	40:Synth Seq/Pop
+16749	PR-B	238	7th Stack Seq	40:Synth Seq/Pop
+16750	PR-B	239	8th Stack Seq	40:Synth Seq/Pop
+16751	PR-B	240	MG Thumper	40:Synth Seq/Pop
+16752	PR-B	241	PW-Echo Seq	40:Synth Seq/Pop
+16753	PR-B	242	Syn Atk Pluck	40:Synth Seq/Pop
+16754	PR-B	243	106 Brass	35:Synth Brass
+16755	PR-B	244	AX Analog Brass	35:Synth Brass
+16756	PR-B	245	80s Brass 1	35:Synth Brass
+16757	PR-B	246	Wide Syn Brass	35:Synth Brass
+16758	PR-B	247	Juno Brass	35:Synth Brass
+16759	PR-B	248	Poly Brass 1	35:Synth Brass
+16760	PR-B	249	Poly Brass 2	35:Synth Brass
+16761	PR-B	250	Syn Brass 1	35:Synth Brass
+16762	PR-B	251	Juno P18 Brass	35:Synth Brass
+16763	PR-B	252	Apolis Brass	35:Synth Brass
+16764	PR-B	253	AX JP Brass	35:Synth Brass
+16765	PR-B	254	Oct Brass	35:Synth Brass
+16766	PR-B	255	AX Soft Syn Brs	35:Synth Brass
+16767	PR-B	256	Bright Syn Brass	35:Synth Brass
+16896	PR-B	257	Filter Env Brass	35:Synth Brass
+16897	PR-B	258	80s Brass 2	35:Synth Brass
+16898	PR-B	259	80s Brass 3	35:Synth Brass
+16899	PR-B	260	Syn Brass 2	35:Synth Brass
+16900	PR-B	261	Soft Brass 1	35:Synth Brass
+16901	PR-B	262	Soft Brass 2	35:Synth Brass
+16902	PR-B	263	Reso Soft Brass	35:Synth Brass
+16903	PR-B	264	AX Warm Syn Brs	35:Synth Brass
+16904	PR-B	265	AX FM Brass	35:Synth Brass
+16905	PR-B	266	Brass Sect	27:Ensemble Brass
+16906	PR-B	267	Soft Ac Brass	27:Ensemble Brass
+16907	PR-B	268	Sax Section 1	27:Ensemble Brass
+16908	PR-B	269	Sax Section 2	27:Ensemble Brass
+16909	PR-B	270	AX Brass Atk	27:Ensemble Brass
+16910	PR-B	271	Trumpeter	26:Solo Brass
+16911	PR-B	272	AX Romantic Tp	26:Solo Brass
+16912	PR-B	273	AX Mute Trumpet	26:Solo Brass
+16913	PR-B	274	AX Trombone	26:Solo Brass
+16914	PR-B	275	AX Soprano Sax	30:Sax
+16915	PR-B	276	AX Alto Sax	30:Sax
+16916	PR-B	277	AX Tenor Sax	30:Sax
+16917	PR-B	278	Breathy Sax	30:Sax
+16918	PR-B	279	AX Baritone Sax	30:Sax
+16919	PR-B	280	AX Piano	1:Ac.Piano
+16920	PR-B	281	Mono Piano	1:Ac.Piano
+16921	PR-B	282	JD-800 Piano	2:Pop Piano
+16922	PR-B	283	AX Honky-tonk	2:Pop Piano
+16923	PR-B	284	DNC Piano	2:Pop Piano
+16924	PR-B	285	Blend Piano	2:Pop Piano
+16925	PR-B	286	E-Grand	2:Pop Piano
+16926	PR-B	287	Metal Key	2:Pop Piano
+16927	PR-B	288	Dyno EP	4:E.Piano1
+16928	PR-B	289	Stage EP	4:E.Piano1
+16929	PR-B	290	AX Vintage EP	4:E.Piano1
+16930	PR-B	291	Phase EP 1	4:E.Piano1
+16931	PR-B	292	Phase EP 2	4:E.Piano1
+16932	PR-B	293	Phase Stage	4:E.Piano1
+16933	PR-B	294	AX Tremolo EP	4:E.Piano1
+16934	PR-B	295	Psycho EP	4:E.Piano1
+16935	PR-B	296	SA EP	4:E.Piano1
+16936	PR-B	297	Wurly EP	4:E.Piano1
+16937	PR-B	298	Dist Wurly	4:E.Piano1
+16938	PR-B	299	FM EP 1	5:E.Piano2
+16939	PR-B	300	FM EP 2	5:E.Piano2
+16940	PR-B	301	AX Harpsichord	9:Harpsichord
+16941	PR-B	302	AX Clav 1	10:Clav
+16942	PR-B	303	AX Clav 2	10:Clav
+16943	PR-B	304	Twah Clav	10:Clav
+16944	PR-B	305	Phase Clav	10:Clav
+16945	PR-B	306	AX Pulse Clav 1	10:Clav
+16946	PR-B	307	AX Pulse Clav 2	10:Clav
+16947	PR-B	308	Sweepin Clav	10:Clav
+16948	PR-B	309	Lord Organ 1	6:E.Organ
+16949	PR-B	310	Lord Organ 2	6:E.Organ
+16950	PR-B	311	Perc Rotary Org	6:E.Organ
+16951	PR-B	312	Rotary Org 1	6:E.Organ
+16952	PR-B	313	Rotary Org 2	6:E.Organ
+16953	PR-B	314	Rotary Org 3	6:E.Organ
+16954	PR-B	315	Old Fashion	6:E.Organ
+16955	PR-B	316	Vintage Organ 1	6:E.Organ
+16956	PR-B	317	Vintage Organ 2	6:E.Organ
+16957	PR-B	318	VK Organ 1	6:E.Organ
+16958	PR-B	319	VK Organ 2	6:E.Organ
+16959	PR-B	320	D-Bars 1	6:E.Organ
+16960	PR-B	321	D-Bars 2	6:E.Organ
+16961	PR-B	322	D-Bars 3	6:E.Organ
+16962	PR-B	323	D-Bars 4	6:E.Organ
+16963	PR-B	324	D-Bars 5	6:E.Organ
+16964	PR-B	325	Dist Organ	6:E.Organ
+16965	PR-B	326	Juno P14 Organ	6:E.Organ
+16966	PR-B	327	D-50 Organ	6:E.Organ
+16967	PR-B	328	PositiveOrg /Mod	7:Pipe Organ
+16968	PR-B	329	Grand Pipes	7:Pipe Organ
+16969	PR-B	330	AX Musette	12:Accordion
+16970	PR-B	331	AX Harmonica	13:Harmonica
+16971	PR-B	332	Pop Flute	29:Flute
+16972	PR-B	333	Pan Pipes	29:Flute
+16973	PR-B	334	Pan Pipes Breath	29:Flute
+16974	PR-B	335	Bag Shaku Lead	29:Flute
+16975	PR-B	336	AX Shakuhachi	29:Flute
+16976	PR-B	337	AX Recorder	31:Recorder
+16977	PR-B	338	AX Vibraphone	15:Mallet
+16978	PR-B	339	AX Marimba	15:Mallet
+16979	PR-B	340	AX Xylophone	15:Mallet
+16980	PR-B	341	AX Steel Drums	15:Mallet
+16981	PR-B	342	AX Ethno Keys	15:Mallet
+16982	PR-B	343	AX Nylon Gtr 1	16:Ac.Guitar
+16983	PR-B	344	AX Nylon Gtr 2	16:Ac.Guitar
+16984	PR-B	345	AX Nylon Gtr 3	16:Ac.Guitar
+16985	PR-B	346	Folk Gtr 1	16:Ac.Guitar
+16986	PR-B	347	Folk Gtr 2	16:Ac.Guitar
+16987	PR-B	348	Folk Gtr 3	16:Ac.Guitar
+16988	PR-B	349	Steel Gtr Wide	16:Ac.Guitar
+16989	PR-B	350	12-str Guitar	16:Ac.Guitar
+16990	PR-B	351	Jazz Gtr	17:E.Guitar
+16991	PR-B	352	AX Clean Guitar	17:E.Guitar
+16992	PR-B	353	Pick Guitar	17:E.Guitar
+16993	PR-B	354	ST Guitar	17:E.Guitar
+16994	PR-B	355	Funk Gtr	17:E.Guitar
+16995	PR-B	356	Wah E.Gtr /Mod	17:E.Guitar
+16996	PR-B	357	Dist Gtr 1	18:Dist.Guitar
+16997	PR-B	358	Searing Gtr 1	18:Dist.Guitar
+16998	PR-B	359	Searing Gtr 2	18:Dist.Guitar
+16999	PR-B	360	Searing Gtr 3	18:Dist.Guitar
+17000	PR-B	361	Dist Fingerz	18:Dist.Guitar
+17001	PR-B	362	Dist Gtr 2	18:Dist.Guitar
+17002	PR-B	363	Digi Dist Gtr	18:Dist.Guitar
+17003	PR-B	364	Fuzz Lead	18:Dist.Guitar
+17004	PR-B	365	Oct Searing Gtr	18:Dist.Guitar
+17005	PR-B	366	MS1959 II	18:Dist.Guitar
+17006	PR-B	367	MS1959 I	18:Dist.Guitar
+17007	PR-B	368	Metal Lead	18:Dist.Guitar
+17008	PR-B	369	COSM Searing 1	18:Dist.Guitar
+17009	PR-B	370	COSM Searing 2	18:Dist.Guitar
+17010	PR-B	371	OD-2 Turbo	18:Dist.Guitar
+17011	PR-B	372	Guitar Rip	18:Dist.Guitar
+17012	PR-B	373	Santur Stack	22:Plucked/Stroke
+17013	PR-B	374	AX Koto	22:Plucked/Stroke
+17014	PR-B	375	AX Shamisen	22:Plucked/Stroke
+17015	PR-B	376	AX Sitar	22:Plucked/Stroke
+17016	PR-B	377	AX Harp	22:Plucked/Stroke
+17017	PR-B	378	AX Aerial Harp	22:Plucked/Stroke
+17018	PR-B	379	Lost Paradise	22:Plucked/Stroke
+17019	PR-B	380	AX Kalimba	22:Plucked/Stroke
+17020	PR-B	381	World X	42:Pulsating
+17021	PR-B	382	Xadecimal	42:Pulsating
+17022	PR-B	383	Metal Sync	42:Pulsating
+17023	PR-B	384	5th Stack	42:Pulsating
+17152	PR-B	385	HPF Tap	42:Pulsating
+17153	PR-B	386	Auto Pluck	42:Pulsating
+17154	PR-B	387	Step Beat	42:Pulsating
+17155	PR-B	388	Side Chain Bass	42:Pulsating
+17156	PR-B	389	Side Chain Pad	42:Pulsating
+17157	PR-B	390	Step Slicer 1	42:Pulsating
+17158	PR-B	391	Step Slicer 2	42:Pulsating
+17159	PR-B	392	Step Slicer 3	42:Pulsating
+17160	PR-B	393	Step Slicer 4	42:Pulsating
+17161	PR-B	394	Step Slicer 5	42:Pulsating
+17162	PR-B	395	Step Slicer 6	42:Pulsating
+17163	PR-B	396	Step Slicer 7	42:Pulsating
+17164	PR-B	397	Step Slicer 8	42:Pulsating
+17165	PR-B	398	Step Slicer 9	42:Pulsating
+17166	PR-B	399	Wobble	42:Pulsating
+17167	PR-B	400	Transition 1	42:Pulsating
+17168	PR-B	401	Transition 2	42:Pulsating
+17169	PR-B	402	Oct Play	42:Pulsating
+17170	PR-B	403	Bass Seq	42:Pulsating
+17171	PR-B	404	Dist Cutter	42:Pulsating
+17172	PR-B	405	Rhythm 1	42:Pulsating
+17173	PR-B	406	Rhythm 2	42:Pulsating
+17174	PR-B	407	TB Loop	42:Pulsating
+17175	PR-B	408	Step Refrain	42:Pulsating
+17176	PR-B	409	Pop up	39:Synth FX
+17177	PR-B	410	HPF Down	39:Synth FX
+17178	PR-B	411	Riser	39:Synth FX
+17179	PR-B	412	Accelerate	39:Synth FX
+17180	PR-B	413	Nz Sweep Dn	39:Synth FX
+17181	PR-B	414	Nz Sweep Up	39:Synth FX
+17182	PR-B	415	Chiptuner	39:Synth FX
+17183	PR-B	416	Bit Walker	39:Synth FX
+17184	PR-B	417	Ring Mod 1	39:Synth FX
+17185	PR-B	418	Ring Mod 2	39:Synth FX
+17186	PR-B	419	Ring /Mod	39:Synth FX
+17187	PR-B	420	X-Mod Driver	39:Synth FX
+17188	PR-B	421	Kick/Snare	39:Synth FX
+17189	PR-B	422	AX Orchestra Hit	44:Hit
+17190	PR-B	423	AX Bass Hit	44:Hit
+17191	PR-B	424	AX 6th Hit	44:Hit
+17192	PR-B	425	AX Tao Hit	44:Hit
+17193	PR-B	426	Min7 Hit	44:Hit
+17194	PR-B	427	AX Major 7	44:Hit
+17195	PR-B	428	AX Choir 1	32:Vox/Choir
+17196	PR-B	429	AX Choir 2	32:Vox/Choir
+17197	PR-B	430	Angels Choir	32:Vox/Choir
+17198	PR-B	431	Vox Pad 1	32:Vox/Choir
+17199	PR-B	432	U-Ahs /Mod	32:Vox/Choir
+17200	PR-B	433	Vox Pad 2	32:Vox/Choir
+17201	PR-B	434	Oh-Aah /Mod	32:Vox/Choir
+17202	PR-B	435	AX Aerial Choir	32:Vox/Choir
+17203	PR-B	436	AX Jazz Scat	33:Scat
+17204	PR-B	437	Jazz Doos	33:Scat
+17205	PR-B	438	Bop Voice	33:Scat
+17206	PR-B	439	Pop Voice	33:Scat
+17207	PR-B	440	AX Synth Voice	32:Vox/Choir
+17208	PR-B	441	VP-330 Choir	32:Vox/Choir
+17209	PR-B	442	Syn Vox 1	32:Vox/Choir
+17210	PR-B	443	Syn Vox 2	32:Vox/Choir
+17211	PR-B	444	Org Vox	32:Vox/Choir
+17212	PR-B	445	Oohs Chord	32:Vox/Choir
+17213	PR-B	446	Vox Noise	32:Vox/Choir
+17214	PR-B	447	Sample Opera	32:Vox/Choir
+17215	PR-B	448	A E I O /Mod	32:Vox/Choir
+17216	PR-B	449	U-A /Mod	32:Vox/Choir
+17217	PR-B	450	Analog Vowel	32:Vox/Choir
+17218	PR-B	451	AX Analog Voice	32:Vox/Choir
+17219	PR-B	452	Voc.Ensemble	32:Vox/Choir
+17220	PR-B	453	Voc.Sub Choir 1	32:Vox/Choir
+17221	PR-B	454	Voc.Robot	32:Vox/Choir
+17222	PR-B	455	Voc.5th Stack	32:Vox/Choir
+17223	PR-B	456	Voc.VP-330	32:Vox/Choir
+17224	PR-B	457	Voc.Sub Choir 2	32:Vox/Choir
+17225	PR-B	458	Voc.Saw	32:Vox/Choir
+17226	PR-B	459	Voc.Noise	32:Vox/Choir
+17408	PR-C	1	SL-JP8 1	38:Synth PolyKey
+17409	PR-C	2	SL-JP8 2	38:Synth PolyKey
+17410	PR-C	3	SL-JP8 3	34:Synth Lead
+17411	PR-C	4	SL-JP8 4	34:Synth Lead
+17412	PR-C	5	SL-JP8 5	36:Synth Pad/Str
+17413	PR-C	6	SL-JP8 6	21:Synth Bass
+17414	PR-C	7	SL-JP8 7	21:Synth Bass
+17415	PR-C	8	SL-JP8 8	36:Synth Pad/Str
+17416	PR-C	9	SL-JP8 9	21:Synth Bass
+17417	PR-C	10	Sl-JP8 10	38:Synth PolyKey
+17418	PR-C	11	SL-JP8 11	38:Synth PolyKey
+17419	PR-C	12	SL-JP8 12	36:Synth Pad/Str
+17420	PR-C	13	SL-JP8 13	35:Synth Brass
+17421	PR-C	14	SL-JP8 14	35:Synth Brass
+17422	PR-C	15	SL-JP8 15	35:Synth Brass
+17423	PR-C	16	SL-JP8 16	36:Synth Pad/Str
+17424	PR-C	17	SL-JP8 17	38:Synth PolyKey
+17425	PR-C	18	SL-JP Bass1	21:Synth Bass
+17426	PR-C	19	SL-JP Bass2	21:Synth Bass
+17427	PR-C	20	SL-JP Bass3	21:Synth Bass
+17428	PR-C	21	SL-JP Bass4	21:Synth Bass
+17429	PR-C	22	SL-JP Bass5	21:Synth Bass
+17430	PR-C	23	SL-JP PWM	36:Synth Pad/Str
+17431	PR-C	24	SL-JP6 1	38:Synth PolyKey
+17432	PR-C	25	SL-JP6 2	36:Synth Pad/Str
+17433	PR-C	26	SL-JP6 3	35:Synth Brass
+17434	PR-C	27	SL-JP6 4	34:Synth Lead
+17435	PR-C	28	SL-JP6 5	34:Synth Lead
+17436	PR-C	29	SL-JP6 6	34:Synth Lead
+17437	PR-C	30	SL-JP6 7	36:Synth Pad/Str
+17438	PR-C	31	SL-JP6 8	36:Synth Pad/Str
+17439	PR-C	32	SL-JP6 9	36:Synth Pad/Str
+17440	PR-C	33	SL-JP6 10	38:Synth PolyKey
+17441	PR-C	34	SL-JP6 11	38:Synth PolyKey
+17442	PR-C	35	SL-JP6 12	36:Synth Pad/Str
+17443	PR-C	36	SL-JP6 13	38:Synth PolyKey
+17444	PR-C	37	SL-JP6 14	34:Synth Lead
+17445	PR-C	38	SL-JP6 15	34:Synth Lead
+17446	PR-C	39	SL-JP6 16	38:Synth PolyKey
+17447	PR-C	40	SL-JP6 17	38:Synth PolyKey
+17448	PR-C	41	SL-JP6 18	34:Synth Lead
+17449	PR-C	42	SL-Jn106 1	38:Synth PolyKey
+17450	PR-C	43	SL-Jn106 2	36:Synth Pad/Str
+17451	PR-C	44	SL-Jn106 3	36:Synth Pad/Str
+17452	PR-C	45	SL-Jn106 4	36:Synth Pad/Str
+17453	PR-C	46	SL-Jn106 5	36:Synth Pad/Str
+17454	PR-C	47	SL-Jn106 6	21:Synth Bass
+17455	PR-C	48	SL-Jn106 7	21:Synth Bass
+17456	PR-C	49	SL-Jn106 8	21:Synth Bass
+17457	PR-C	50	SL-Jn106 9	36:Synth Pad/Str
+17458	PR-C	51	SL-Jn106 10	35:Synth Brass
+17459	PR-C	52	SL-Jn106 11	34:Synth Lead
+17460	PR-C	53	SL-Jn60 1	36:Synth Pad/Str
+17461	PR-C	54	SL-Jn60 2	35:Synth Brass
+17462	PR-C	55	SL-Jn60 3	36:Synth Pad/Str
+17463	PR-C	56	SL-Jn60 4	4:E.Piano1
+17464	PR-C	57	SL-Jn60 5	4:E.Piano1
+17465	PR-C	58	SL-Jn60 6	21:Synth Bass
+17466	PR-C	59	SL-Jn60 7	36:Synth Pad/Str
+17467	PR-C	60	SL-Jn60 8	21:Synth Bass
+17468	PR-C	61	SL-Jn60 9	38:Synth PolyKey
+17469	PR-C	62	SL-Jn60 10	38:Synth PolyKey
+17470	PR-C	63	SL-Jn60 11	21:Synth Bass
+17471	PR-C	64	SL-Jn60sub1	21:Synth Bass
+17472	PR-C	65	SL-Jn60sub2	21:Synth Bass
+17473	PR-C	66	SL-Jn60sub3	21:Synth Bass
+17474	PR-C	67	SL-Jn60sub4	21:Synth Bass
+17475	PR-C	68	SL-Jn60sub5	21:Synth Bass
+17476	PR-C	69	SL-Jn60sub6	21:Synth Bass
+17477	PR-C	70	SL-Jn60sub7	21:Synth Bass
+17478	PR-C	71	SL-Jn60 Bs1	21:Synth Bass
+17479	PR-C	72	SL-Jn60 Bs2	21:Synth Bass
+17480	PR-C	73	SL-Jn60 Bs3	21:Synth Bass
+17481	PR-C	74	SL-Jn60 Ply	38:Synth PolyKey
+17482	PR-C	75	SL-Jn60 SBr	35:Synth Brass
+17483	PR-C	76	SL-Jn60Bell1	4:E.Piano1
+17484	PR-C	77	SL-Jn60Bell2	4:E.Piano1
+17485	PR-C	78	SL-Jn60Syn1	38:Synth PolyKey
+17486	PR-C	79	SL-Jn60Syn2	38:Synth PolyKey
+17487	PR-C	80	SL-Jn60Syn3	38:Synth PolyKey
+17488	PR-C	81	SL-Jn60Syn4	38:Synth PolyKey
+17489	PR-C	82	SL-Jn60Syn5	38:Synth PolyKey
+17490	PR-C	83	SL-TB Saw 1	21:Synth Bass
+17491	PR-C	84	SL-TB Saw1A	21:Synth Bass
+17492	PR-C	85	SL-TB Saw 2	21:Synth Bass
+17493	PR-C	86	SL-TB Saw2A	21:Synth Bass
+17494	PR-C	87	SL-TB Saw 3	21:Synth Bass
+17495	PR-C	88	SL-TB Saw3A	21:Synth Bass
+17496	PR-C	89	SL-TB Saw 4	21:Synth Bass
+17497	PR-C	90	SL-TB Saw4A	21:Synth Bass
+17498	PR-C	91	SL-TB Saw 5	21:Synth Bass
+17499	PR-C	92	SL-TB Saw5A	21:Synth Bass
+17500	PR-C	93	SL-TB Saw 6	21:Synth Bass
+17501	PR-C	94	SL-TB Saw6A	21:Synth Bass
+17502	PR-C	95	SL-TB Sqr 1	21:Synth Bass
+17503	PR-C	96	SL-TB Sqr1A	21:Synth Bass
+17504	PR-C	97	SL-TB Sqr 2	21:Synth Bass
+17505	PR-C	98	SL-TB Sqr2A	21:Synth Bass
+17506	PR-C	99	SL-TB Sqr 3	21:Synth Bass
+17507	PR-C	100	SL-TB Sqr3A	21:Synth Bass
+17508	PR-C	101	SL-TB Sqr 4	21:Synth Bass
+17509	PR-C	102	SL-TB Sqr4A	21:Synth Bass
+17510	PR-C	103	SL-TB Sqr 5	21:Synth Bass
+17511	PR-C	104	SL-TB Sqr5A	21:Synth Bass
+17512	PR-C	105	SL-TB Sqr 6	21:Synth Bass
+17513	PR-C	106	SL-TB Sqr6A	21:Synth Bass
+17514	PR-C	107	SL-SH101 1	34:Synth Lead
+17515	PR-C	108	SL-SH101 2	34:Synth Lead
+17516	PR-C	109	SL-SH101 3	34:Synth Lead
+17517	PR-C	110	SL-SH101 4	21:Synth Bass
+17518	PR-C	111	SL-SH101 5	34:Synth Lead
+17519	PR-C	112	SL-SH101 6	21:Synth Bass
+17520	PR-C	113	SL-SH101 7	21:Synth Bass
+17521	PR-C	114	SL-SH101 8	34:Synth Lead
+17522	PR-C	115	SL-SH101 9	21:Synth Bass
+17523	PR-C	116	SL-SH101 10	21:Synth Bass
+17524	PR-C	117	SL-SH101 11	34:Synth Lead
+17525	PR-C	118	SL-SH101 12	21:Synth Bass
+17526	PR-C	119	SL-D50 1	37:Synth Bellpad
+17527	PR-C	120	SL-D50 2	37:Synth Bellpad
+17528	PR-C	121	SL-D50 3	37:Synth Bellpad
+17529	PR-C	122	SL-D50 4	36:Synth Pad/Str
+17530	PR-C	123	SL-D50 5	37:Synth Bellpad
+17531	PR-C	124	SL-D50 6	38:Synth PolyKey
+17532	PR-C	125	SL-D50 7	38:Synth PolyKey
+17533	PR-C	126	SL-D50 8	37:Synth Bellpad
+17534	PR-C	127	SL-D50 9	38:Synth PolyKey
+17535	PR-C	128	SL-D50 10	36:Synth Pad/Str
+17664	PR-D	1	JP8 Strings1	36:Synth Pad/Str
+17665	PR-D	2	JP8 Strings2	36:Synth Pad/Str
+17666	PR-D	3	JP8 Strings3	36:Synth Pad/Str
+17667	PR-D	4	JP8 Strings4	36:Synth Pad/Str
+17668	PR-D	5	JP8 Strings5	36:Synth Pad/Str
+17669	PR-D	6	JP8 Strings6	36:Synth Pad/Str
+17670	PR-D	7	JP8 Strings7	36:Synth Pad/Str
+17671	PR-D	8	JP8 Strings8	36:Synth Pad/Str
+17672	PR-D	9	JP8 Strings9	36:Synth Pad/Str
+17673	PR-D	10	JP8Strings10	36:Synth Pad/Str
+17674	PR-D	11	JP8Strings11	36:Synth Pad/Str
+17675	PR-D	12	JP8Strings12	36:Synth Pad/Str
+17676	PR-D	13	JP8Strings13	36:Synth Pad/Str
+17677	PR-D	14	JP8Strings14	36:Synth Pad/Str
+17678	PR-D	15	JP8Strings15	36:Synth Pad/Str
+17679	PR-D	16	JP8Strings16	36:Synth Pad/Str
+17680	PR-D	17	JP-8 Pad 1	36:Synth Pad/Str
+17681	PR-D	18	JP-8 Pad 2	36:Synth Pad/Str
+17682	PR-D	19	JP-8 Pad 3	36:Synth Pad/Str
+17683	PR-D	20	JP-8 Pad 4	36:Synth Pad/Str
+17684	PR-D	21	JUNO Str 1	36:Synth Pad/Str
+17685	PR-D	22	JUNO Str 2	36:Synth Pad/Str
+17686	PR-D	23	JUNO Str 3	36:Synth Pad/Str
+17687	PR-D	24	JX Strings	36:Synth Pad/Str
+17688	PR-D	25	OB Strings 1	36:Synth Pad/Str
+17689	PR-D	26	OB Strings 2	36:Synth Pad/Str
+17690	PR-D	27	OB Strings 3	36:Synth Pad/Str
+17691	PR-D	28	OB Strings 4	36:Synth Pad/Str
+17692	PR-D	29	OB Strings 5	36:Synth Pad/Str
+17693	PR-D	30	OB Strings 6	36:Synth Pad/Str
+17694	PR-D	31	Vintage 1	36:Synth Pad/Str
+17695	PR-D	32	Vintage 2	36:Synth Pad/Str
+17696	PR-D	33	Vintage 3	36:Synth Pad/Str
+17697	PR-D	34	Vintage 4	36:Synth Pad/Str
+17698	PR-D	35	Vintage 5	36:Synth Pad/Str
+17699	PR-D	36	Vintage 6	36:Synth Pad/Str
+17700	PR-D	37	Vintage 7	36:Synth Pad/Str
+17701	PR-D	38	Vintage 8	36:Synth Pad/Str
+17702	PR-D	39	Vintage 9	36:Synth Pad/Str
+17703	PR-D	40	Vintage 10	36:Synth Pad/Str
+17704	PR-D	41	Vintage 11	36:Synth Pad/Str
+17705	PR-D	42	Soft Pad 1	36:Synth Pad/Str
+17706	PR-D	43	Soft Pad 2	36:Synth Pad/Str
+17707	PR-D	44	Soft Pad 3	36:Synth Pad/Str
+17708	PR-D	45	Soft Pad 4	36:Synth Pad/Str
+17709	PR-D	46	Soft Pad 5	36:Synth Pad/Str
+17710	PR-D	47	Soft Pad 6	36:Synth Pad/Str
+17711	PR-D	48	Soft Pad 7	36:Synth Pad/Str
+17712	PR-D	49	Soft Pad 8	36:Synth Pad/Str
+17713	PR-D	50	Soft Pad 9	36:Synth Pad/Str
+17714	PR-D	51	Soft Pad 10	36:Synth Pad/Str
+17715	PR-D	52	Soft Pad 11	36:Synth Pad/Str
+17716	PR-D	53	Soft Pad 12	36:Synth Pad/Str
+17717	PR-D	54	Soft Pad 13	36:Synth Pad/Str
+17718	PR-D	55	Soft Pad 14	36:Synth Pad/Str
+17719	PR-D	56	Soft Pad 15	36:Synth Pad/Str
+17720	PR-D	57	Soft Pad 16	36:Synth Pad/Str
+17721	PR-D	58	Soft Pad 17	36:Synth Pad/Str
+17722	PR-D	59	Oct Str 1	36:Synth Pad/Str
+17723	PR-D	60	Oct Str 2	36:Synth Pad/Str
+17724	PR-D	61	Oct Str 3	36:Synth Pad/Str
+17725	PR-D	62	Oct Str 4	36:Synth Pad/Str
+17726	PR-D	63	Oct Str 5	36:Synth Pad/Str
+17727	PR-D	64	Oct Str 6	36:Synth Pad/Str
+17728	PR-D	65	Oct Str 7	36:Synth Pad/Str
+17729	PR-D	66	Cloud Pad	36:Synth Pad/Str
+17730	PR-D	67	Slow Pad 1	36:Synth Pad/Str
+17731	PR-D	68	Slow Pad 2	36:Synth Pad/Str
+17732	PR-D	69	Brite Str 1	36:Synth Pad/Str
+17733	PR-D	70	Brite Str 2	36:Synth Pad/Str
+17734	PR-D	71	Brite Str 3	36:Synth Pad/Str
+17735	PR-D	72	Brite Str 4	36:Synth Pad/Str
+17736	PR-D	73	Boreal Pad	36:Synth Pad/Str
+17737	PR-D	74	Flange Str	36:Synth Pad/Str
+17738	PR-D	75	Organ Pad 1	36:Synth Pad/Str
+17739	PR-D	76	Organ Pad 2	36:Synth Pad/Str
+17740	PR-D	77	Organ Pad 3	36:Synth Pad/Str
+17741	PR-D	78	Organ Pad 4	36:Synth Pad/Str
+17742	PR-D	79	Digi Str 1	36:Synth Pad/Str
+17743	PR-D	80	Digi Str 2	36:Synth Pad/Str
+17744	PR-D	81	Digi Pad 1	36:Synth Pad/Str
+17745	PR-D	82	Digi Pad 2	36:Synth Pad/Str
+17746	PR-D	83	Digi Pad 3	36:Synth Pad/Str
+17747	PR-D	84	Digi Pad 4	36:Synth Pad/Str
+17748	PR-D	85	Heaven Pad 1	36:Synth Pad/Str
+17749	PR-D	86	Heaven Pad 2	36:Synth Pad/Str
+17750	PR-D	87	Heaven Pad 3	36:Synth Pad/Str
+17751	PR-D	88	Heaven Pad 4	36:Synth Pad/Str
+17752	PR-D	89	Voice Heaven	36:Synth Pad/Str
+17753	PR-D	90	ChordOfCnada	36:Synth Pad/Str
+17754	PR-D	91	Awakening	36:Synth Pad/Str
+17755	PR-D	92	JP8 Hollow 1	36:Synth Pad/Str
+17756	PR-D	93	JP8 Hollow 2	36:Synth Pad/Str
+17757	PR-D	94	JP8 Hollow 3	36:Synth Pad/Str
+17758	PR-D	95	Hollow Pad 1	36:Synth Pad/Str
+17759	PR-D	96	Hollow Pad 2	36:Synth Pad/Str
+17760	PR-D	97	Simple Air	36:Synth Pad/Str
+17761	PR-D	98	Air Pad	36:Synth Pad/Str
+17762	PR-D	99	Glass Pad	36:Synth Pad/Str
+17763	PR-D	100	Flute Pad	36:Synth Pad/Str
+17764	PR-D	101	Seek Flute	36:Synth Pad/Str
+17765	PR-D	102	Syn Pad 1	36:Synth Pad/Str
+17766	PR-D	103	Syn Pad 2	36:Synth Pad/Str
+17767	PR-D	104	Syn Pad 3	36:Synth Pad/Str
+17768	PR-D	105	Syn Pad 4	36:Synth Pad/Str
+17769	PR-D	106	Syn Pad 5	36:Synth Pad/Str
+17770	PR-D	107	Syn Pad 6	36:Synth Pad/Str
+17771	PR-D	108	Syn Pad 7	36:Synth Pad/Str
+17772	PR-D	109	Syn Pad 8	36:Synth Pad/Str
+17773	PR-D	110	Syn Pad 9	36:Synth Pad/Str
+17774	PR-D	111	Syn Pad 10	36:Synth Pad/Str
+17775	PR-D	112	Syn Pad 11	36:Synth Pad/Str
+17776	PR-D	113	Syn Pad 12	36:Synth Pad/Str
+17777	PR-D	114	Syn Pad 13	36:Synth Pad/Str
+17778	PR-D	115	Syn Pad 14	36:Synth Pad/Str
+17779	PR-D	116	Syn Pad 15	36:Synth Pad/Str
+17780	PR-D	117	Syn Pad 16	36:Synth Pad/Str
+17781	PR-D	118	Syn Pad 17	36:Synth Pad/Str
+17782	PR-D	119	Syn Pad 18	36:Synth Pad/Str
+17783	PR-D	120	Syn Pad 19	36:Synth Pad/Str
+17784	PR-D	121	Syn Pad 20	36:Synth Pad/Str
+17785	PR-D	122	Syn Pad 21	36:Synth Pad/Str
+17786	PR-D	123	Syn Pad 22	36:Synth Pad/Str
+17787	PR-D	124	Syn Pad 23	36:Synth Pad/Str
+17788	PR-D	125	Hybrid Str 1	36:Synth Pad/Str
+17789	PR-D	126	Hybrid Str 2	36:Synth Pad/Str
+17790	PR-D	127	Hybrid Str 3	36:Synth Pad/Str
+17791	PR-D	128	LFO Pad 1	36:Synth Pad/Str
+17920	PR-D	129	LFO Pad 2	36:Synth Pad/Str
+17921	PR-D	130	RETROX 139	36:Synth Pad/Str
+17922	PR-D	131	I Sync So	36:Synth Pad/Str
+17923	PR-D	132	Sea Waves	36:Synth Pad/Str
+17924	PR-D	133	FireFlies	36:Synth Pad/Str
+17925	PR-D	134	Particles	36:Synth Pad/Str
+17926	PR-D	135	Phr Str 1	36:Synth Pad/Str
+17927	PR-D	136	Phr Str 2	36:Synth Pad/Str
+17928	PR-D	137	Phr Str 3	36:Synth Pad/Str
+17929	PR-D	138	Phr Str 4	36:Synth Pad/Str
+17930	PR-D	139	Phr Str 5	36:Synth Pad/Str
+17931	PR-D	140	Phr Str 6	36:Synth Pad/Str
+17932	PR-D	141	Phr Str 7	36:Synth Pad/Str
+17933	PR-D	142	Phr Str 8	36:Synth Pad/Str
+17934	PR-D	143	Phr Str 9	36:Synth Pad/Str
+17935	PR-D	144	Phr Str 10	36:Synth Pad/Str
+17936	PR-D	145	Phr Str 11	36:Synth Pad/Str
+17937	PR-D	146	Stone Pad	36:Synth Pad/Str
+17938	PR-D	147	JP8 Stone 1	36:Synth Pad/Str
+17939	PR-D	148	JP8 Stone 2	36:Synth Pad/Str
+17940	PR-D	149	Sweep Pad 1	36:Synth Pad/Str
+17941	PR-D	150	Sweep Pad 2	36:Synth Pad/Str
+17942	PR-D	151	Sweep Pad 3	36:Synth Pad/Str
+17943	PR-D	152	Sweep Pad 4	36:Synth Pad/Str
+17944	PR-D	153	Sweep Pad 5	36:Synth Pad/Str
+17945	PR-D	154	Sweep Pad 6	36:Synth Pad/Str
+17946	PR-D	155	Sweep Pad 7	36:Synth Pad/Str
+17947	PR-D	156	Sweep Pad 8	36:Synth Pad/Str
+17948	PR-D	157	Sweep Pad 9	36:Synth Pad/Str
+17949	PR-D	158	Sweep Pad 10	36:Synth Pad/Str
+17950	PR-D	159	Sweep Pad 11	36:Synth Pad/Str
+17951	PR-D	160	Sweep Pad 12	36:Synth Pad/Str
+17952	PR-D	161	Sweep Pad 13	36:Synth Pad/Str
+17953	PR-D	162	Sweep Pad 14	36:Synth Pad/Str
+17954	PR-D	163	Sweep Pad 15	36:Synth Pad/Str
+17955	PR-D	164	Sweep Pad 16	36:Synth Pad/Str
+17956	PR-D	165	Sweep Pad 17	36:Synth Pad/Str
+17957	PR-D	166	Chronic Pad	36:Synth Pad/Str
+17958	PR-D	167	Sweep JD	36:Synth Pad/Str
+17959	PR-D	168	SweepNz Pad	36:Synth Pad/Str
+17960	PR-D	169	HPF Pad	36:Synth Pad/Str
+17961	PR-D	170	Iso Pad	36:Synth Pad/Str
+17962	PR-D	171	Reverie Pad	36:Synth Pad/Str
+17963	PR-D	172	PWM Pad 1	36:Synth Pad/Str
+17964	PR-D	173	PWM Pad 2	36:Synth Pad/Str
+17965	PR-D	174	Stack Pad	36:Synth Pad/Str
+17966	PR-D	175	Fanta Synth	36:Synth Pad/Str
+17967	PR-D	176	Deepity	36:Synth Pad/Str
+17968	PR-D	177	Fair Pad	36:Synth Pad/Str
+17969	PR-D	178	Revalation	36:Synth Pad/Str
+17970	PR-D	179	Trance Pad	36:Synth Pad/Str
+17971	PR-D	180	Alan’s Pad	36:Synth Pad/Str
+17972	PR-D	181	Dreamwarp	36:Synth Pad/Str
+17973	PR-D	182	Emote String	36:Synth Pad/Str
+17974	PR-D	183	PortamentPad	36:Synth Pad/Str
+17975	PR-D	184	Cincosoft	36:Synth Pad/Str
+17976	PR-D	185	5th Pad 1	36:Synth Pad/Str
+17977	PR-D	186	5th Pad 2	36:Synth Pad/Str
+17978	PR-D	187	5th Pad 3	36:Synth Pad/Str
+17979	PR-D	188	Metal Pad	36:Synth Pad/Str
+17980	PR-D	189	Legend Pad	36:Synth Pad/Str
+17981	PR-D	190	GlassFx Pad	36:Synth Pad/Str
+17982	PR-D	191	Glass Forest	36:Synth Pad/Str
+17983	PR-D	192	Jungle-Pool	36:Synth Pad/Str
+17984	PR-D	193	Xadecimal	36:Synth Pad/Str
+17985	PR-D	194	HPF Strings	36:Synth Pad/Str
+17986	PR-D	195	Gate Game	36:Synth Pad/Str
+17987	PR-D	196	Horror Pad	36:Synth Pad/Str
+17988	PR-D	197	PLS Pad 1	42:Pulsating
+17989	PR-D	198	PLS Pad 2	42:Pulsating
+17990	PR-D	199	PLS Pad 3	42:Pulsating
+17991	PR-D	200	PLS Pad 4	42:Pulsating
+17992	PR-D	201	PLS Pad 5	42:Pulsating
+17993	PR-D	202	PLS Pad 6	42:Pulsating
+17994	PR-D	203	PLS Pad 7	42:Pulsating
+17995	PR-D	204	PLS Pad 8	42:Pulsating
+17996	PR-D	205	PLS Pad 9	42:Pulsating
+17997	PR-D	206	PLS Pad 10	42:Pulsating
+17998	PR-D	207	PLS Pad 11	42:Pulsating
+17999	PR-D	208	PLS Pad 12	42:Pulsating
+18000	PR-D	209	PLS Pad 13	42:Pulsating
+18001	PR-D	210	PLS Pad 14	42:Pulsating
+18002	PR-D	211	PLS Pad 15	42:Pulsating
+18003	PR-D	212	PLS Pad 16	42:Pulsating
+18004	PR-D	213	PLS Strings	42:Pulsating
+18005	PR-D	214	LFO Hollow	42:Pulsating
+18006	PR-D	215	Goes A Pad	42:Pulsating
+18007	PR-D	216	Metal PLS	42:Pulsating
+18008	PR-D	217	Trip 2 Mars	42:Pulsating
+18009	PR-D	218	Fist Pumper1	42:Pulsating
+18010	PR-D	219	Fist Pumper2	42:Pulsating
+18011	PR-D	220	Pulsatron	42:Pulsating
+18012	PR-D	221	LFO Poly	42:Pulsating
+18013	PR-D	222	LFO Saw 1	42:Pulsating
+18014	PR-D	223	LFO Saw 2	42:Pulsating
+18015	PR-D	224	Thick Pans	42:Pulsating
+18016	PR-D	225	LFO Ripple	42:Pulsating
+18017	PR-D	226	JayMeJay	42:Pulsating
+18018	PR-D	227	Karmalog	42:Pulsating
+18019	PR-D	228	MINIM-L	42:Pulsating
+18020	PR-D	229	Trance Staff	42:Pulsating
+18021	PR-D	230	Radanceky	42:Pulsating
+18022	PR-D	231	12303	42:Pulsating
+18023	PR-D	232	Experiment	42:Pulsating
+18024	PR-D	233	Pulserelay	42:Pulsating
+18025	PR-D	234	Jazz Bubbles	42:Pulsating
+18026	PR-D	235	Psychoscilo	42:Pulsating
+18027	PR-D	236	PXZoon	42:Pulsating
+18028	PR-D	237	Welding Bell	42:Pulsating
+18029	PR-D	238	Glassphemia	42:Pulsating
+18030	PR-D	239	Strobe Bell	42:Pulsating
+18031	PR-D	240	Sawflutter	42:Pulsating
+18032	PR-D	241	Dronified	42:Pulsating
+18033	PR-D	242	Tri-Vector	42:Pulsating
+18034	PR-D	243	Syn Vox 1	32:Vox/Choir
+18035	PR-D	244	Syn Vox 2	32:Vox/Choir
+18036	PR-D	245	Syn Vox 3	32:Vox/Choir
+18037	PR-D	246	JD80 SoftVox	32:Vox/Choir
+18038	PR-D	247	Valley Air	32:Vox/Choir
+18039	PR-D	248	Vox Pad 1	32:Vox/Choir
+18040	PR-D	249	Vox Pad 2	32:Vox/Choir
+18041	PR-D	250	Vox Pad 3	32:Vox/Choir
+18042	PR-D	251	Vox Pad 4	32:Vox/Choir
+18043	PR-D	252	Vox Pad 5	32:Vox/Choir
+18044	PR-D	253	5th Vox Pad	32:Vox/Choir
+18045	PR-D	254	Moving Chr	32:Vox/Choir
+18046	PR-D	255	VP-330 Chr	32:Vox/Choir
+18047	PR-D	256	HyperVentChr	32:Vox/Choir
+18176	PR-D	257	Vento Choir	32:Vox/Choir
+18177	PR-D	258	Scat Dow	33:Scat
+18178	PR-D	259	JP8 Brs 1	35:Synth Brass
+18179	PR-D	260	JP8 Brs 2	35:Synth Brass
+18180	PR-D	261	JP8 Brs 3	35:Synth Brass
+18181	PR-D	262	JP8 Brs 4	35:Synth Brass
+18182	PR-D	263	JP8 Brs 5	35:Synth Brass
+18183	PR-D	264	JP8 Brs 6	35:Synth Brass
+18184	PR-D	265	JUNO Brs 1	35:Synth Brass
+18185	PR-D	266	JUNO Brs 2	35:Synth Brass
+18186	PR-D	267	JUNO Brs 3	35:Synth Brass
+18187	PR-D	268	JUNO Brs 4	35:Synth Brass
+18188	PR-D	269	JUNO Brs 5	35:Synth Brass
+18189	PR-D	270	JUNO Brs 6	35:Synth Brass
+18190	PR-D	271	JUNO Brs 7	35:Synth Brass
+18191	PR-D	272	JUNO Brs 8	35:Synth Brass
+18192	PR-D	273	JUNO Brs 9	35:Synth Brass
+18193	PR-D	274	JUNO Brs 10	35:Synth Brass
+18194	PR-D	275	JP8000 Brs 1	35:Synth Brass
+18195	PR-D	276	JP8000 Brs 2	35:Synth Brass
+18196	PR-D	277	80s Brs 1	35:Synth Brass
+18197	PR-D	278	80s Brs 2	35:Synth Brass
+18198	PR-D	279	80s Brs 3	35:Synth Brass
+18199	PR-D	280	80s Brs 4	35:Synth Brass
+18200	PR-D	281	80s Brs 5	35:Synth Brass
+18201	PR-D	282	80s Brs 6	35:Synth Brass
+18202	PR-D	283	80s Brs 7	35:Synth Brass
+18203	PR-D	284	80s Brs 8	35:Synth Brass
+18204	PR-D	285	80s Brs 9	35:Synth Brass
+18205	PR-D	286	80s Brs 10	35:Synth Brass
+18206	PR-D	287	80s Brs 11	35:Synth Brass
+18207	PR-D	288	SynBrs Str	35:Synth Brass
+18208	PR-D	289	Analog Brs 1	35:Synth Brass
+18209	PR-D	290	Analog Brs 2	35:Synth Brass
+18210	PR-D	291	Analog Brs 3	35:Synth Brass
+18211	PR-D	292	Analog Brs 4	35:Synth Brass
+18212	PR-D	293	OB Brs	35:Synth Brass
+18213	PR-D	294	Euro Express	35:Synth Brass
+18214	PR-D	295	Syn Brs 1	35:Synth Brass
+18215	PR-D	296	Syn Brs 2	35:Synth Brass
+18216	PR-D	297	Syn Brs 3	35:Synth Brass
+18217	PR-D	298	Syn Brs 4	35:Synth Brass
+18218	PR-D	299	Syn Brs 5	35:Synth Brass
+18219	PR-D	300	Syn Brs 6	35:Synth Brass
+18220	PR-D	301	Syn Brs 7	35:Synth Brass
+18221	PR-D	302	Syn Brs 8	35:Synth Brass
+18222	PR-D	303	Syn Brs 9	35:Synth Brass
+18223	PR-D	304	Syn Brs 10	35:Synth Brass
+18224	PR-D	305	Syn Brs 11	35:Synth Brass
+18225	PR-D	306	Syn Brs 12	35:Synth Brass
+18226	PR-D	307	Syn Brs 13	35:Synth Brass
+18227	PR-D	308	Soft SynBrs1	35:Synth Brass
+18228	PR-D	309	Soft SynBrs2	35:Synth Brass
+18229	PR-D	310	Soft SynBrs3	35:Synth Brass
+18230	PR-D	311	Soft SynBrs4	35:Synth Brass
+18231	PR-D	312	Soft SynBrs5	35:Synth Brass
+18232	PR-D	313	Dyn SynBrs	35:Synth Brass
+18233	PR-D	314	Quiet Brs	35:Synth Brass
+18234	PR-D	315	Brassrub	35:Synth Brass
+18235	PR-D	316	Poly Brass 1	35:Synth Brass
+18236	PR-D	317	Poly Brass 2	35:Synth Brass
+18237	PR-D	318	Poly Brass 3	35:Synth Brass
+18238	PR-D	319	Poly Brass 4	35:Synth Brass
+18239	PR-D	320	Poly Brass 5	35:Synth Brass
+18240	PR-D	321	Octa Brass	35:Synth Brass
+18241	PR-D	322	Reso Brs 1	35:Synth Brass
+18242	PR-D	323	Reso Brs 2	35:Synth Brass
+18243	PR-D	324	Slow Brs 1	35:Synth Brass
+18244	PR-D	325	Slow Brs 2	35:Synth Brass
+18245	PR-D	326	FM Brass	35:Synth Brass
+18246	PR-D	327	Hybrid Brass	35:Synth Brass
+18247	PR-D	328	Power JP	35:Synth Brass
+18248	PR-D	329	Power SynBrs	35:Synth Brass
+18249	PR-D	330	Love Brs	35:Synth Brass
+18250	PR-D	331	LoveBrs Pad	35:Synth Brass
+18251	PR-D	332	42 Brass	35:Synth Brass
+18252	PR-D	333	80sBrsScoop1	35:Synth Brass
+18253	PR-D	334	80sBrsScoop2	35:Synth Brass
+18254	PR-D	335	ResoSweepBrs	35:Synth Brass
+18255	PR-D	336	Porta Brs	35:Synth Brass
+18256	PR-D	337	Xpand Brs 1	35:Synth Brass
+18257	PR-D	338	Xpand Brs 2	35:Synth Brass
+18258	PR-D	339	Saws Key 1	38:Synth PolyKey
+18259	PR-D	340	Saws Key 2	38:Synth PolyKey
+18260	PR-D	341	Saws Key 3	38:Synth PolyKey
+18261	PR-D	342	Saws Key 4	38:Synth PolyKey
+18262	PR-D	343	Saws Key 5	38:Synth PolyKey
+18263	PR-D	344	Saws Key 6	38:Synth PolyKey
+18264	PR-D	345	Saws Key 7	38:Synth PolyKey
+18265	PR-D	346	Saws Key 8	38:Synth PolyKey
+18266	PR-D	347	Saws Key 9	38:Synth PolyKey
+18267	PR-D	348	Saws Key 10	38:Synth PolyKey
+18268	PR-D	349	Laserthroat	38:Synth PolyKey
+18269	PR-D	350	Poly Key 1	38:Synth PolyKey
+18270	PR-D	351	Poly Key 2	38:Synth PolyKey
+18271	PR-D	352	Poly Key 3	38:Synth PolyKey
+18272	PR-D	353	Poly Key 4	38:Synth PolyKey
+18273	PR-D	354	JP80 WaveSyn	38:Synth PolyKey
+18274	PR-D	355	Poly Syn 1	38:Synth PolyKey
+18275	PR-D	356	Poly Syn 2	38:Synth PolyKey
+18276	PR-D	357	Poly Syn 3	38:Synth PolyKey
+18277	PR-D	358	Poly Syn 4	38:Synth PolyKey
+18278	PR-D	359	Poly Syn 5	38:Synth PolyKey
+18279	PR-D	360	Poly Syn 6	38:Synth PolyKey
+18280	PR-D	361	Poly Syn 7	38:Synth PolyKey
+18281	PR-D	362	Poly Syn 8	38:Synth PolyKey
+18282	PR-D	363	Poly Syn 9	38:Synth PolyKey
+18283	PR-D	364	Poly Syn 10	38:Synth PolyKey
+18284	PR-D	365	Poly Syn 11	38:Synth PolyKey
+18285	PR-D	366	Poly Syn 12	38:Synth PolyKey
+18286	PR-D	367	Poly Syn 13	38:Synth PolyKey
+18287	PR-D	368	Poly Syn 14	38:Synth PolyKey
+18288	PR-D	369	Poly Syn 15	38:Synth PolyKey
+18289	PR-D	370	Poly Syn 16	38:Synth PolyKey
+18290	PR-D	371	Poly Syn 17	38:Synth PolyKey
+18291	PR-D	372	Poly Syn 18	38:Synth PolyKey
+18292	PR-D	373	Poly Syn 19	38:Synth PolyKey
+18293	PR-D	374	Poly Syn 20	38:Synth PolyKey
+18294	PR-D	375	Poly Syn 21	38:Synth PolyKey
+18295	PR-D	376	Poly Syn 22	38:Synth PolyKey
+18296	PR-D	377	Poly Syn 23	38:Synth PolyKey
+18297	PR-D	378	Poly Syn 24	38:Synth PolyKey
+18298	PR-D	379	Poly Syn 25	38:Synth PolyKey
+18299	PR-D	380	Poly Syn 26	38:Synth PolyKey
+18300	PR-D	381	Saw Dtune	38:Synth PolyKey
+18301	PR-D	382	Jester	38:Synth PolyKey
+18302	PR-D	383	Fusion Decay	38:Synth PolyKey
+18303	PR-D	384	Polysubito	38:Synth PolyKey
+18432	PR-D	385	Wave Scan	38:Synth PolyKey
+18433	PR-D	386	Wire String	38:Synth PolyKey
+18434	PR-D	387	Brusky Key	38:Synth PolyKey
+18435	PR-D	388	Cutter Key	38:Synth PolyKey
+18436	PR-D	389	PolySyn Atk	38:Synth PolyKey
+18437	PR-D	390	Harpsitone	38:Synth PolyKey
+18438	PR-D	391	Digi Key 1	38:Synth PolyKey
+18439	PR-D	392	Digi Key 2	38:Synth PolyKey
+18440	PR-D	393	Digi Key 3	38:Synth PolyKey
+18441	PR-D	394	Digi Key 4	38:Synth PolyKey
+18442	PR-D	395	Digi Key 5	38:Synth PolyKey
+18443	PR-D	396	Digi Key 6	38:Synth PolyKey
+18444	PR-D	397	Digi Poly 1	38:Synth PolyKey
+18445	PR-D	398	Digi Poly 2	38:Synth PolyKey
+18446	PR-D	399	Bit Poly 1	38:Synth PolyKey
+18447	PR-D	400	Bit Poly 2	38:Synth PolyKey
+18448	PR-D	401	Bit Poly 3	38:Synth PolyKey
+18449	PR-D	402	Bit Poly 4	38:Synth PolyKey
+18450	PR-D	403	Bit Poly 5	38:Synth PolyKey
+18451	PR-D	404	Bit Poly 6	38:Synth PolyKey
+18452	PR-D	405	Bit Poly 7	38:Synth PolyKey
+18453	PR-D	406	Bit Poly 8	38:Synth PolyKey
+18454	PR-D	407	Bit Poly 9	38:Synth PolyKey
+18455	PR-D	408	Bit Poly 10	38:Synth PolyKey
+18456	PR-D	409	5th Poly 1	38:Synth PolyKey
+18457	PR-D	410	5th Poly 2	38:Synth PolyKey
+18458	PR-D	411	5th Poly 3	38:Synth PolyKey
+18459	PR-D	412	Poly Aug 5th	38:Synth PolyKey
+18460	PR-D	413	5th Key	38:Synth PolyKey
+18461	PR-D	414	HPF Poly 1	38:Synth PolyKey
+18462	PR-D	415	HPF Poly 2	38:Synth PolyKey
+18463	PR-D	416	BPF Poly 1	38:Synth PolyKey
+18464	PR-D	417	BPF Poly 2	38:Synth PolyKey
+18465	PR-D	418	Sweep Poly 1	38:Synth PolyKey
+18466	PR-D	419	Sweep Poly 2	38:Synth PolyKey
+18467	PR-D	420	Sweep Poly 3	38:Synth PolyKey
+18468	PR-D	421	Scoop Poly 1	38:Synth PolyKey
+18469	PR-D	422	Scoop Poly 2	38:Synth PolyKey
+18470	PR-D	423	Scoop Poly 3	38:Synth PolyKey
+18471	PR-D	424	Scoop Poly 4	38:Synth PolyKey
+18472	PR-D	425	Scoop Poly 5	38:Synth PolyKey
+18473	PR-D	426	Scoop Poly 6	38:Synth PolyKey
+18474	PR-D	427	Tekno Poly 1	38:Synth PolyKey
+18475	PR-D	428	Tekno Poly 2	38:Synth PolyKey
+18476	PR-D	429	Tekno Poly 3	38:Synth PolyKey
+18477	PR-D	430	J-Pop Kira 1	38:Synth PolyKey
+18478	PR-D	431	J-Pop Kira 2	38:Synth PolyKey
+18479	PR-D	432	Square Poly	38:Synth PolyKey
+18480	PR-D	433	Slow Poly	38:Synth PolyKey
+18481	PR-D	434	Vox Poly	38:Synth PolyKey
+18482	PR-D	435	S-SawPoly 1	38:Synth PolyKey
+18483	PR-D	436	S-SawPoly 2	38:Synth PolyKey
+18484	PR-D	437	S-SawPoly 3	38:Synth PolyKey
+18485	PR-D	438	S-SawPoly 4	38:Synth PolyKey
+18486	PR-D	439	S-SawPoly 5	38:Synth PolyKey
+18487	PR-D	440	S-SawPoly 6	38:Synth PolyKey
+18488	PR-D	441	S-SawPoly 7	38:Synth PolyKey
+18489	PR-D	442	S-SawPoly 8	38:Synth PolyKey
+18490	PR-D	443	S-SawPoly 9	38:Synth PolyKey
+18491	PR-D	444	S-SawPoly 10	38:Synth PolyKey
+18492	PR-D	445	S-SawPoly 11	38:Synth PolyKey
+18493	PR-D	446	S-SawPoly 12	38:Synth PolyKey
+18494	PR-D	447	S-SawPoly 13	38:Synth PolyKey
+18495	PR-D	448	Trance Key 1	38:Synth PolyKey
+18496	PR-D	449	Trance Key 2	38:Synth PolyKey
+18497	PR-D	450	Trance Key 3	38:Synth PolyKey
+18498	PR-D	451	Trance Key 4	38:Synth PolyKey
+18499	PR-D	452	Trance Key 5	38:Synth PolyKey
+18500	PR-D	453	Trance Key 6	38:Synth PolyKey
+18501	PR-D	454	Delay Reso	38:Synth PolyKey
+18502	PR-D	455	3Delay Poly	38:Synth PolyKey
+18503	PR-D	456	JP80 FatPoly	38:Synth PolyKey
+18504	PR-D	457	Poly Fat	38:Synth PolyKey
+18505	PR-D	458	Trance Saw	38:Synth PolyKey
+18506	PR-D	459	SoHo Lucky	38:Synth PolyKey
+18507	PR-D	460	DLM SUM	38:Synth PolyKey
+18508	PR-D	461	H@sWillFall	38:Synth PolyKey
+18509	PR-D	462	A Log 4 Ana	38:Synth PolyKey
+18510	PR-D	463	Log An A	38:Synth PolyKey
+18511	PR-D	464	Androdrops	38:Synth PolyKey
+18512	PR-D	465	Vntg Stack	38:Synth PolyKey
+18513	PR-D	466	ANORMANALOG	38:Synth PolyKey
+18514	PR-D	467	Don’t you	38:Synth PolyKey
+18515	PR-D	468	Nailbiter	38:Synth PolyKey
+18516	PR-D	469	EinsZweiDry	38:Synth PolyKey
+18517	PR-D	470	Analog Key 1	38:Synth PolyKey
+18518	PR-D	471	Analog Key 2	38:Synth PolyKey
+18519	PR-D	472	Paperclip	38:Synth PolyKey
+18520	PR-D	473	Sqr Key	38:Synth PolyKey
+18521	PR-D	474	Tri Key	38:Synth PolyKey
+18522	PR-D	475	JP-8 PatchF2	38:Synth PolyKey
+18523	PR-D	476	Fantasy 1	37:Synth Bellpad
+18524	PR-D	477	Fantasy 2	37:Synth Bellpad
+18525	PR-D	478	Fantasy 3	37:Synth Bellpad
+18526	PR-D	479	Fantasy 4	37:Synth Bellpad
+18527	PR-D	480	Fantasy 5	37:Synth Bellpad
+18528	PR-D	481	Fantasy Pad	37:Synth Bellpad
+18529	PR-D	482	What Key!	37:Synth Bellpad
+18530	PR-D	483	EP-Cool Pad	37:Synth Bellpad
+18531	PR-D	484	D50 Stack	37:Synth Bellpad
+18532	PR-D	485	D-52 Babe	37:Synth Bellpad
+18533	PR-D	486	Dreaming 1	37:Synth Bellpad
+18534	PR-D	487	Dreaming 2	37:Synth Bellpad
+18535	PR-D	488	Dreaming 3	37:Synth Bellpad
+18536	PR-D	489	Dreaming 4	37:Synth Bellpad
+18537	PR-D	490	Dreaming 5	37:Synth Bellpad
+18538	PR-D	491	Dreaming 6	37:Synth Bellpad
+18539	PR-D	492	Dreaming 7	37:Synth Bellpad
+18540	PR-D	493	Dreambell	37:Synth Bellpad
+18541	PR-D	494	DreamingBox	37:Synth Bellpad
+18542	PR-D	495	New Jupiter	37:Synth Bellpad
+18543	PR-D	496	Analog Dream	37:Synth Bellpad
+18544	PR-D	497	Huge MIDI 1	37:Synth Bellpad
+18545	PR-D	498	Huge MIDI 2	37:Synth Bellpad
+18546	PR-D	499	Huge MIDI 3	37:Synth Bellpad
+18547	PR-D	500	MIDI Key	37:Synth Bellpad
+18548	PR-D	501	Pipe Key	37:Synth Bellpad
+18549	PR-D	502	Vox Key	37:Synth Bellpad
+18550	PR-D	503	Magichand	37:Synth Bellpad
+18551	PR-D	504	AnalogBell 1	37:Synth Bellpad
+18552	PR-D	505	AnalogBell 2	37:Synth Bellpad
+18553	PR-D	506	AnalogBell 3	37:Synth Bellpad
+18554	PR-D	507	AnalogBell 4	37:Synth Bellpad
+18555	PR-D	508	Synth Sniper	37:Synth Bellpad
+18556	PR-D	509	Temper Bell	37:Synth Bellpad
+18557	PR-D	510	Icycle	37:Synth Bellpad
+18558	PR-D	511	Pipe Chatter	37:Synth Bellpad
+18559	PR-D	512	Spring Wind	37:Synth Bellpad
+18688	PR-D	513	JP80 SynHarp	37:Synth Bellpad
+18689	PR-D	514	Bell 1	14:Bell
+18690	PR-D	515	Bell 2	14:Bell
+18691	PR-D	516	Bell 3	14:Bell
+18692	PR-D	517	Bell 4	14:Bell
+18693	PR-D	518	Bell 5	14:Bell
+18694	PR-D	519	Bell 6	14:Bell
+18695	PR-D	520	Bell 7	14:Bell
+18696	PR-D	521	Bell 8	14:Bell
+18697	PR-D	522	Bell 9	14:Bell
+18698	PR-D	523	Bell 10	14:Bell
+18699	PR-D	524	Bell 11	14:Bell
+18700	PR-D	525	Bell 12	14:Bell
+18701	PR-D	526	Bell 13	14:Bell
+18702	PR-D	527	Bell 14	14:Bell
+18703	PR-D	528	Bell 15	14:Bell
+18704	PR-D	529	Bell 16	14:Bell
+18705	PR-D	530	Bell 17	14:Bell
+18706	PR-D	531	Bell 18	14:Bell
+18707	PR-D	532	Bell 19	14:Bell
+18708	PR-D	533	Bell 20	14:Bell
+18709	PR-D	534	Bell 21	14:Bell
+18710	PR-D	535	Bell 22	14:Bell
+18711	PR-D	536	Tower Bell	14:Bell
+18712	PR-D	537	Tubular Bell	14:Bell
+18713	PR-D	538	OrganBell 1	14:Bell
+18714	PR-D	539	OrganBell 2	14:Bell
+18715	PR-D	540	OrganBell 3	14:Bell
+18716	PR-D	541	Kalimbell	14:Bell
+18717	PR-D	542	JP80 Bell	14:Bell
+18718	PR-D	543	Glass Amb	14:Bell
+18719	PR-D	544	Digi Crystal	14:Bell
+18720	PR-D	545	Icy Keys	14:Bell
+18721	PR-D	546	JP-8 PatchH1	14:Bell
+18722	PR-D	547	SEQ 1	40:Synth Seq/Pop
+18723	PR-D	548	SEQ 2	40:Synth Seq/Pop
+18724	PR-D	549	SEQ 3	40:Synth Seq/Pop
+18725	PR-D	550	SEQ 4	40:Synth Seq/Pop
+18726	PR-D	551	SEQ 5	40:Synth Seq/Pop
+18727	PR-D	552	SEQ 6	40:Synth Seq/Pop
+18728	PR-D	553	SEQ 7	40:Synth Seq/Pop
+18729	PR-D	554	SEQ 8	40:Synth Seq/Pop
+18730	PR-D	555	SEQ 9	40:Synth Seq/Pop
+18731	PR-D	556	SEQ 10	40:Synth Seq/Pop
+18732	PR-D	557	SEQ 11	40:Synth Seq/Pop
+18733	PR-D	558	SEQ 12	40:Synth Seq/Pop
+18734	PR-D	559	SEQ 13	40:Synth Seq/Pop
+18735	PR-D	560	SEQ 14	40:Synth Seq/Pop
+18736	PR-D	561	SEQ 15	40:Synth Seq/Pop
+18737	PR-D	562	SEQ 16	40:Synth Seq/Pop
+18738	PR-D	563	SEQ 17	40:Synth Seq/Pop
+18739	PR-D	564	SEQ 18	40:Synth Seq/Pop
+18740	PR-D	565	SEQ 19	40:Synth Seq/Pop
+18741	PR-D	566	SEQ 20	40:Synth Seq/Pop
+18742	PR-D	567	SEQ 21	40:Synth Seq/Pop
+18743	PR-D	568	SEQ 22	40:Synth Seq/Pop
+18744	PR-D	569	SEQ 23	40:Synth Seq/Pop
+18745	PR-D	570	SEQ 24	40:Synth Seq/Pop
+18746	PR-D	571	SEQ 25	40:Synth Seq/Pop
+18747	PR-D	572	SEQ 26	40:Synth Seq/Pop
+18748	PR-D	573	SEQ 27	40:Synth Seq/Pop
+18749	PR-D	574	SEQ 28	40:Synth Seq/Pop
+18750	PR-D	575	SEQ 29	40:Synth Seq/Pop
+18751	PR-D	576	SEQ 30	40:Synth Seq/Pop
+18752	PR-D	577	SEQ 31	40:Synth Seq/Pop
+18753	PR-D	578	SEQ 32	40:Synth Seq/Pop
+18754	PR-D	579	SEQ 33	40:Synth Seq/Pop
+18755	PR-D	580	SEQ 34	40:Synth Seq/Pop
+18756	PR-D	581	SEQ 35	40:Synth Seq/Pop
+18757	PR-D	582	SEQ 36	40:Synth Seq/Pop
+18758	PR-D	583	SEQ 37	40:Synth Seq/Pop
+18759	PR-D	584	SEQ 38	40:Synth Seq/Pop
+18760	PR-D	585	SEQ 39	40:Synth Seq/Pop
+18761	PR-D	586	Stubby Mono	40:Synth Seq/Pop
+18762	PR-D	587	Scrt Decay	40:Synth Seq/Pop
+18763	PR-D	588	R&B Bs 1	21:Synth Bass
+18764	PR-D	589	R&B Bs 2	21:Synth Bass
+18765	PR-D	590	R&B Bs 3	21:Synth Bass
+18766	PR-D	591	R&B Bs 4	21:Synth Bass
+18767	PR-D	592	R&B Bs 5	21:Synth Bass
+18768	PR-D	593	R&B Bs 6	21:Synth Bass
+18769	PR-D	594	R&B Bs 7	21:Synth Bass
+18770	PR-D	595	R&B Bs 8	21:Synth Bass
+18771	PR-D	596	R&B Bs 9	21:Synth Bass
+18772	PR-D	597	MG Bs 1	21:Synth Bass
+18773	PR-D	598	MG Bs 2	21:Synth Bass
+18774	PR-D	599	MG Bs 3	21:Synth Bass
+18775	PR-D	600	MG Bs 4	21:Synth Bass
+18776	PR-D	601	MG Bs 5	21:Synth Bass
+18777	PR-D	602	MG Bs 6	21:Synth Bass
+18778	PR-D	603	MG Bs 7	21:Synth Bass
+18779	PR-D	604	MG Bs 8	21:Synth Bass
+18780	PR-D	605	MG Bs 9	21:Synth Bass
+18781	PR-D	606	MG Bs 10	21:Synth Bass
+18782	PR-D	607	MG Bs 11	21:Synth Bass
+18783	PR-D	608	MG Bs 12	21:Synth Bass
+18784	PR-D	609	MG Bs 13	21:Synth Bass
+18785	PR-D	610	MG Bs 14	21:Synth Bass
+18786	PR-D	611	MG Bs 15	21:Synth Bass
+18787	PR-D	612	MG Bs 16	21:Synth Bass
+18788	PR-D	613	MG Bs 17	21:Synth Bass
+18789	PR-D	614	MG Bs 18	21:Synth Bass
+18790	PR-D	615	MG Bs 19	21:Synth Bass
+18791	PR-D	616	MG Bs 20	21:Synth Bass
+18792	PR-D	617	MG Bs 21	21:Synth Bass
+18793	PR-D	618	MG Bs 22	21:Synth Bass
+18794	PR-D	619	MG Bs 23	21:Synth Bass
+18795	PR-D	620	MG Bs 24	21:Synth Bass
+18796	PR-D	621	MG Bs 25	21:Synth Bass
+18797	PR-D	622	MG Bs 26	21:Synth Bass
+18798	PR-D	623	Thickness Bs	21:Synth Bass
+18799	PR-D	624	Plastic Bs	21:Synth Bass
+18800	PR-D	625	Alpha Bs 1	21:Synth Bass
+18801	PR-D	626	Alpha Bs 2	21:Synth Bass
+18802	PR-D	627	Alpha Bs 3	21:Synth Bass
+18803	PR-D	628	Flat6Bs	21:Synth Bass
+18804	PR-D	629	Decay Bs 1	21:Synth Bass
+18805	PR-D	630	Decay Bs 2	21:Synth Bass
+18806	PR-D	631	Decay Bs 3	21:Synth Bass
+18807	PR-D	632	Decay Bs 4	21:Synth Bass
+18808	PR-D	633	106 Bass 1	21:Synth Bass
+18809	PR-D	634	106 Bass 2	21:Synth Bass
+18810	PR-D	635	106 Bass 3	21:Synth Bass
+18811	PR-D	636	106 Bass 4	21:Synth Bass
+18812	PR-D	637	106 Bass 5	21:Synth Bass
+18813	PR-D	638	Breakdown Bs	21:Synth Bass
+18814	PR-D	639	Dopebass	21:Synth Bass
+18815	PR-D	640	MC202 Bs 1	21:Synth Bass
+18944	PR-D	641	MC202 Bs 2	21:Synth Bass
+18945	PR-D	642	Pulse Bs 1	21:Synth Bass
+18946	PR-D	643	Pulse Bs 2	21:Synth Bass
+18947	PR-D	644	Pulse Bs 3	21:Synth Bass
+18948	PR-D	645	Pulse Bs 4	21:Synth Bass
+18949	PR-D	646	FM Bs 1	21:Synth Bass
+18950	PR-D	647	FM Bs 2	21:Synth Bass
+18951	PR-D	648	JP Bs	21:Synth Bass
+18952	PR-D	649	Compu Bass 1	21:Synth Bass
+18953	PR-D	650	Compu Bass 2	21:Synth Bass
+18954	PR-D	651	Detune Bs 1	21:Synth Bass
+18955	PR-D	652	Detune Bs 2	21:Synth Bass
+18956	PR-D	653	Detune Bs 3	21:Synth Bass
+18957	PR-D	654	Detune Bs 4	21:Synth Bass
+18958	PR-D	655	Intrusive Bs	21:Synth Bass
+18959	PR-D	656	SH-101 Bs 1	21:Synth Bass
+18960	PR-D	657	SH-101 Bs 2	21:Synth Bass
+18961	PR-D	658	Sweep Bs 1	21:Synth Bass
+18962	PR-D	659	Sweep Bs 2	21:Synth Bass
+18963	PR-D	660	Sweep Bs 3	21:Synth Bass
+18964	PR-D	661	Sweep Bs 4	21:Synth Bass
+18965	PR-D	662	Sweep Bs 5	21:Synth Bass
+18966	PR-D	663	Sweep Bs 6	21:Synth Bass
+18967	PR-D	664	Sweep Bs 7	21:Synth Bass
+18968	PR-D	665	Rubbertouch	21:Synth Bass
+18969	PR-D	666	P5 Bs 1	21:Synth Bass
+18970	PR-D	667	P5 Bs 2	21:Synth Bass
+18971	PR-D	668	P5 Bs 3	21:Synth Bass
+18972	PR-D	669	P5 Bs 4	21:Synth Bass
+18973	PR-D	670	P5 Bs 5	21:Synth Bass
+18974	PR-D	671	Juno60 Bs	21:Synth Bass
+18975	PR-D	672	D-50 Bs	21:Synth Bass
+18976	PR-D	673	MKS-50 Bs	21:Synth Bass
+18977	PR-D	674	Wide Bs 1	21:Synth Bass
+18978	PR-D	675	Wide Bs 2	21:Synth Bass
+18979	PR-D	676	Wide Bs 3	21:Synth Bass
+18980	PR-D	677	Wide Bs 4	21:Synth Bass
+18981	PR-D	678	BASSH 10	21:Synth Bass
+18982	PR-D	679	Chow Bs 1	21:Synth Bass
+18983	PR-D	680	Chow Bs 2	21:Synth Bass
+18984	PR-D	681	House Bs	21:Synth Bass
+18985	PR-D	682	JP-4 Bs	21:Synth Bass
+18986	PR-D	683	SH Square Bs	21:Synth Bass
+18987	PR-D	684	JunoSqr Bs 1	21:Synth Bass
+18988	PR-D	685	JunoSqr Bs 2	21:Synth Bass
+18989	PR-D	686	TB Bass 1	21:Synth Bass
+18990	PR-D	687	TB Bass 2	21:Synth Bass
+18991	PR-D	688	TB Dist Bs 1	21:Synth Bass
+18992	PR-D	689	TB Dist Bs 2	21:Synth Bass
+18993	PR-D	690	Agresso Bass	21:Synth Bass
+18994	PR-D	691	Show Me Low	21:Synth Bass
+18995	PR-D	692	Organ Bs	21:Synth Bass
+18996	PR-D	693	Muffled Bass	21:Synth Bass
+18997	PR-D	694	Garage Bs 1	21:Synth Bass
+18998	PR-D	695	Garage Bs 2	21:Synth Bass
+18999	PR-D	696	Low Bs 1	21:Synth Bass
+19000	PR-D	697	Low Bs 2	21:Synth Bass
+19001	PR-D	698	Low Bs 3	21:Synth Bass
+19002	PR-D	699	Low Bs 4	21:Synth Bass
+19003	PR-D	700	Low Bs 5	21:Synth Bass
+19004	PR-D	701	Low Bs 6	21:Synth Bass
+19005	PR-D	702	Tri Bass 1	21:Synth Bass
+19006	PR-D	703	Tri Bass 2	21:Synth Bass
+19007	PR-D	704	Fat Analog 1	21:Synth Bass
+19008	PR-D	705	Fat Analog 2	21:Synth Bass
+19009	PR-D	706	Reso Bs 1	21:Synth Bass
+19010	PR-D	707	Reso Bs 2	21:Synth Bass
+19011	PR-D	708	Reso Bs 3	21:Synth Bass
+19012	PR-D	709	Reso Bs 4	21:Synth Bass
+19013	PR-D	710	Reso Bs 5	21:Synth Bass
+19014	PR-D	711	Reso Bs 6	21:Synth Bass
+19015	PR-D	712	Reso Bs 7	21:Synth Bass
+19016	PR-D	713	Reso Bs 8	21:Synth Bass
+19017	PR-D	714	Reso Bs 9	21:Synth Bass
+19018	PR-D	715	Reso Bs 10	21:Synth Bass
+19019	PR-D	716	Reso Bs 11	21:Synth Bass
+19020	PR-D	717	Reso Bs 12	21:Synth Bass
+19021	PR-D	718	Reso Bs 13	21:Synth Bass
+19022	PR-D	719	Reso Bs 14	21:Synth Bass
+19023	PR-D	720	Reso Bs 15	21:Synth Bass
+19024	PR-D	721	Reso Bs 16	21:Synth Bass
+19025	PR-D	722	Reso Bs 17	21:Synth Bass
+19026	PR-D	723	Reso Bs 18	21:Synth Bass
+19027	PR-D	724	Reso Bs 19	21:Synth Bass
+19028	PR-D	725	Reso Bs 20	21:Synth Bass
+19029	PR-D	726	Reso Bs 21	21:Synth Bass
+19030	PR-D	727	Reso Bs 22	21:Synth Bass
+19031	PR-D	728	Reso Bs 23	21:Synth Bass
+19032	PR-D	729	Reso Bs 24	21:Synth Bass
+19033	PR-D	730	Camblast	21:Synth Bass
+19034	PR-D	731	LA SynBs	21:Synth Bass
+19035	PR-D	732	Fat SynBs	21:Synth Bass
+19036	PR-D	733	Syn Bs 1	21:Synth Bass
+19037	PR-D	734	Syn Bs 2	21:Synth Bass
+19038	PR-D	735	Syn Bs 3	21:Synth Bass
+19039	PR-D	736	Rubber Bs 1	21:Synth Bass
+19040	PR-D	737	Rubber Bs 2	21:Synth Bass
+19041	PR-D	738	Dynamic Bs 1	21:Synth Bass
+19042	PR-D	739	Dynamic Bs 2	21:Synth Bass
+19043	PR-D	740	Round Bs	21:Synth Bass
+19044	PR-D	741	Acid Bs 1	21:Synth Bass
+19045	PR-D	742	Acid Bs 2	21:Synth Bass
+19046	PR-D	743	Acid Bs 3	21:Synth Bass
+19047	PR-D	744	Acid Bs 4	21:Synth Bass
+19048	PR-D	745	Acid Bs 5	21:Synth Bass
+19049	PR-D	746	Acid Bs 6	21:Synth Bass
+19050	PR-D	747	Spike Bs 1	21:Synth Bass
+19051	PR-D	748	Spike Bs 2	21:Synth Bass
+19052	PR-D	749	H&S Bass	21:Synth Bass
+19053	PR-D	750	Short Bs 1	21:Synth Bass
+19054	PR-D	751	Short Bs 2	21:Synth Bass
+19055	PR-D	752	Short Bs 3	21:Synth Bass
+19056	PR-D	753	HH Bs 1	21:Synth Bass
+19057	PR-D	754	HH Bs 2	21:Synth Bass
+19058	PR-D	755	HH Bs 3	21:Synth Bass
+19059	PR-D	756	HH Bs 4	21:Synth Bass
+19060	PR-D	757	HH Bs 5	21:Synth Bass
+19061	PR-D	758	HH Bs 6	21:Synth Bass
+19062	PR-D	759	Arpaccio	21:Synth Bass
+19063	PR-D	760	Carmelcorn	21:Synth Bass
+19064	PR-D	761	NoiseBs	21:Synth Bass
+19065	PR-D	762	Soft Bs	21:Synth Bass
+19066	PR-D	763	Slow Bs	21:Synth Bass
+19067	PR-D	764	Square Bs 1	21:Synth Bass
+19068	PR-D	765	Square Bs 2	21:Synth Bass
+19069	PR-D	766	Square Bs 3	21:Synth Bass
+19070	PR-D	767	Square Bs 4	21:Synth Bass
+19071	PR-D	768	Squaresville	21:Synth Bass
+19200	PR-D	769	PWM Bass 1	21:Synth Bass
+19201	PR-D	770	PWM Bass 2	21:Synth Bass
+19202	PR-D	771	Modular Bs 1	21:Synth Bass
+19203	PR-D	772	Modular Bs 2	21:Synth Bass
+19204	PR-D	773	Modular Bs 3	21:Synth Bass
+19205	PR-D	774	Modular Bs 4	21:Synth Bass
+19206	PR-D	775	Modular Bs 5	21:Synth Bass
+19207	PR-D	776	Modular Bs 6	21:Synth Bass
+19208	PR-D	777	Unison Bs 1	21:Synth Bass
+19209	PR-D	778	Unison Bs 2	21:Synth Bass
+19210	PR-D	779	Unison Bs 3	21:Synth Bass
+19211	PR-D	780	Unison Bs 4	21:Synth Bass
+19212	PR-D	781	Monster Bs 1	21:Synth Bass
+19213	PR-D	782	Monster Bs 2	21:Synth Bass
+19214	PR-D	783	Monster Bs 3	21:Synth Bass
+19215	PR-D	784	Monster Bs 4	21:Synth Bass
+19216	PR-D	785	Monster Bs 5	21:Synth Bass
+19217	PR-D	786	Monster Bs 6	21:Synth Bass
+19218	PR-D	787	Monster Bs 7	21:Synth Bass
+19219	PR-D	788	Monster Bs 8	21:Synth Bass
+19220	PR-D	789	Bit Bs 1	21:Synth Bass
+19221	PR-D	790	Bit Bs 2	21:Synth Bass
+19222	PR-D	791	Bit Bs 3	21:Synth Bass
+19223	PR-D	792	Bit Bs 4	21:Synth Bass
+19224	PR-D	793	SuperSawBs 1	21:Synth Bass
+19225	PR-D	794	SuperSawBs 2	21:Synth Bass
+19226	PR-D	795	SuperSawBs 3	21:Synth Bass
+19227	PR-D	796	SuperSawBs 4	21:Synth Bass
+19228	PR-D	797	SuperSawBs 5	21:Synth Bass
+19229	PR-D	798	Sync Bs 1	21:Synth Bass
+19230	PR-D	799	Sync Bs 2	21:Synth Bass
+19231	PR-D	800	Sync Bs 3	21:Synth Bass
+19232	PR-D	801	Sync Bs 4	21:Synth Bass
+19233	PR-D	802	SubOSC Bs 1	21:Synth Bass
+19234	PR-D	803	SubOSC Bs 2	21:Synth Bass
+19235	PR-D	804	Ramp Bs	21:Synth Bass
+19236	PR-D	805	LFO Bs 1	21:Synth Bass
+19237	PR-D	806	LFO Bs 2	21:Synth Bass
+19238	PR-D	807	LFO Bs 3	21:Synth Bass
+19239	PR-D	808	LFO Bs 4	21:Synth Bass
+19240	PR-D	809	Crackbass	21:Synth Bass
+19241	PR-D	810	Basschunk	21:Synth Bass
+19242	PR-D	811	Hi-Energy Bs	21:Synth Bass
+19243	PR-D	812	Saw Lead 1	34:Synth Lead
+19244	PR-D	813	Saw Lead 2	34:Synth Lead
+19245	PR-D	814	Saw Lead 3	34:Synth Lead
+19246	PR-D	815	Saw Lead 4	34:Synth Lead
+19247	PR-D	816	Saw Lead 5	34:Synth Lead
+19248	PR-D	817	Saw Lead 6	34:Synth Lead
+19249	PR-D	818	Saw Lead 7	34:Synth Lead
+19250	PR-D	819	Saw Lead 8	34:Synth Lead
+19251	PR-D	820	Saw Lead 9	34:Synth Lead
+19252	PR-D	821	Saw Lead 10	34:Synth Lead
+19253	PR-D	822	Saw Lead 11	34:Synth Lead
+19254	PR-D	823	Saw Lead 12	34:Synth Lead
+19255	PR-D	824	Saw Lead 13	34:Synth Lead
+19256	PR-D	825	Saw Lead 14	34:Synth Lead
+19257	PR-D	826	Saw Lead 15	34:Synth Lead
+19258	PR-D	827	Saw Lead 16	34:Synth Lead
+19259	PR-D	828	Saw Lead 17	34:Synth Lead
+19260	PR-D	829	Saw Lead 18	34:Synth Lead
+19261	PR-D	830	Saw Lead 19	34:Synth Lead
+19262	PR-D	831	Saw Lead 20	34:Synth Lead
+19263	PR-D	832	Saw Lead 21	34:Synth Lead
+19264	PR-D	833	Saw Lead 22	34:Synth Lead
+19265	PR-D	834	Saw Lead 23	34:Synth Lead
+19266	PR-D	835	Saw Lead 24	34:Synth Lead
+19267	PR-D	836	Saw Lead 25	34:Synth Lead
+19268	PR-D	837	Saw Lead 26	34:Synth Lead
+19269	PR-D	838	Saw Lead 27	34:Synth Lead
+19270	PR-D	839	Saw Lead 28	34:Synth Lead
+19271	PR-D	840	Saw Lead 29	34:Synth Lead
+19272	PR-D	841	Saw Lead 30	34:Synth Lead
+19273	PR-D	842	Saw Lead 31	34:Synth Lead
+19274	PR-D	843	Saw Lead 32	34:Synth Lead
+19275	PR-D	844	Saw Lead 33	34:Synth Lead
+19276	PR-D	845	Saw Lead 34	34:Synth Lead
+19277	PR-D	846	Saw Lead 35	34:Synth Lead
+19278	PR-D	847	Saw Lead 36	34:Synth Lead
+19279	PR-D	848	Saw Lead 37	34:Synth Lead
+19280	PR-D	849	Saw Lead 38	34:Synth Lead
+19281	PR-D	850	Saw Lead 39	34:Synth Lead
+19282	PR-D	851	Saw Lead 40	34:Synth Lead
+19283	PR-D	852	Saw Lead 41	34:Synth Lead
+19284	PR-D	853	Saw Lead 42	34:Synth Lead
+19285	PR-D	854	Saw Lead 43	34:Synth Lead
+19286	PR-D	855	Saw Lead 44	34:Synth Lead
+19287	PR-D	856	Saw Lead 45	34:Synth Lead
+19288	PR-D	857	CC Saw Ld 1	34:Synth Lead
+19289	PR-D	858	CC Saw Ld 2	34:Synth Lead
+19290	PR-D	859	CC Saw Ld 3	34:Synth Lead
+19291	PR-D	860	CC Saw Ld 4	34:Synth Lead
+19292	PR-D	861	CC Saw Ld 5	34:Synth Lead
+19293	PR-D	862	Bad Axe	34:Synth Lead
+19294	PR-D	863	Buzz Cut	34:Synth Lead
+19295	PR-D	864	Cutting Lead	34:Synth Lead
+19296	PR-D	865	Fat GR Lead	34:Synth Lead
+19297	PR-D	866	Bright Pls	34:Synth Lead
+19298	PR-D	867	Juicy JP	34:Synth Lead
+19299	PR-D	868	Abakababra	34:Synth Lead
+19300	PR-D	869	Crossfire	34:Synth Lead
+19301	PR-D	870	Borrowed	34:Synth Lead
+19302	PR-D	871	PulstarLd 1	34:Synth Lead
+19303	PR-D	872	PulstarLd 2	34:Synth Lead
+19304	PR-D	873	Dirty Saw Ld	34:Synth Lead
+19305	PR-D	874	Leadership	34:Synth Lead
+19306	PR-D	875	Ripping Mini	34:Synth Lead
+19307	PR-D	876	Love Lead	34:Synth Lead
+19308	PR-D	877	EQ Lead 1	34:Synth Lead
+19309	PR-D	878	EQ Lead 2	34:Synth Lead
+19310	PR-D	879	Stn MG Lead	34:Synth Lead
+19311	PR-D	880	Octa Juice	34:Synth Lead
+19312	PR-D	881	CR Lead	34:Synth Lead
+19313	PR-D	882	Hip Lead	34:Synth Lead
+19314	PR-D	883	Chubby Lead	34:Synth Lead
+19315	PR-D	884	Super Saws	34:Synth Lead
+19316	PR-D	885	NuWave	34:Synth Lead
+19317	PR-D	886	Flangepig	34:Synth Lead
+19318	PR-D	887	Bodyart	34:Synth Lead
+19319	PR-D	888	Buzz Synth	34:Synth Lead
+19320	PR-D	889	Hard Synth	34:Synth Lead
+19321	PR-D	890	Dance Saw 1	34:Synth Lead
+19322	PR-D	891	Dance Saw 2	34:Synth Lead
+19323	PR-D	892	Funky Lead	34:Synth Lead
+19324	PR-D	893	WaveShape Ld	34:Synth Lead
+19325	PR-D	894	Synchro Lead	34:Synth Lead
+19326	PR-D	895	LFO Saw Ld	34:Synth Lead
+19327	PR-D	896	Juno Soft Ld	34:Synth Lead
+19456	PR-D	897	Oct Lead	34:Synth Lead
+19457	PR-D	898	Slow Lead 1	34:Synth Lead
+19458	PR-D	899	Slow Lead 2	34:Synth Lead
+19459	PR-D	900	Slow Lead 3	34:Synth Lead
+19460	PR-D	901	Slow Lead 4	34:Synth Lead
+19461	PR-D	902	Slow Lead 5	34:Synth Lead
+19462	PR-D	903	Slow Lead 6	34:Synth Lead
+19463	PR-D	904	Slow Lead 7	34:Synth Lead
+19464	PR-D	905	Slow Lead 8	34:Synth Lead
+19465	PR-D	906	Slow Lead 9	34:Synth Lead
+19466	PR-D	907	Slow Lead 10	34:Synth Lead
+19467	PR-D	908	Slow Lead 11	34:Synth Lead
+19468	PR-D	909	Slow Lead 12	34:Synth Lead
+19469	PR-D	910	AnaVox Ld 1	34:Synth Lead
+19470	PR-D	911	AnaVox Ld 2	34:Synth Lead
+19471	PR-D	912	AnaVox Ld 3	34:Synth Lead
+19472	PR-D	913	AnaVox Ld 4	34:Synth Lead
+19473	PR-D	914	Pulse Lead 1	34:Synth Lead
+19474	PR-D	915	Pulse Lead 2	34:Synth Lead
+19475	PR-D	916	Pulse Lead 3	34:Synth Lead
+19476	PR-D	917	BellSaw Ld 1	34:Synth Lead
+19477	PR-D	918	BellSaw Ld 2	34:Synth Lead
+19478	PR-D	919	Bell Lead 1	34:Synth Lead
+19479	PR-D	920	Bell Lead 2	34:Synth Lead
+19480	PR-D	921	Bell Lead 3	34:Synth Lead
+19481	PR-D	922	Dig n D	34:Synth Lead
+19482	PR-D	923	Juicy Lead 1	34:Synth Lead
+19483	PR-D	924	Juicy Lead 2	34:Synth Lead
+19484	PR-D	925	Portament Ld	34:Synth Lead
+19485	PR-D	926	Reso Juno	34:Synth Lead
+19486	PR-D	927	Air Lead 1	34:Synth Lead
+19487	PR-D	928	Air Lead 2	34:Synth Lead
+19488	PR-D	929	Reso Pulser	34:Synth Lead
+19489	PR-D	930	Growl Lead	34:Synth Lead
+19490	PR-D	931	Vintager 1	34:Synth Lead
+19491	PR-D	932	Vintager 2	34:Synth Lead
+19492	PR-D	933	Vintager 3	34:Synth Lead
+19493	PR-D	934	SuperSaw Ld	34:Synth Lead
+19494	PR-D	935	5th SawLead1	34:Synth Lead
+19495	PR-D	936	5th SawLead2	34:Synth Lead
+19496	PR-D	937	Simple Sqr	34:Synth Lead
+19497	PR-D	938	Round Sqr 1	34:Synth Lead
+19498	PR-D	939	Round Sqr 2	34:Synth Lead
+19499	PR-D	940	Square Ld 1	34:Synth Lead
+19500	PR-D	941	Square Ld 2	34:Synth Lead
+19501	PR-D	942	Square Ld 3	34:Synth Lead
+19502	PR-D	943	Square Ld 4	34:Synth Lead
+19503	PR-D	944	Square Ld 5	34:Synth Lead
+19504	PR-D	945	Square Ld 6	34:Synth Lead
+19505	PR-D	946	Square Ld 7	34:Synth Lead
+19506	PR-D	947	Square Ld 8	34:Synth Lead
+19507	PR-D	948	Square Ld 9	34:Synth Lead
+19508	PR-D	949	Square Ld 10	34:Synth Lead
+19509	PR-D	950	Square Ld 11	34:Synth Lead
+19510	PR-D	951	Square Ld 12	34:Synth Lead
+19511	PR-D	952	Square Ld 13	34:Synth Lead
+19512	PR-D	953	Square Ld 14	34:Synth Lead
+19513	PR-D	954	Square Ld 15	34:Synth Lead
+19514	PR-D	955	Squareoff	34:Synth Lead
+19515	PR-D	956	Brite Sqr 1	34:Synth Lead
+19516	PR-D	957	Brite Sqr 2	34:Synth Lead
+19517	PR-D	958	Brite Sqr 3	34:Synth Lead
+19518	PR-D	959	Cpt McSquare	34:Synth Lead
+19519	PR-D	960	Tekno Sqr	34:Synth Lead
+19520	PR-D	961	Octa Square	34:Synth Lead
+19521	PR-D	962	Pure Square	34:Synth Lead
+19522	PR-D	963	SynOcarina 1	34:Synth Lead
+19523	PR-D	964	SynOcarina 2	34:Synth Lead
+19524	PR-D	965	SynOcarina 3	34:Synth Lead
+19525	PR-D	966	Crawler	34:Synth Lead
+19526	PR-D	967	OB Lead 1	34:Synth Lead
+19527	PR-D	968	OB Lead 2	34:Synth Lead
+19528	PR-D	969	Tri Lead 1	34:Synth Lead
+19529	PR-D	970	Tri Lead 2	34:Synth Lead
+19530	PR-D	971	Tri Lead 3	34:Synth Lead
+19531	PR-D	972	Tri Lead 4	34:Synth Lead
+19532	PR-D	973	Softy Lead	34:Synth Lead
+19533	PR-D	974	Sine Lead 1	34:Synth Lead
+19534	PR-D	975	Sine Lead 2	34:Synth Lead
+19535	PR-D	976	Sine Lead 3	34:Synth Lead
+19536	PR-D	977	Sine Lead 4	34:Synth Lead
+19537	PR-D	978	Sine Lead 5	34:Synth Lead
+19538	PR-D	979	OSC-SyncLd 1	34:Synth Lead
+19539	PR-D	980	OSC-SyncLd 2	34:Synth Lead
+19540	PR-D	981	OSC-SyncLd 3	34:Synth Lead
+19541	PR-D	982	OSC-SyncLd 4	34:Synth Lead
+19542	PR-D	983	OSC-SyncLd 5	34:Synth Lead
+19543	PR-D	984	OSC-SyncLd 6	34:Synth Lead
+19544	PR-D	985	OSC-SyncLd 7	34:Synth Lead
+19545	PR-D	986	OSC-SyncLd 8	34:Synth Lead
+19546	PR-D	987	Disturb Sync	34:Synth Lead
+19547	PR-D	988	Digi Lead 1	34:Synth Lead
+19548	PR-D	989	Digi Lead 2	34:Synth Lead
+19549	PR-D	990	Waspy Lead	34:Synth Lead
+19550	PR-D	991	Stitcher	34:Synth Lead
+19551	PR-D	992	Sweet 5th 1	34:Synth Lead
+19552	PR-D	993	Sweet 5th 2	34:Synth Lead
+19553	PR-D	994	SoloNzPeaker	34:Synth Lead
+19554	PR-D	995	Release Ld	34:Synth Lead
+19555	PR-D	996	Syn Lead 1	34:Synth Lead
+19556	PR-D	997	Syn Lead 2	34:Synth Lead
+19557	PR-D	998	Syn Lead 3	34:Synth Lead
+19558	PR-D	999	Syn Lead 4	34:Synth Lead
+19559	PR-D	1000	Syn Lead 5	34:Synth Lead
+19560	PR-D	1001	Syn Lead 6	34:Synth Lead
+19561	PR-D	1002	Syn Lead 7	34:Synth Lead
+19562	PR-D	1003	Syn Lead 8	34:Synth Lead
+19563	PR-D	1004	Syn Lead 9	34:Synth Lead
+19564	PR-D	1005	Syn Lead 10	34:Synth Lead
+19565	PR-D	1006	Syn Lead 11	34:Synth Lead
+19566	PR-D	1007	Tekno Ld 1	34:Synth Lead
+19567	PR-D	1008	Tekno Ld 2	34:Synth Lead
+19568	PR-D	1009	Tekno Ld 3	34:Synth Lead
+19569	PR-D	1010	Tekno Ld 4	34:Synth Lead
+19570	PR-D	1011	Tekno Ld 5	34:Synth Lead
+19571	PR-D	1012	Tekno Ld 6	34:Synth Lead
+19572	PR-D	1013	Tekno Ld 7	34:Synth Lead
+19573	PR-D	1014	Tekno Ld 8	34:Synth Lead
+19574	PR-D	1015	Tekno Ld 9	34:Synth Lead
+19575	PR-D	1016	Tekno Ld 10	34:Synth Lead
+19576	PR-D	1017	Tekno Ld 11	34:Synth Lead
+19577	PR-D	1018	Tekno Ld 12	34:Synth Lead
+19578	PR-D	1019	Tekno Ld 13	34:Synth Lead
+19579	PR-D	1020	Tekno Ld 14	34:Synth Lead
+19580	PR-D	1021	Tekno Ld 15	34:Synth Lead
+19581	PR-D	1022	Tekno Ld 16	34:Synth Lead
+19582	PR-D	1023	Tekno Ld 17	34:Synth Lead
+19583	PR-D	1024	Tekno Ld 18	34:Synth Lead
+19712	PR-D	1025	Tekno Ld 19	34:Synth Lead
+19713	PR-D	1026	Tekno Ld 20	34:Synth Lead
+19714	PR-D	1027	Tekno Ld 21	34:Synth Lead
+19715	PR-D	1028	Tekno Ld 22	34:Synth Lead
+19716	PR-D	1029	Tekno Ld 23	34:Synth Lead
+19717	PR-D	1030	Tekno Ld 24	34:Synth Lead
+19718	PR-D	1031	Tekno Ld 25	34:Synth Lead
+19719	PR-D	1032	Tekno Ld 26	34:Synth Lead
+19720	PR-D	1033	Tekno Ld 27	34:Synth Lead
+19721	PR-D	1034	Tekno Ld 28	34:Synth Lead                                                       24:Ensemble
+19722	PR-D	1035	Tekno Ld 29	34:Synth Lead                                                          Strings
+19723	PR-D	1036	Tekno Ld 30	34:Synth Lead
+19724	PR-D	1037	Tekno Ld 31	34:Synth Lead
+19725	PR-D	1038	Tekno Ld 32	34:Synth Lead
+19726	PR-D	1039	Tekno Ld 33	34:Synth Lead
+19727	PR-D	1040	Tekno Ld 34	34:Synth Lead
+19728	PR-D	1041	Tekno Ld 35	34:Synth Lead
+19729	PR-D	1042	Tekno Ld 36	34:Synth Lead
+19730	PR-D	1043	JP80 Ring-80	34:Synth Lead
+19731	PR-D	1044	Distroubled	34:Synth Lead
+19732	PR-D	1045	Hover Dive 1	34:Synth Lead        Bank   No.     Tone Name      MSB   LSB   PC    Category
+19733	PR-D	1046	Hover Dive 2	34:Synth Lead
+19734	PR-D	1047	OhWowWow	34:Synth Lead
+19735	PR-D	1048	Broken Lead	34:Synth Lead
+19736	PR-D	1049	FX 1	45:Sound FX
+19737	PR-D	1050	FX 2	45:Sound FX
+19738	PR-D	1051	FX 3	45:Sound FX
+19739	PR-D	1052	FX 4	45:Sound FX
+19740	PR-D	1053	FX 5	45:Sound FX
+19741	PR-D	1054	FX 6	45:Sound FX
+19742	PR-D	1055	FX 7	45:Sound FX
+19743	PR-D	1056	FX 8	45:Sound FX
+19744	PR-D	1057	FX 9	45:Sound FX
+19745	PR-D	1058	FX 10	45:Sound FX
+19746	PR-D	1059	FX 11	45:Sound FX
+19747	PR-D	1060	FX 12	45:Sound FX
+19748	PR-D	1061	FX 13	45:Sound FX
+19749	PR-D	1062	FX 14	45:Sound FX
+19750	PR-D	1063	FX 15	45:Sound FX
+19751	PR-D	1064	FX 16	45:Sound FX
+19752	PR-D	1065	FX 17	45:Sound FX
+19753	PR-D	1066	FX 18	45:Sound FX
+19754	PR-D	1067	FX 19	45:Sound FX
+19755	PR-D	1068	FX 20	45:Sound FX
+19756	PR-D	1069	FX 21	45:Sound FX
+19757	PR-D	1070	FX 22	45:Sound FX
+19758	PR-D	1071	FX 23	45:Sound FX
+19759	PR-D	1072	FX 24	45:Sound FX
+19760	PR-D	1073	FX 25	45:Sound FX
+19761	PR-D	1074	Zapper	45:Sound FX
+19762	PR-D	1075	Sci-Fi Sweep	45:Sound FX
+19763	PR-D	1076	War Drum	45:Sound FX
+19764	PR-D	1077	Vox FX	45:Sound FX
+19765	PR-D	1078	Atomspheric	45:Sound FX
+19766	PR-D	1079	Angry Words	45:Sound FX
+19767	PR-D	1080	F6 = Critter	45:Sound FX
+19768	PR-D	1081	FreeJazz	45:Sound FX
+19769	PR-D	1082	FM EP 1	4:E.Piano1
+19770	PR-D	1083	FM EP 2	4:E.Piano1
+19771	PR-D	1084	FM EP 3	4:E.Piano1
+19772	PR-D	1085	FM EP 4	4:E.Piano1
+19773	PR-D	1086	FM EP 5	4:E.Piano1
+19774	PR-D	1087	FM EP 6	4:E.Piano1
+19775	PR-D	1088	FM EPhaser	4:E.Piano1
+19776	PR-D	1089	EP Belle	4:E.Piano1
+19777	PR-D	1090	80’s EP	4:E.Piano1
+19778	PR-D	1091	Spirit Tine	4:E.Piano1
+19779	PR-D	1092	70’s E.Org 1	6:E.Organ
+19780	PR-D	1093	70’s E.Org 2	6:E.Organ
+19781	PR-D	1094	Theater 1	6:E.Organ
+19782	PR-D	1095	Theater 2	6:E.Organ
+19783	PR-D	1096	Theater 3	6:E.Organ
+19784	PR-D	1097	Pulse Clav	10:Clav
+19785	PR-D	1098	Toy Box 1	15:Mallet
+19786	PR-D	1099	Toy Box 2	15:Mallet
+19787	PR-D	1100	Ethno Keys	15:Mallet
+19788	PR-D	1101	Mood String	
+19789	PR-D	1102	Orch Hit	44:Hit
+19790	PR-D	1103	Philly Hit 1	44:Hit
+19791	PR-D	1104	Philly Hit 2	44:Hit
+19792	PR-D	1105	Philly Hit 3	44:Hit
+19793	PR-D	1106	Philly Hit 4	44:Hit
+19794	PR-D	1107	House Hit 1	44:Hit
+19795	PR-D	1108	House Hit 2	44:Hit
+19796	PR-D	1109	LoFi Hit	44:Hit
+19968	PR-E	1	128voicePno	1:Ac.Piano
+19969	PR-E	2	Bright Piano	1:Ac.Piano
+19970	PR-E	3	Classique	1:Ac.Piano
+19971	PR-E	4	Nice Piano	1:Ac.Piano
+19972	PR-E	5	Piano Thang	1:Ac.Piano
+19973	PR-E	6	Power Grand	2:Pop Piano
+19974	PR-E	7	House Piano	2:Pop Piano
+19975	PR-E	8	E.Grand	2:Pop Piano
+19976	PR-E	9	MIDIed Grand	2:Pop Piano
+19977	PR-E	10	Piano Blend	2:Pop Piano
+19978	PR-E	11	West Coast	2:Pop Piano
+19979	PR-E	12	PianoStrings	1:Ac.Piano
+19980	PR-E	13	Bs/Pno+Brs	1:Ac.Piano
+19981	PR-E	14	Water EP	4:E.Piano1
+19982	PR-E	15	S.A.E.P.	5:E.Piano2
+19983	PR-E	16	SA EP 1	4:E.Piano1
+19984	PR-E	17	SA EP 2	4:E.Piano1
+19985	PR-E	18	Stiky EP	5:E.Piano2
+19986	PR-E	19	Dig EP	5:E.Piano2
+19987	PR-E	20	Nylon EPiano	5:E.Piano2
+19988	PR-E	21	Nylon EP	5:E.Piano2
+19989	PR-E	22	EP Mix	4:E.Piano1
+19990	PR-E	23	Psycho EP	4:E.Piano1
+19991	PR-E	24	Tremo EP	4:E.Piano1
+19992	PR-E	25	MK-80 EP	5:E.Piano2
+19993	PR-E	26	MK-80 Phaser	5:E.Piano2
+19994	PR-E	27	Delicate EP	5:E.Piano2
+19995	PR-E	28	Octa EP 1	5:E.Piano2
+19996	PR-E	29	Octa EP 2	5:E.Piano2
+19997	PR-E	30	JV EP+	5:E.Piano2
+19998	PR-E	31	EP+Mod Pad	5:E.Piano2
+19999	PR-E	32	Mr.Mellow	5:E.Piano2
+20000	PR-E	33	Comp Clav	10:Clav
+20001	PR-E	34	Klavinet	10:Clav
+20002	PR-E	35	Winger Clav	10:Clav
+20003	PR-E	36	Phaze Clav 1	10:Clav
+20004	PR-E	37	Phaze Clav 2	10:Clav
+20005	PR-E	38	Phuzz Clav	10:Clav
+20006	PR-E	39	Chorus Clav	10:Clav
+20007	PR-E	40	Claviduck	10:Clav
+20008	PR-E	41	Velo-Rez Clv	10:Clav
+20009	PR-E	42	Clavicembalo	10:Clav
+20010	PR-E	43	Analog Clav1	10:Clav
+20011	PR-E	44	Analog Clav2	10:Clav
+20012	PR-E	45	Metal Clav	10:Clav
+20013	PR-E	46	Full Stops	6:E.Organ
+20014	PR-E	47	Ballad B	6:E.Organ
+20015	PR-E	48	Mellow Bars	6:E.Organ
+20016	PR-E	49	AugerMentive	6:E.Organ
+20017	PR-E	50	Perky B	6:E.Organ
+20018	PR-E	51	The Big Spin	6:E.Organ
+20019	PR-E	52	Gospel Spin	6:E.Organ
+20020	PR-E	53	Roller Spin	6:E.Organ
+20021	PR-E	54	Rocker Spin	6:E.Organ
+20022	PR-E	55	Tone Wh.Solo	6:E.Organ
+20023	PR-E	56	Purple Spin	6:E.Organ
+20024	PR-E	57	60’s LeadORG	6:E.Organ
+20025	PR-E	58	Assalt Organ	6:E.Organ
+20026	PR-E	59	D-50 Organ	6:E.Organ
+20027	PR-E	60	Cathedral	7:Pipe Organ
+20028	PR-E	61	Church Pipes	7:Pipe Organ
+20029	PR-E	62	Poly Key	38:Synth PolyKey
+20030	PR-E	63	Poly Saws	38:Synth PolyKey
+20031	PR-E	64	Poly Pulse	38:Synth PolyKey
+20032	PR-E	65	Dual Profs	38:Synth PolyKey
+20033	PR-E	66	Saw Mass	38:Synth PolyKey
+20034	PR-E	67	Poly Split	38:Synth PolyKey
+20035	PR-E	68	Poly Brass	35:Synth Brass
+20036	PR-E	69	Stackoid	38:Synth PolyKey
+20037	PR-E	70	Poly Rock	38:Synth PolyKey
+20038	PR-E	71	D-50 Stack	37:Synth Bellpad
+20039	PR-E	72	Fantasia JV	37:Synth Bellpad
+20040	PR-E	73	Jimmee Dee	37:Synth Bellpad
+20041	PR-E	74	Heavenals	37:Synth Bellpad
+20042	PR-E	75	Mallet Pad	37:Synth Bellpad
+20043	PR-E	76	Huff N Stuff	37:Synth Bellpad
+20044	PR-E	77	Puff 1080	38:Synth PolyKey
+20045	PR-E	78	BellVox 1080	37:Synth Bellpad
+20046	PR-E	79	Fantasy Vox	37:Synth Bellpad
+20047	PR-E	80	Square Keys	38:Synth PolyKey
+20048	PR-E	81	Childlike	14:Bell
+20049	PR-E	82	Music Box	14:Bell
+20050	PR-E	83	Toy Box	14:Bell
+20051	PR-E	84	Wave Bells	14:Bell
+20052	PR-E	85	Tria Bells	14:Bell
+20053	PR-E	86	Beauty Bells	14:Bell
+20054	PR-E	87	Music Bells	14:Bell
+20055	PR-E	88	Pretty Bells	14:Bell
+20056	PR-E	89	Pulse Key	38:Synth PolyKey
+20057	PR-E	90	Wide Tubular	14:Bell
+20058	PR-E	91	AmbienceVibe	15:Mallet
+20059	PR-E	92	Warm Vibes	15:Mallet
+20060	PR-E	93	Dyna Marimba	15:Mallet
+20061	PR-E	94	Bass Marimba	15:Mallet
+20062	PR-E	95	Nomad Perc	15:Mallet
+20063	PR-E	96	Ethno Metals	14:Bell
+20064	PR-E	97	Islands Mlt	15:Mallet
+20065	PR-E	98	Steelin Keys	15:Mallet
+20066	PR-E	99	Steel Drums	15:Mallet
+20067	PR-E	100	Voicey Pizz	23:Solo Strings
+20068	PR-E	101	Sitar	22:Plucked/Stroke
+20069	PR-E	102	Drone Split	22:Plucked/Stroke
+20070	PR-E	103	Ethnopluck	22:Plucked/Stroke
+20071	PR-E	104	Jamisen	22:Plucked/Stroke
+20072	PR-E	105	Dulcimer	22:Plucked/Stroke
+20073	PR-E	106	East Melody	22:Plucked/Stroke
+20074	PR-E	107	MandolinTrem	22:Plucked/Stroke
+20075	PR-E	108	Nylon Gtr	16:Ac.Guitar
+20076	PR-E	109	Gtr Strings	16:Ac.Guitar
+20077	PR-E	110	Steel Away	16:Ac.Guitar
+20078	PR-E	111	Heavenly Gtr	16:Ac.Guitar
+20079	PR-E	112	12str Gtr 1	16:Ac.Guitar
+20080	PR-E	113	12str Gtr 2	16:Ac.Guitar
+20081	PR-E	114	Jz Gtr Hall	17:E.Guitar
+20082	PR-E	115	LetterFrmPat	17:E.Guitar
+20083	PR-E	116	Jazz Scat + Gtr	17:E.Guitar
+20084	PR-E	117	Lounge Gig	17:E.Guitar
+20085	PR-E	118	JC ST Gtr	17:E.Guitar
+20086	PR-E	119	Twin ST Gtr	17:E.Guitar
+20087	PR-E	120	JV ST Gtr	17:E.Guitar
+20088	PR-E	121	Syn ST Gtr	17:E.Guitar
+20089	PR-E	122	Rotary Gtr	17:E.Guitar
+20090	PR-E	123	Muted Gtr	17:E.Guitar
+20091	PR-E	124	SwitchOnMute	17:E.Guitar
+20092	PR-E	125	Power Trip	18:Dist.Guitar
+20093	PR-E	126	Crunch Split	18:Dist.Guitar
+20094	PR-E	127	Rezodrive	18:Dist.Guitar
+20095	PR-E	128	RockYurSocks	18:Dist.Guitar
+20224	PR-E	129	Dist Gtr 1	18:Dist.Guitar
+20225	PR-E	130	Dist Gtr 2	18:Dist.Guitar
+20226	PR-E	131	R&R Chunk	18:Dist.Guitar
+20227	PR-E	132	Phripphuzz	18:Dist.Guitar
+20228	PR-E	133	Grungeroni	18:Dist.Guitar
+20229	PR-E	134	Black Widow	18:Dist.Guitar
+20230	PR-E	135	Velo-Wah Gtr	17:E.Guitar
+20231	PR-E	136	Mod-Wah Gtr	18:Dist.Guitar
+20232	PR-E	137	Pick Bass	20:E.Bass
+20233	PR-E	138	Hip Bass	20:E.Bass
+20234	PR-E	139	Perc.Bass	20:E.Bass
+20235	PR-E	140	Homey Bass	20:E.Bass
+20236	PR-E	141	Finger Bass	20:E.Bass
+20237	PR-E	142	Nylon Bass	19:Ac.Bass
+20238	PR-E	143	Ac.Upright	19:Ac.Bass
+20239	PR-E	144	Wet Fretls	20:E.Bass
+20240	PR-E	145	Fretls Dry	20:E.Bass
+20241	PR-E	146	Slap Bass 1	20:E.Bass
+20242	PR-E	147	Slap Bass 2	20:E.Bass
+20243	PR-E	148	Slap Bass 3	20:E.Bass
+20244	PR-E	149	Slap Bass 4	20:E.Bass
+20245	PR-E	150	4 Pole Bass 1	21:Synth Bass
+20246	PR-E	151	Tick Bass	21:Synth Bass
+20247	PR-E	152	House Bass	21:Synth Bass
+20248	PR-E	153	Mondo Bass	21:Synth Bass
+20249	PR-E	154	Clk AnalogBs	21:Synth Bass
+20250	PR-E	155	Bass In Face	21:Synth Bass
+20251	PR-E	156	101Bass	21:Synth Bass
+20252	PR-E	157	Noiz Bass	21:Synth Bass
+20253	PR-E	158	Super Jup Bs	21:Synth Bass
+20254	PR-E	159	Occitan Bass	21:Synth Bass
+20255	PR-E	160	Hugo Bass	21:Synth Bass
+20256	PR-E	161	Multi Bass	21:Synth Bass
+20257	PR-E	162	Moist Bass	21:Synth Bass
+20258	PR-E	163	BritelowBass	21:Synth Bass
+20259	PR-E	164	Untamed Bass	21:Synth Bass
+20260	PR-E	165	Rubber Bass	21:Synth Bass
+20261	PR-E	166	Stereoww Bs	21:Synth Bass
+20262	PR-E	167	Wonder Bass	21:Synth Bass
+20263	PR-E	168	Deep Bass	21:Synth Bass
+20264	PR-E	169	Super JX Bs	21:Synth Bass
+20265	PR-E	170	W<RED>-Bass	21:Synth Bass
+20266	PR-E	171	HI-Ring Bass	21:Synth Bass
+20267	PR-E	172	Euro Bass	21:Synth Bass
+20268	PR-E	173	SinusoidRave	21:Synth Bass
+20269	PR-E	174	Alternative	42:Pulsating
+20270	PR-E	175	Acid Line	42:Pulsating
+20271	PR-E	176	Auto TB-303	34:Synth Lead
+20272	PR-E	177	Hihat Tekno	39:Synth FX
+20273	PR-E	178	Velo Tekno 1	34:Synth Lead
+20274	PR-E	179	Raggatronic	42:Pulsating
+20275	PR-E	180	Blade Racer	42:Pulsating
+20276	PR-E	181	S&H Pad	42:Pulsating
+20277	PR-E	182	Syncrosonix	42:Pulsating
+20278	PR-E	183	Fooled Again	42:Pulsating
+20279	PR-E	184	Alive	42:Pulsating
+20280	PR-E	185	Velo Tekno 2	40:Synth Seq/Pop
+20281	PR-E	186	Rezoid	38:Synth PolyKey
+20282	PR-E	187	Raverborg	34:Synth Lead
+20283	PR-E	188	Blow Hit	44:Hit
+20284	PR-E	189	Hammer Bell	14:Bell
+20285	PR-E	190	Seq Mallet	40:Synth Seq/Pop
+20286	PR-E	191	Intentions	38:Synth PolyKey
+20287	PR-E	192	Pick It	38:Synth PolyKey
+20288	PR-E	193	Analog Seq	40:Synth Seq/Pop
+20289	PR-E	194	Impact Vox	38:Synth PolyKey
+20290	PR-E	195	TeknoSoloVox	38:Synth PolyKey
+20291	PR-E	196	X-Mod Man	42:Pulsating
+20292	PR-E	197	Paz <==> Zap	42:Pulsating
+20293	PR-E	198	4 Hits 4 You	44:Hit
+20294	PR-E	199	Impact	44:Hit
+20295	PR-E	200	Phase Hit	44:Hit
+20296	PR-E	201	Tekno Hit 1	44:Hit
+20297	PR-E	202	Tekno Hit 2	44:Hit
+20298	PR-E	203	Tekno Hit 3	44:Hit
+20299	PR-E	204	Reverse Hit	44:Hit
+20300	PR-E	205	SquareLead 1	34:Synth Lead
+20301	PR-E	206	SquareLead 2	34:Synth Lead
+20302	PR-E	207	You and Luck	34:Synth Lead
+20303	PR-E	208	Belly Lead	34:Synth Lead
+20304	PR-E	209	WhistlinAtom	34:Synth Lead
+20305	PR-E	210	Edye Boost	34:Synth Lead
+20306	PR-E	211	MG Solo	34:Synth Lead
+20307	PR-E	212	FXM Saw Lead	34:Synth Lead
+20308	PR-E	213	Sawteeth	34:Synth Lead
+20309	PR-E	214	Smoothe	34:Synth Lead
+20310	PR-E	215	MG Lead	34:Synth Lead
+20311	PR-E	216	MG Interval	34:Synth Lead
+20312	PR-E	217	Pulse Lead 1	34:Synth Lead
+20313	PR-E	218	Pulse Lead 2	34:Synth Lead
+20314	PR-E	219	Little Devil	34:Synth Lead
+20315	PR-E	220	Loud SynLead	34:Synth Lead
+20316	PR-E	221	Analog Lead	34:Synth Lead
+20317	PR-E	222	5th Lead	34:Synth Lead
+20318	PR-E	223	Flute	29:Flute
+20319	PR-E	224	Piccolo	29:Flute                                                              24:Ensemble
+20320	PR-E	225	VOX Flute	29:Flute                                                                 Strings
+20321	PR-E	226	Air Lead	29:Flute                                                              24:Ensemble
+20322	PR-E	227	Pan Pipes	29:Flute                                                                 Strings
+20323	PR-E	228	Airplaaane	38:Synth PolyKey                                                          24:Ensemble
+20324	PR-E	229	Taj Mahal	29:Flute
+20325	PR-E	230	Raya Shaku	29:Flute
+20326	PR-E	231	Oboe mf	28:Wind                                                               24:Ensemble
+20327	PR-E	232	Oboe Express	28:Wind                                                                  Strings
+20328	PR-E	233	Clarinet mp	28:Wind                                                               24:Ensemble
+20329	PR-E	234	ClariExpress	28:Wind                                                                  Strings
+20330	PR-E	235	Mitzva Split	28:Wind                                                               24:Ensemble
+20331	PR-E	236	ChamberWinds	28:Wind
+20332	PR-E	237	ChamberWoods	28:Wind
+20333	PR-E	238	Film Orch	25:Orchestral
+20334	PR-E	239	Sop.Sax mf	30:Sax
+20335	PR-E	240	Alto Sax	30:Sax                                                               24:Ensemble
+20336	PR-E	241	AltoLead Sax	30:Sax                                                                  Strings
+20337	PR-E	242	Tenor Sax	30:Sax
+20338	PR-E	243	Baritone Sax	30:Sax                                                               24:Ensemble
+20339	PR-E	244	Take A Tenor	30:Sax                                                                  Strings
+20340	PR-E	245	Sax Section	30:Sax                                                               24:Ensemble
+20341	PR-E	246	Bigband Sax	30:Sax
+20342	PR-E	247	Harmonica	13:Harmonica
+20343	PR-E	248	Harmo Blues	13:Harmonica
+20344	PR-E	249	BluesHarp	13:Harmonica
+20345	PR-E	250	Hillbillys	13:Harmonica
+20346	PR-E	251	French Bags	28:Wind
+20347	PR-E	252	Majestic Tpt	26:Solo Brass
+20348	PR-E	253	Voluntare	26:Solo Brass
+20349	PR-E	254	2Trumpets	27:Ensemble Brass
+20350	PR-E	255	Tpt Sect	27:Ensemble Brass
+20351	PR-E	256	Mute TP mod	26:Solo Brass
+20480	PR-E	257	Harmon Mute	26:Solo Brass
+20481	PR-E	258	Tp&Sax Sect	27:Ensemble Brass
+20482	PR-E	259	Sax+Tp+Tb	27:Ensemble Brass
+20483	PR-E	260	Brass Sect	27:Ensemble Brass
+20484	PR-E	261	Trombone	26:Solo Brass
+20485	PR-E	262	Hybrid Bones	27:Ensemble Brass
+20486	PR-E	263	Noble Horns	27:Ensemble Brass
+20487	PR-E	264	Massed Horns	27:Ensemble Brass
+20488	PR-E	265	Horn Swell	27:Ensemble Brass
+20489	PR-E	266	Brass It!	35:Synth Brass
+20490	PR-E	267	Brass Attack	35:Synth Brass
+20491	PR-E	268	Archimede	35:Synth Brass
+20492	PR-E	269	Rugby Horn	35:Synth Brass
+20493	PR-E	270	MKS-80 Brass	35:Synth Brass
+20494	PR-E	271	True ANALOG	35:Synth Brass
+20495	PR-E	272	Dark Vox	32:Vox/Choir
+20496	PR-E	273	RandomVowels	32:Vox/Choir
+20497	PR-E	274	Angels Sing	32:Vox/Choir
+20498	PR-E	275	Pvox Oooze	32:Vox/Choir
+20499	PR-E	276	Longing...	32:Vox/Choir
+20500	PR-E	277	Arasian Morn	32:Vox/Choir
+20501	PR-E	278	Beauty Vox	32:Vox/Choir
+20502	PR-E	279	Mary-AnneVox	32:Vox/Choir
+20503	PR-E	280	Belltree Vox	32:Vox/Choir
+20504	PR-E	281	Vox Panner	32:Vox/Choir
+20505	PR-E	282	Spaced Voxx	32:Vox/Choir
+20506	PR-E	283	Glass Voices	32:Vox/Choir
+20507	PR-E	284	Tubular Vox	32:Vox/Choir
+20508	PR-E	285	Velo Voxx	32:Vox/Choir
+20509	PR-E	286	Wavox	32:Vox/Choir
+20510	PR-E	287	Doos	33:Scat
+20511	PR-E	288	Synvox Comps	32:Vox/Choir
+20512	PR-E	289	Vocal Oohz	32:Vox/Choir
+20513	PR-E	290	LFO Vox	42:Pulsating
+20514	PR-E	291	St.Strings	
+20515	PR-E	292	Warm Strings	
+20516	PR-E	293	Somber Str	
+20517	PR-E	294	Marcato	
+20518	PR-E	295	Bright Str	
+20519	PR-E	296	String Ens	
+20520	PR-E	297	TremoloStrng	
+20521	PR-E	298	Chambers	
+20522	PR-E	299	ViolinCello	23:Solo Strings
+20523	PR-E	300	Symphonique	25:Orchestral
+20524	PR-E	301	Film Octaves	
+20525	PR-E	302	Film Layers	25:Orchestral
+20526	PR-E	303	Bass Pizz	
+20527	PR-E	304	Real Pizz	
+20528	PR-E	305	Harp On It	22:Plucked/Stroke
+20529	PR-E	306	Harp	22:Plucked/Stroke
+20530	PR-E	307	JP-8 Str 1	36:Synth Pad/Str
+20531	PR-E	308	JP-8 Str 2	36:Synth Pad/Str
+20532	PR-E	309	E-Motion Pad	36:Synth Pad/Str
+20533	PR-E	310	JP-8 Str 3	36:Synth Pad/Str
+20534	PR-E	311	Vintage Orch	36:Synth Pad/Str
+20535	PR-E	312	JUNO Strings	36:Synth Pad/Str
+20536	PR-E	313	Gigantalog	36:Synth Pad/Str
+20537	PR-E	314	PWM Strings	36:Synth Pad/Str
+20538	PR-E	315	Warmth	36:Synth Pad/Str
+20539	PR-E	316	ORBit Pad	36:Synth Pad/Str
+20540	PR-E	317	Deep Strings	36:Synth Pad/Str
+20541	PR-E	318	Pulsify	36:Synth Pad/Str
+20542	PR-E	319	Pulse Pad	36:Synth Pad/Str
+20543	PR-E	320	Greek Power	36:Synth Pad/Str
+20544	PR-E	321	Harmonicum	36:Synth Pad/Str
+20545	PR-E	322	D-50 Heaven	36:Synth Pad/Str
+20546	PR-E	323	Afro Horns	35:Synth Brass
+20547	PR-E	324	Pop Pad	36:Synth Pad/Str
+20548	PR-E	325	Dreamesque	36:Synth Pad/Str
+20549	PR-E	326	Square Pad	36:Synth Pad/Str
+20550	PR-E	327	JP-8 Hollow	36:Synth Pad/Str
+20551	PR-E	328	JP-8Haunting	36:Synth Pad/Str
+20552	PR-E	329	Heirborne	36:Synth Pad/Str
+20553	PR-E	330	Hush Pad	36:Synth Pad/Str
+20554	PR-E	331	Jet Pad 1	36:Synth Pad/Str
+20555	PR-E	332	Jet Pad 2	36:Synth Pad/Str
+20556	PR-E	333	Phaze Pad	36:Synth Pad/Str
+20557	PR-E	334	Phaze Str	36:Synth Pad/Str
+20558	PR-E	335	Jet Str Ens	36:Synth Pad/Str
+20559	PR-E	336	Pivotal Pad	36:Synth Pad/Str
+20560	PR-E	337	3D Flanged	36:Synth Pad/Str
+20561	PR-E	338	Fantawine	36:Synth Pad/Str
+20562	PR-E	339	Glassy Pad	36:Synth Pad/Str
+20563	PR-E	340	Moving Glass	36:Synth Pad/Str
+20564	PR-E	341	Glasswaves	36:Synth Pad/Str
+20565	PR-E	342	Shiny Pad	36:Synth Pad/Str
+20566	PR-E	343	ShiftedGlass	36:Synth Pad/Str
+20567	PR-E	344	Chime Pad	37:Synth Bellpad
+20568	PR-E	345	Spin Pad	36:Synth Pad/Str
+20569	PR-E	346	Rotary Pad	36:Synth Pad/Str
+20570	PR-E	347	Dawn 2 Dusk	36:Synth Pad/Str
+20571	PR-E	348	Aurora	36:Synth Pad/Str
+20572	PR-E	349	Strobe Mode	42:Pulsating
+20573	PR-E	350	Albion	42:Pulsating
+20574	PR-E	351	Running Pad	42:Pulsating
+20575	PR-E	352	Stepped Pad	42:Pulsating
+20576	PR-E	353	Random Pad	42:Pulsating
+20577	PR-E	354	SoundtrkDANC	42:Pulsating
+20578	PR-E	355	Flying Waltz	42:Pulsating
+20579	PR-E	356	Vanishing	39:Synth FX
+20580	PR-E	357	5th Sweep	36:Synth Pad/Str
+20581	PR-E	358	Phazweep	42:Pulsating
+20582	PR-E	359	Big BPF	38:Synth PolyKey
+20583	PR-E	360	MG Sweep	38:Synth PolyKey
+20584	PR-E	361	CeremonyTimp	47:Percussion
+20585	PR-E	362	Dyno Toms	47:Percussion
+20586	PR-E	363	Sands ofTime	39:Synth FX
+20587	PR-E	364	Inertia	39:Synth FX
+20588	PR-E	365	Vektogram	39:Synth FX
+20589	PR-E	366	Crash Pad	36:Synth Pad/Str
+20590	PR-E	367	Feedback VOX	36:Synth Pad/Str
+20591	PR-E	368	Cascade	39:Synth FX
+20592	PR-E	369	Shattered	39:Synth FX
+20593	PR-E	370	NextFrontier	39:Synth FX
+20594	PR-E	371	Pure Tibet	39:Synth FX
+20595	PR-E	372	Chime Wash	39:Synth FX
+20596	PR-E	373	Night Shade	39:Synth FX
+20597	PR-E	374	Tortured	39:Synth FX
+20598	PR-E	375	Dissimilate	39:Synth FX
+20599	PR-E	376	Dunes	39:Synth FX
+20600	PR-E	377	Ocean Floor	39:Synth FX
+20601	PR-E	378	Cyber Space	39:Synth FX
+20602	PR-E	379	Biosphere	39:Synth FX
+20603	PR-E	380	Variable Run	43:Beat&Groove
+20604	PR-E	381	Ice Hall	36:Synth Pad/Str
+20605	PR-E	382	ComputerRoom	39:Synth FX
+20606	PR-E	383	Inverted	39:Synth FX
+20607	PR-E	384	Terminate	39:Synth FX
+20736	PR-E	385	Echo Piano	1:Ac.Piano
+20737	PR-E	386	Upright Pno	1:Ac.Piano
+20738	PR-E	387	RD-1000	2:Pop Piano
+20739	PR-E	388	Player’s EP	4:E.Piano1
+20740	PR-E	389	D-50 EP	5:E.Piano2
+20741	PR-E	390	Innocent EP	5:E.Piano2
+20742	PR-E	391	Echo EP	5:E.Piano2
+20743	PR-E	392	See-Thru EP	5:E.Piano2
+20744	PR-E	393	FM BellPiano	5:E.Piano2
+20745	PR-E	394	Ring E.Piano	5:E.Piano2
+20746	PR-E	395	Soap Opera	6:E.Organ
+20747	PR-E	396	Dirty Organ	6:E.Organ
+20748	PR-E	397	Surf’s Up!	6:E.Organ
+20749	PR-E	398	Organesque	6:E.Organ
+20750	PR-E	399	pp Harmonium	7:Pipe Organ
+20751	PR-E	400	PieceOfCheez	10:Clav
+20752	PR-E	401	Harpsy Clav	10:Clav
+20753	PR-E	402	Exotic Velo	15:Mallet
+20754	PR-E	403	HolidayCheer	37:Synth Bellpad
+20755	PR-E	404	Morning Lite	37:Synth Bellpad
+20756	PR-E	405	Prefab Chime	14:Bell
+20757	PR-E	406	Belfry Chime	14:Bell
+20758	PR-E	407	Stacc.Heaven	37:Synth Bellpad
+20759	PR-E	408	2.2 Bell Pad	37:Synth Bellpad
+20760	PR-E	409	Far East	38:Synth PolyKey
+20761	PR-E	410	Wire Pad	38:Synth PolyKey
+20762	PR-E	411	PhaseBlipper	38:Synth PolyKey
+20763	PR-E	412	Sweep Clav	38:Synth PolyKey
+20764	PR-E	413	Glider	38:Synth PolyKey
+20765	PR-E	414	Solo Steel	16:Ac.Guitar
+20766	PR-E	415	DesertCrystl	16:Ac.Guitar
+20767	PR-E	416	Clear Guitar	17:E.Guitar
+20768	PR-E	417	Solo ST Gtr	17:E.Guitar
+20769	PR-E	418	Feed Me!	18:Dist.Guitar
+20770	PR-E	419	Tube Smoke	18:Dist.Guitar
+20771	PR-E	420	Creamy	18:Dist.Guitar
+20772	PR-E	421	Blusey OD	18:Dist.Guitar
+20773	PR-E	422	Grindstone	18:Dist.Guitar
+20774	PR-E	423	OD 5ths	18:Dist.Guitar
+20775	PR-E	424	East Europe	22:Plucked/Stroke
+20776	PR-E	425	Dulcitar	22:Plucked/Stroke
+20777	PR-E	426	Atmos Harp	22:Plucked/Stroke
+20778	PR-E	427	Pilgrimage	22:Plucked/Stroke
+20779	PR-E	428	202 Rude Bs	21:Synth Bass
+20780	PR-E	429	2 Pole Bass	21:Synth Bass
+20781	PR-E	430	4 Pole Bass 2	21:Synth Bass
+20782	PR-E	431	Phaser MC	21:Synth Bass
+20783	PR-E	432	Miniphaser	21:Synth Bass
+20784	PR-E	433	Acid TB	21:Synth Bass
+20785	PR-E	434	Full Orchest	25:Orchestral
+20786	PR-E	435	Str + Winds	25:Orchestral
+20787	PR-E	436	Flute 2080	29:Flute
+20788	PR-E	437	Scat Flute	33:Scat
+20789	PR-E	438	Sax Choir	30:Sax
+20790	PR-E	439	Ballad Trump	26:Solo Brass
+20791	PR-E	440	Sm.Brass Grp	27:Ensemble Brass
+20792	PR-E	441	Royale	27:Ensemble Brass
+20793	PR-E	442	Brass Mutes	27:Ensemble Brass
+20794	PR-E	443	Breathy Brs	35:Synth Brass
+20795	PR-E	444	3 Osc Brass	35:Synth Brass
+20796	PR-E	445	P5 Polymod	35:Synth Brass
+20797	PR-E	446	Triumph Brs	35:Synth Brass
+20798	PR-E	447	Techno Dream	38:Synth PolyKey
+20799	PR-E	448	Organizer	38:Synth PolyKey
+20800	PR-E	449	Civilization	38:Synth PolyKey
+20801	PR-E	450	Mental Chord	34:Synth Lead
+20802	PR-E	451	House Chord	34:Synth Lead
+20803	PR-E	452	Sequalog	38:Synth PolyKey
+20804	PR-E	453	Booster Bips	34:Synth Lead
+20805	PR-E	454	VintagePlunk	34:Synth Lead
+20806	PR-E	455	Plik-Plok	40:Synth Seq/Pop
+20807	PR-E	456	RingSequence	40:Synth Seq/Pop
+20808	PR-E	457	Cyber Swing	40:Synth Seq/Pop
+20809	PR-E	458	Keep :-)	38:Synth PolyKey
+20810	PR-E	459	Resojuice	34:Synth Lead
+20811	PR-E	460	B’on d’moov!	38:Synth PolyKey
+20812	PR-E	461	Dist TB-303	34:Synth Lead
+20813	PR-E	462	Temple of JV	42:Pulsating
+20814	PR-E	463	Planet Asia	42:Pulsating
+20815	PR-E	464	Afterlife	42:Pulsating
+20816	PR-E	465	Trancing Pad	42:Pulsating
+20817	PR-E	466	Pulsatronic	42:Pulsating
+20818	PR-E	467	Cyber Dreams	42:Pulsating
+20819	PR-E	468	Warm Pipe	34:Synth Lead
+20820	PR-E	469	Pure Pipe	34:Synth Lead
+20821	PR-E	470	SH-2000	34:Synth Lead
+20822	PR-E	471	X..? Whistle	34:Synth Lead
+20823	PR-E	472	Jay Vee Solo	34:Synth Lead
+20824	PR-E	473	Progresso Ld	34:Synth Lead
+20825	PR-E	474	Adrenaline	34:Synth Lead
+20826	PR-E	475	Enlighten	32:Vox/Choir
+20827	PR-E	476	Glass Blower	37:Synth Bellpad
+20828	PR-E	477	Earth Blow	36:Synth Pad/Str
+20829	PR-E	478	JX SqrCarpet	36:Synth Pad/Str
+20830	PR-E	479	Dimensional	36:Synth Pad/Str
+20831	PR-E	480	Jupiterings	36:Synth Pad/Str
+20832	PR-E	481	Analog Drama	36:Synth Pad/Str
+20833	PR-E	482	Rich Dynapad	36:Synth Pad/Str
+20834	PR-E	483	Silky Way	36:Synth Pad/Str
+20835	PR-E	484	Gluey Pad	36:Synth Pad/Str
+20836	PR-E	485	BandPass Mod	36:Synth Pad/Str
+20837	PR-E	486	Soundtraque	36:Synth Pad/Str
+20838	PR-E	487	Translucence	36:Synth Pad/Str
+20839	PR-E	488	Darkshine	36:Synth Pad/Str
+20840	PR-E	489	D’light	37:Synth Bellpad
+20841	PR-E	490	December Sky	36:Synth Pad/Str
+20842	PR-E	491	Octapad	36:Synth Pad/Str
+20843	PR-E	492	JUNO Power!	36:Synth Pad/Str
+20844	PR-E	493	Spectrum Mod	36:Synth Pad/Str
+20845	PR-E	494	Stringsheen	36:Synth Pad/Str
+20846	PR-E	495	GR500 TmpDly	36:Synth Pad/Str
+20847	PR-E	496	Mod DirtyWav	36:Synth Pad/Str
+20848	PR-E	497	Silicon Str	36:Synth Pad/Str
+20849	PR-E	498	D50FantaPerc	36:Synth Pad/Str
+20850	PR-E	499	Rotodreams	36:Synth Pad/Str
+20851	PR-E	500	Blue Notes	30:Sax
+20852	PR-E	501	RiversOfTime	39:Synth FX
+20853	PR-E	502	Phobos	39:Synth FX
+20854	PR-E	503	2080	39:Synth FX
+20855	PR-E	504	Unearthly	39:Synth FX
+20856	PR-E	505	Glistening	39:Synth FX
+20857	PR-E	506	Sci-Fi Str	39:Synth FX
+20858	PR-E	507	Shadows	39:Synth FX
+20859	PR-E	508	Helium Queen	39:Synth FX
+20860	PR-E	509	Sci-Fi FX x4	39:Synth FX
+20861	PR-E	510	Perky Noize	47:Percussion
+20862	PR-E	511	Droplet	45:Sound FX
+20863	PR-E	512	Rain Forest	45:Sound FX
+20992	PR-E	513	Grand XV	1:Ac.Piano
+20993	PR-E	514	Contemplate	1:Ac.Piano
+20994	PR-E	515	Rock Piano	1:Ac.Piano
+20995	PR-E	516	RockPiano Ch	1:Ac.Piano
+20996	PR-E	517	Pianomonics	1:Ac.Piano
+20997	PR-E	518	Piano+SftPad	1:Ac.Piano
+20998	PR-E	519	WarmVoxPiano	1:Ac.Piano
+20999	PR-E	520	Y2K Concerto	1:Ac.Piano
+21000	PR-E	521	Piano+AirPad	1:Ac.Piano
+21001	PR-E	522	ChoraLeader	1:Ac.Piano
+21002	PR-E	523	SparklePiano	5:E.Piano2
+21003	PR-E	524	Retro EP	4:E.Piano1
+21004	PR-E	525	Fat EP	4:E.Piano1
+21005	PR-E	526	EP Trem	4:E.Piano1
+21006	PR-E	527	Phaser Dyno	4:E.Piano1
+21007	PR-E	528	Hit EP	4:E.Piano1
+21008	PR-E	529	Sweet Tynes	4:E.Piano1
+21009	PR-E	530	Pluk EP	5:E.Piano2
+21010	PR-E	531	EP Trip	5:E.Piano2
+21011	PR-E	532	Ambi EP	4:E.Piano1
+21012	PR-E	533	Rholitzer	4:E.Piano1
+21013	PR-E	534	Wurlie	4:E.Piano1
+21014	PR-E	535	FM Delight	5:E.Piano2
+21015	PR-E	536	Cutter Clav	10:Clav
+21016	PR-E	537	Mute Clav D6	10:Clav
+21017	PR-E	538	PhazeWahClav	10:Clav
+21018	PR-E	539	St.Harpsichd	9:Harpsichord
+21019	PR-E	540	3PartInventn	9:Harpsichord
+21020	PR-E	541	Soft Perky	6:E.Organ
+21021	PR-E	542	Fullness	6:E.Organ
+21022	PR-E	543	Paleface 1	6:E.Organ
+21023	PR-E	544	Paleface 2	6:E.Organ
+21024	PR-E	545	Soft B	6:E.Organ
+21025	PR-E	546	British B	6:E.Organ
+21026	PR-E	547	Rocker Org	6:E.Organ
+21027	PR-E	548	Split B	6:E.Organ
+21028	PR-E	549	PercInterval	6:E.Organ
+21029	PR-E	550	Happy 60s	6:E.Organ
+21030	PR-E	551	96 Years	6:E.Organ
+21031	PR-E	552	Glory Us Rok	6:E.Organ
+21032	PR-E	553	Church Harmn	7:Pipe Organ
+21033	PR-E	554	Cathdr Harmn	7:Pipe Organ
+21034	PR-E	555	Morph Pad	36:Synth Pad/Str
+21035	PR-E	556	Air Pad	36:Synth Pad/Str
+21036	PR-E	557	Soft Padding	36:Synth Pad/Str
+21037	PR-E	558	Warmth Pad	36:Synth Pad/Str
+21038	PR-E	559	ClassicJPpad	36:Synth Pad/Str
+21039	PR-E	560	Jupiter Str	36:Synth Pad/Str
+21040	PR-E	561	Fat Pad	36:Synth Pad/Str
+21041	PR-E	562	GR700 Pad	36:Synth Pad/Str
+21042	PR-E	563	Paradise	37:Synth Bellpad
+21043	PR-E	564	Moonchimes	37:Synth Bellpad
+21044	PR-E	565	SusPed Swap	36:Synth Pad/Str
+21045	PR-E	566	PhasingPad	36:Synth Pad/Str
+21046	PR-E	567	Ethereal Str	36:Synth Pad/Str
+21047	PR-E	568	Velcropad	36:Synth Pad/Str
+21048	PR-E	569	NothrnLights	36:Synth Pad/Str
+21049	PR-E	570	Sun Dive	36:Synth Pad/Str
+21050	PR-E	571	Brite Vox 1	32:Vox/Choir
+21051	PR-E	572	Brite Vox 2	32:Vox/Choir
+21052	PR-E	573	Ooh)Aah Mod	32:Vox/Choir
+21053	PR-E	574	Vocals: Ooh	32:Vox/Choir
+21054	PR-E	575	Vocals: Scat	33:Scat
+21055	PR-E	576	Vocals: Boys	32:Vox/Choir
+21056	PR-E	577	St. Choir	32:Vox/Choir
+21057	PR-E	578	SampleThe80s	32:Vox/Choir
+21058	PR-E	579	Sacred Tree	32:Vox/Choir
+21059	PR-E	580	VP330 OctEko	32:Vox/Choir
+21060	PR-E	581	XV Strings	
+21061	PR-E	582	Fat Strings	
+21062	PR-E	583	Dolce p/m/f	
+21063	PR-E	584	Sad Strings	
+21064	PR-E	585	Lush Strings	
+21065	PR-E	586	Strings4Film	
+21066	PR-E	587	Marcato Str	
+21067	PR-E	588	End Titles	
+21068	PR-E	589	ChmbrQuartet	
+21069	PR-E	590	ChamberSect.	
+21070	PR-E	591	FullChmbrStr	
+21071	PR-E	592	Tape Strings	
+21072	PR-E	593	Henry VIII	25:Orchestral
+21073	PR-E	594	Prelude	25:Orchestral
+21074	PR-E	595	Str&Brs Orch	25:Orchestral
+21075	PR-E	596	Hornz	25:Orchestral
+21076	PR-E	597	TudorFanfare	25:Orchestral
+21077	PR-E	598	ChamberPlyrs	25:Orchestral
+21078	PR-E	599	Flute/Clari	28:Wind
+21079	PR-E	600	Orch Reeds	28:Wind
+21080	PR-E	601	Dual Flutes	29:Flute
+21081	PR-E	602	Jazzer Flute	29:Flute
+21082	PR-E	603	LegatoBamboo	29:Flute
+21083	PR-E	604	Ambience Flt	29:Flute
+21084	PR-E	605	The Andes	29:Flute
+21085	PR-E	606	Deja Vlute	29:Flute
+21086	PR-E	607	Simply Brass	27:Ensemble Brass
+21087	PR-E	608	FullSt Brass	27:Ensemble Brass
+21088	PR-E	609	Dragnet	27:Ensemble Brass
+21089	PR-E	610	NewR&RBrass	27:Ensemble Brass
+21090	PR-E	611	Tower Trumps	27:Ensemble Brass
+21091	PR-E	612	BigBrassBand	27:Ensemble Brass
+21092	PR-E	613	Lil’BigHornz	27:Ensemble Brass
+21093	PR-E	614	VoyagerBrass	27:Ensemble Brass
+21094	PR-E	615	Symph Horns	27:Ensemble Brass
+21095	PR-E	616	Trombone Atm	26:Solo Brass
+21096	PR-E	617	XV Trombone	26:Solo Brass
+21097	PR-E	618	XV Trumpet	26:Solo Brass
+21098	PR-E	619	JupiterHorns	35:Synth Brass
+21099	PR-E	620	Solo SoprSax	30:Sax
+21100	PR-E	621	Solo AltoSax	30:Sax
+21101	PR-E	622	XV DynoTenor	30:Sax
+21102	PR-E	623	Honker Bari	30:Sax
+21103	PR-E	624	Full Saxz	30:Sax
+21104	PR-E	625	Soaring Hrns	35:Synth Brass
+21105	PR-E	626	Glass Orbit	37:Synth Bellpad
+21106	PR-E	627	5th Atm /Aft	36:Synth Pad/Str
+21107	PR-E	628	Lo-fi Sweep	36:Synth Pad/Str
+21108	PR-E	629	Modular Life	36:Synth Pad/Str
+21109	PR-E	630	Oscillations	38:Synth PolyKey
+21110	PR-E	631	Combing	36:Synth Pad/Str
+21111	PR-E	632	Rolling 5ths	36:Synth Pad/Str
+21112	PR-E	633	Analogue Str	36:Synth Pad/Str
+21113	PR-E	634	Lunar Strngs	36:Synth Pad/Str
+21114	PR-E	635	BPFsweep Mod	38:Synth PolyKey
+21115	PR-E	636	Queen V	38:Synth PolyKey
+21116	PR-E	637	SkinnyBounce	38:Synth PolyKey
+21117	PR-E	638	SquareBounce	38:Synth PolyKey
+21118	PR-E	639	Galactic	38:Synth PolyKey
+21119	PR-E	640	Powerwiggle	38:Synth PolyKey
+21248	PR-E	641	80s Retrosyn	38:Synth PolyKey
+21249	PR-E	642	Power Stack	38:Synth PolyKey
+21250	PR-E	643	Don’t Jump	38:Synth PolyKey
+21251	PR-E	644	Big Bubbles	38:Synth PolyKey
+21252	PR-E	645	X-mod Sweep	38:Synth PolyKey
+21253	PR-E	646	Bag O’ Bones	38:Synth PolyKey
+21254	PR-E	647	AirSoThin	38:Synth PolyKey
+21255	PR-E	648	Analogical	38:Synth PolyKey
+21256	PR-E	649	Waspy Pulse	38:Synth PolyKey
+21257	PR-E	650	Soaring Saws	34:Synth Lead
+21258	PR-E	651	Square Roots	34:Synth Lead
+21259	PR-E	652	BOG	34:Synth Lead
+21260	PR-E	653	Talking Box	34:Synth Lead
+21261	PR-E	654	Retro Lead	34:Synth Lead
+21262	PR-E	655	LivingInSync	34:Synth Lead
+21263	PR-E	656	Leads United	34:Synth Lead
+21264	PR-E	657	Dirty Sync	34:Synth Lead
+21265	PR-E	658	DistortaSync	34:Synth Lead
+21266	PR-E	659	Blistering	34:Synth Lead
+21267	PR-E	660	Guttural	34:Synth Lead
+21268	PR-E	661	Flyin’ High	34:Synth Lead
+21269	PR-E	662	Soft Tooth	34:Synth Lead
+21270	PR-E	663	Soaring Sqr	34:Synth Lead
+21271	PR-E	664	Soaring Sync	34:Synth Lead
+21272	PR-E	665	Nasal Spray	34:Synth Lead
+21273	PR-E	666	Lamb Lead	34:Synth Lead
+21274	PR-E	667	Creamer	34:Synth Lead
+21275	PR-E	668	Sine System	34:Synth Lead
+21276	PR-E	669	Soft Nylon	16:Ac.Guitar
+21277	PR-E	670	Nylozzicato	16:Ac.Guitar
+21278	PR-E	671	Mutezzicato	16:Ac.Guitar
+21279	PR-E	672	Hybrid Nylon	16:Ac.Guitar
+21280	PR-E	673	XV SteelGt 1	16:Ac.Guitar
+21281	PR-E	674	XV SteelGt 2	16:Ac.Guitar
+21282	PR-E	675	Comp’Steel	16:Ac.Guitar
+21283	PR-E	676	Double Steel	16:Ac.Guitar
+21284	PR-E	677	Folk Guitar	16:Ac.Guitar
+21285	PR-E	678	SpanishNight	16:Ac.Guitar
+21286	PR-E	679	Plug n’ Play	17:E.Guitar
+21287	PR-E	680	Fab 4 Guitar	17:E.Guitar
+21288	PR-E	681	Searing Lead	18:Dist.Guitar
+21289	PR-E	682	Punker	18:Dist.Guitar
+21290	PR-E	683	LouderPlease	18:Dist.Guitar
+21291	PR-E	684	XV Upright	19:Ac.Bass
+21292	PR-E	685	XV Ac.Bass	19:Ac.Bass
+21293	PR-E	686	LookMaNoFret	20:E.Bass
+21294	PR-E	687	XV Fretless	20:E.Bass
+21295	PR-E	688	Basic F’less	20:E.Bass
+21296	PR-E	689	8-str F’less	20:E.Bass
+21297	PR-E	690	Tap Bass	20:E.Bass
+21298	PR-E	691	Pop Bass	20:E.Bass
+21299	PR-E	692	P.Bs Chorus	20:E.Bass
+21300	PR-E	693	TremCho Bs	20:E.Bass
+21301	PR-E	694	Creamy Bass	21:Synth Bass
+21302	PR-E	695	Buster Bass	21:Synth Bass
+21303	PR-E	696	TB Squelch	21:Synth Bass
+21304	PR-E	697	Ticker Bass	21:Synth Bass
+21305	PR-E	698	Muscle Bass	21:Synth Bass
+21306	PR-E	699	Grounded Bs	21:Synth Bass
+21307	PR-E	700	West End Bs	21:Synth Bass
+21308	PR-E	701	Snap Bass	21:Synth Bass
+21309	PR-E	702	700 Bassboy	21:Synth Bass
+21310	PR-E	703	8VCO MonoSyn	21:Synth Bass
+21311	PR-E	704	ResoMoist Bs	21:Synth Bass
+21312	PR-E	705	Kickin’ Bass	21:Synth Bass
+21313	PR-E	706	Sub Zero	21:Synth Bass
+21314	PR-E	707	Liquid Bass	21:Synth Bass
+21315	PR-E	708	Hefty Bass	21:Synth Bass
+21316	PR-E	709	Severe Ow Bs	21:Synth Bass
+21317	PR-E	710	Chime Bells	14:Bell
+21318	PR-E	711	Celestabox	11:Celesta
+21319	PR-E	712	Brass Tubes	26:Solo Brass
+21320	PR-E	713	Dreams East	38:Synth PolyKey
+21321	PR-E	714	Synergistic	38:Synth PolyKey
+21322	PR-E	715	Andreas Cave	22:Plucked/Stroke
+21323	PR-E	716	AmbiPizza	22:Plucked/Stroke
+21324	PR-E	717	Voxy Nylon	22:Plucked/Stroke
+21325	PR-E	718	EastrnEurope	22:Plucked/Stroke
+21326	PR-E	719	Celtic Harp	22:Plucked/Stroke
+21327	PR-E	720	Reso Sitar	22:Plucked/Stroke
+21328	PR-E	721	The Ganges	22:Plucked/Stroke
+21329	PR-E	722	MountainFolk	22:Plucked/Stroke
+21330	PR-E	723	Byzantine	22:Plucked/Stroke
+21331	PR-E	724	AsiaPlectrum	22:Plucked/Stroke
+21332	PR-E	725	VelHarp)Harm	22:Plucked/Stroke
+21333	PR-E	726	Pluckaphone	22:Plucked/Stroke
+21334	PR-E	727	Slap Timps	47:Percussion
+21335	PR-E	728	Suite Combo	32:Vox/Choir
+21336	PR-E	729	Jet Voxs	32:Vox/Choir
+21337	PR-E	730	Dirty Hit	44:Hit
+21338	PR-E	731	MOVE!	44:Hit
+21339	PR-E	732	Reel Slam	44:Hit
+21340	PR-E	733	OffTheRecord	44:Hit
+21341	PR-E	734	2ndRateChord	34:Synth Lead
+21342	PR-E	735	RageInYouth	34:Synth Lead
+21343	PR-E	736	MinorIncidnt	34:Synth Lead
+21344	PR-E	737	Phunky DC	34:Synth Lead
+21345	PR-E	738	Agent X	34:Synth Lead
+21346	PR-E	739	Winky	40:Synth Seq/Pop
+21347	PR-E	740	Looney 2nz	34:Synth Lead
+21348	PR-E	741	Shortrave	38:Synth PolyKey
+21349	PR-E	742	DeeperBeeper	34:Synth Lead
+21350	PR-E	743	Percolator	38:Synth PolyKey
+21351	PR-E	744	Filter Morph	38:Synth PolyKey
+21352	PR-E	745	Choir Bounce	38:Synth PolyKey
+21353	PR-E	746	Rippling	42:Pulsating
+21354	PR-E	747	SteppingPhsr	42:Pulsating
+21355	PR-E	748	Trance Fair	42:Pulsating
+21356	PR-E	749	GermanBounce	42:Pulsating
+21357	PR-E	750	Acid JaZZ	42:Pulsating                                                             24:Ensemble
+21358	PR-E	751	Cutter>ModWh	42:Pulsating                                                                Strings
+21359	PR-E	752	Blades	42:Pulsating                                                             24:Ensemble
+21360	PR-E	753	Mad Bender	42:Pulsating
+21361	PR-E	754	Shapeshifter	39:Synth FX
+21362	PR-E	755	ForestMoon	39:Synth FX
+21363	PR-E	756	Predator 2	39:Synth FX
+21364	PR-E	757	Dark Side	39:Synth FX
+21365	PR-E	758	The Beast	39:Synth FX
+21366	PR-E	759	X-mod Reso	39:Synth FX
+21367	PR-E	760	Planet Meta	39:Synth FX
+21368	PR-E	761	Nexus	39:Synth FX
+21369	PR-E	762	Halographix	39:Synth FX
+21370	PR-E	763	Moon Rise	39:Synth FX
+21371	PR-E	764	Gruvacious	39:Synth FX
+21372	PR-E	765	Windy Dunes	39:Synth FX
+21373	PR-E	766	Ice Blasts	39:Synth FX
+21374	PR-E	767	Ringy Thingy	39:Synth FX
+21375	PR-E	768	Atmospherics	39:Synth FX
+21504	PR-E	769	Power Octs	1:Ac.Piano
+21505	PR-E	770	WaterPiano2	2:Pop Piano
+21506	PR-E	771	Swimming EP	5:E.Piano2
+21507	PR-E	772	XV Crystal	5:E.Piano2
+21508	PR-E	773	Cold Roadz	5:E.Piano2
+21509	PR-E	774	Back EP	4:E.Piano1
+21510	PR-E	775	Amped Wurlie	4:E.Piano1
+21511	PR-E	776	Dirty Wurlie	4:E.Piano1
+21512	PR-E	777	Musicbox XV	14:Bell
+21513	PR-E	778	Klubb Organ	6:E.Organ
+21514	PR-E	779	Drew’s Bee	6:E.Organ
+21515	PR-E	780	Velvet Organ	6:E.Organ
+21516	PR-E	781	Distorted B	6:E.Organ
+21517	PR-E	782	Radikal B	6:E.Organ
+21518	PR-E	783	Boogie Organ	6:E.Organ
+21519	PR-E	784	Mood Ringz	42:Pulsating
+21520	PR-E	785	Wedo-Wodo	42:Pulsating
+21521	PR-E	786	S.O.S.trings	42:Pulsating
+21522	PR-E	787	Syncronicity	42:Pulsating
+21523	PR-E	788	DanceMachina	42:Pulsating
+21524	PR-E	789	Vox Chopper	42:Pulsating
+21525	PR-E	790	SlicingSyVox	42:Pulsating
+21526	PR-E	791	PressureDome	42:Pulsating
+21527	PR-E	792	Quasar/Aft	42:Pulsating
+21528	PR-E	793	Ionizer	42:Pulsating
+21529	PR-E	794	MilleniumStr	42:Pulsating
+21530	PR-E	795	Bounce Baby!	42:Pulsating
+21531	PR-E	796	Bounce Daddy	42:Pulsating
+21532	PR-E	797	Bounce Mama!	42:Pulsating
+21533	PR-E	798	Bounce Noize	42:Pulsating
+21534	PR-E	799	What a Gate!	42:Pulsating
+21535	PR-E	800	Mini Sequenz	42:Pulsating
+21536	PR-E	801	Slice & Dice	42:Pulsating
+21537	PR-E	802	BrushingSaw1	42:Pulsating
+21538	PR-E	803	BrushingSaw2	42:Pulsating
+21539	PR-E	804	Cultivate	42:Pulsating
+21540	PR-E	805	5080 Random	42:Pulsating
+21541	PR-E	806	XV Stepping	36:Synth Pad/Str
+21542	PR-E	807	India Garden	36:Synth Pad/Str
+21543	PR-E	808	Belly Pad	37:Synth Bellpad
+21544	PR-E	809	Spectre	37:Synth Bellpad
+21545	PR-E	810	SoaringHrns2	35:Synth Brass
+21546	PR-E	811	Sabbath Day	36:Synth Pad/Str
+21547	PR-E	812	XV BlowPad	36:Synth Pad/Str
+21548	PR-E	813	White Arcade	36:Synth Pad/Str
+21549	PR-E	814	Borealis	36:Synth Pad/Str
+21550	PR-E	815	OvertoneScan	36:Synth Pad/Str
+21551	PR-E	816	Whisper Vox	32:Vox/Choir
+21552	PR-E	817	Jupiter 21	
+21553	PR-E	818	Filt Strings	
+21554	PR-E	819	HybStringsXV	
+21555	PR-E	820	Soft Symphny	25:Orchestral
+21556	PR-E	821	Wood Symphny	25:Orchestral
+21557	PR-E	822	HybOrchestra	25:Orchestral
+21558	PR-E	823	Brassy Symph	25:Orchestral
+21559	PR-E	824	Biggie Brass	27:Ensemble Brass
+21560	PR-E	825	BiggieBrass2	27:Ensemble Brass
+21561	PR-E	826	LA Sax’s	30:Sax
+21562	PR-E	827	Wind Wood	28:Wind
+21563	PR-E	828	Lonely Oboe	28:Wind
+21564	PR-E	829	Harmonica XV	13:Harmonica
+21565	PR-E	830	Tooters Lead	29:Flute
+21566	PR-E	831	Digi Phased	38:Synth PolyKey
+21567	PR-E	832	Synth Ethics	38:Synth PolyKey
+21568	PR-E	833	Harm is Fine	38:Synth PolyKey
+21569	PR-E	834	D-2000	37:Synth Bellpad
+21570	PR-E	835	Ackward East	38:Synth PolyKey
+21571	PR-E	836	Powersoaker	34:Synth Lead
+21572	PR-E	837	Mean Thing	34:Synth Lead
+21573	PR-E	838	Jet Sync	34:Synth Lead
+21574	PR-E	839	Crying Solo	18:Dist.Guitar
+21575	PR-E	840	Southern Fry	18:Dist.Guitar
+21576	PR-E	841	Strum Distrt	18:Dist.Guitar
+21577	PR-E	842	Match Drive	18:Dist.Guitar
+21578	PR-E	843	Stacked	18:Dist.Guitar
+21579	PR-E	844	2-Stack Over	18:Dist.Guitar
+21580	PR-E	845	COSM Searing	18:Dist.Guitar
+21581	PR-E	846	COSM Loud Gt	18:Dist.Guitar
+21582	PR-E	847	Blue Mutes	18:Dist.Guitar
+21583	PR-E	848	Metal 5150	18:Dist.Guitar
+21584	PR-E	849	Crunch Phase	18:Dist.Guitar
+21585	PR-E	850	Alt Dist Gtr	18:Dist.Guitar
+21586	PR-E	851	So nice!	16:Ac.Guitar
+21587	PR-E	852	Punch Bass	19:Ac.Bass
+21588	PR-E	853	COSM Bass	20:E.Bass
+21589	PR-E	854	Stream Bell	14:Bell
+21590	PR-E	855	Shuffle Bell	14:Bell
+21591	PR-E	856	Echo Vibe	15:Mallet
+21592	PR-E	857	Tremolo Vibe	15:Mallet
+21593	PR-E	858	True Vibe	15:Mallet
+21594	PR-E	859	Marimbula	15:Mallet
+21595	PR-E	860	Hit Bitz	44:Hit
+21596	PR-E	861	80s LoFi Hit	44:Hit
+21597	PR-E	862	Auto Chord	44:Hit
+21598	PR-E	863	3rdTeenChord	44:Hit
+21599	PR-E	864	Bend a Chord	44:Hit
+21600	PR-E	865	DiscreteChrd	44:Hit
+21601	PR-E	866	Ambi Voices	40:Synth Seq/Pop
+21602	PR-E	867	Say Yeah !	38:Synth PolyKey
+21603	PR-E	868	Xcuse me	39:Synth FX
+21604	PR-E	869	5ths in 4ths	39:Synth FX
+21605	PR-E	870	Pretty Ugly	38:Synth PolyKey
+21606	PR-E	871	Con Sequence	40:Synth Seq/Pop
+21607	PR-E	872	BermudaShort	40:Synth Seq/Pop
+21608	PR-E	873	Saw n’ 202	38:Synth PolyKey
+21609	PR-E	874	Technoheadz	38:Synth PolyKey
+21610	PR-E	875	Boss’d Synth	34:Synth Lead
+21611	PR-E	876	Cross Fire	34:Synth Lead
+21612	PR-E	877	Techno Cave	34:Synth Lead
+21613	PR-E	878	Generator	34:Synth Lead
+21614	PR-E	879	GenderBender	34:Synth Lead
+21615	PR-E	880	Xtremities	34:Synth Lead
+21616	PR-E	881	AM 05:59	34:Synth Lead
+21617	PR-E	882	Happy Brass	27:Ensemble Brass
+21618	PR-E	883	Runaway Rez	39:Synth FX
+21619	PR-E	884	Dropplets	39:Synth FX
+21620	PR-E	885	Indian Guru	39:Synth FX
+21621	PR-E	886	Cosmic Rain	39:Synth FX
+21622	PR-E	887	Trying Winds	39:Synth FX
+21623	PR-E	888	Space Whiz	39:Synth FX
+21624	PR-E	889	DigitalDrone	39:Synth FX
+21625	PR-E	890	Space Race	39:Synth FX
+21626	PR-E	891	Bowed Bell	39:Synth FX
+21627	PR-E	892	X-Tension	39:Synth FX
+21628	PR-E	893	DUB!!!	39:Synth FX
+21629	PR-E	894	Dream Diver	39:Synth FX
+21630	PR-E	895	Flashback	39:Synth FX
+21631	PR-E	896	St.LoFiNoise	4:E.Piano1
+21760	CMN	1	Piano 1	1:Ac.Piano
+21761	CMN	2	Piano 1 w	1:Ac.Piano
+21762	CMN	3	Piano 1 d	1:Ac.Piano
+21763	CMN	4	Piano 1 Bright	1:Ac.Piano
+21764	CMN	5	Piano 1 Amp	1:Ac.Piano
+21765	CMN	6	Piano 1 w 2	1:Ac.Piano
+21766	CMN	7	Piano + Str 1	1:Ac.Piano
+21767	CMN	8	Piano + Str 2	1:Ac.Piano
+21768	CMN	9	Piano + Choir 1	1:Ac.Piano
+21769	CMN	10	Piano + Choir 2	1:Ac.Piano
+21770	CMN	11	Piano + Pad 1	1:Ac.Piano
+21771	CMN	12	Piano + Pad 2	1:Ac.Piano
+21772	CMN	13	Healing Piano	1:Ac.Piano
+21773	CMN	14	Piano Vib	1:Ac.Piano
+21774	CMN	15	Piano Dly	1:Ac.Piano
+21775	CMN	16	Piano 2	1:Ac.Piano
+21776	CMN	17	Piano 2 w	1:Ac.Piano
+21777	CMN	18	JD Piano	1:Ac.Piano
+21778	CMN	19	JD Piano w	1:Ac.Piano
+21779	CMN	20	Piano 3	3:E.Grand Piano
+21780	CMN	21	Piano 3 w	3:E.Grand Piano
+21781	CMN	22	Piano 3 w 2	3:E.Grand Piano
+21782	CMN	23	Honky-tonk	2:Pop Piano
+21783	CMN	24	Honky-tonk w	2:Pop Piano
+21784	CMN	25	Honky-tonk w 2	2:Pop Piano
+21785	CMN	26	E.Piano 1	4:E.Piano1
+21786	CMN	27	E.Piano 1 w	4:E.Piano1
+21787	CMN	28	E.Piano 1 Trem	4:E.Piano1
+21788	CMN	29	Detuned EP 1	4:E.Piano1
+21789	CMN	30	Vintage EP	4:E.Piano1
+21790	CMN	31	60s E.Piano	4:E.Piano1
+21791	CMN	32	60s E.Piano w	4:E.Piano1
+21792	CMN	33	60s E.Piano Trem	4:E.Piano1
+21793	CMN	34	Tremolo EP	4:E.Piano1
+21794	CMN	35	Tremolo EP w	4:E.Piano1
+21795	CMN	36	Curly Wurly	4:E.Piano1
+21796	CMN	37	Sinus EP	4:E.Piano1
+21797	CMN	38	E.Piano 2	5:E.Piano2
+21798	CMN	39	E.Piano 2 w	5:E.Piano2
+21799	CMN	40	Detuned EP 2	5:E.Piano2
+21800	CMN	41	St.FM EP	5:E.Piano2
+21801	CMN	42	St.FM EP w	5:E.Piano2
+21802	CMN	43	EP Legend	5:E.Piano2
+21803	CMN	44	EP Legend w	5:E.Piano2
+21804	CMN	45	EP Phaser 1	5:E.Piano2
+21805	CMN	46	EP Phaser 2	5:E.Piano2
+21806	CMN	47	EP Phaser 3	5:E.Piano2
+21807	CMN	48	EP Belle	5:E.Piano2
+21808	CMN	49	Harpsichord	9:Harpsichord
+21809	CMN	50	Coupled Harpsi.	9:Harpsichord
+21810	CMN	51	Harpsichord w	9:Harpsichord
+21811	CMN	52	Harpsichord w 2	9:Harpsichord
+21812	CMN	53	Harpsichord o	9:Harpsichord
+21813	CMN	54	Clav 1	10:Clav
+21814	CMN	55	Clav 1 w	10:Clav
+21815	CMN	56	Clav 1 Phaser	10:Clav
+21816	CMN	57	Clav 2	10:Clav
+21817	CMN	58	Clav 2 w	10:Clav
+21818	CMN	59	Pulse Clav 1	10:Clav
+21819	CMN	60	Pulse Clav 1 w	10:Clav
+21820	CMN	61	Pulse Clav 1 w 2	10:Clav
+21821	CMN	62	Pulse Clav 2	10:Clav
+21822	CMN	63	Biting Clav	10:Clav
+21823	CMN	64	Analog Clav	10:Clav
+21824	CMN	65	Celesta	11:Celesta
+21825	CMN	66	Celesta w	11:Celesta
+21826	CMN	67	Glockenspiel	15:Mallet
+21827	CMN	68	Glockenspiel w	15:Mallet
+21828	CMN	69	Music Box	22:Plucked/Stroke
+21829	CMN	70	Music Box w	22:Plucked/Stroke
+21830	CMN	71	Pops Seq 1	22:Plucked/Stroke
+21831	CMN	72	Pops Seq 1 Atk	22:Plucked/Stroke
+21832	CMN	73	Vibraphone	15:Mallet
+21833	CMN	74	Vibraphone w	15:Mallet
+21834	CMN	75	Vibraphone w 2	15:Mallet
+21835	CMN	76	Vibraphone Trem	15:Mallet
+21836	CMN	77	Jazz Vib	15:Mallet
+21837	CMN	78	Jazz Vib w	15:Mallet
+21838	CMN	79	Marimba	15:Mallet
+21839	CMN	80	Marimba w	15:Mallet
+21840	CMN	81	Marimba w 2	15:Mallet
+21841	CMN	82	Bs Marimba 1	15:Mallet
+21842	CMN	83	Bs Marimba 2	15:Mallet
+21843	CMN	84	Xylophone 1	15:Mallet
+21844	CMN	85	Xylophone 1 w	15:Mallet
+21845	CMN	86	Xylophone 1 w 2	15:Mallet
+21846	CMN	87	Xylophone 2	15:Mallet
+21847	CMN	88	Kalimbells	15:Mallet
+21848	CMN	89	Pops Seq 2	15:Mallet
+21849	CMN	90	Pops Seq 2 w	15:Mallet
+21850	CMN	91	Pops Seq 2 Atk	15:Mallet
+21851	CMN	92	Pops Seq 3	15:Mallet
+21852	CMN	93	Pops Seq 3 Atk	15:Mallet
+21853	CMN	94	Ethno Keys	15:Mallet
+21854	CMN	95	Ethno Keys Dly	15:Mallet
+21855	CMN	96	Toy Box	15:Mallet
+21856	CMN	97	Tubular Bells	14:Bell
+21857	CMN	98	Tubular Bells w	14:Bell
+21858	CMN	99	Church Bell	14:Bell
+21859	CMN	100	Church Bell w	14:Bell
+21860	CMN	101	Carillon	14:Bell
+21861	CMN	102	Carillon w	14:Bell
+21862	CMN	103	Santur	15:Mallet
+21863	CMN	104	Santur w	15:Mallet
+21864	CMN	105	Organ 1	6:E.Organ
+21865	CMN	106	Organ 1 Rtry	6:E.Organ
+21866	CMN	107	Tremolo Organ	6:E.Organ
+21867	CMN	108	Tremolo Organ w	6:E.Organ
+21868	CMN	109	60s Organ	6:E.Organ
+21869	CMN	110	60s Organ Cho	6:E.Organ
+21870	CMN	111	Organ 2	6:E.Organ
+21871	CMN	112	Organ 2 Rtry	6:E.Organ
+21872	CMN	113	Ana Organ 1	6:E.Organ
+21873	CMN	114	Ana Organ 1 Rtry	6:E.Organ
+21874	CMN	115	Ana Organ 2	6:E.Organ
+21875	CMN	116	Ana Organ 3	6:E.Organ
+21876	CMN	117	Ana Organ 4	6:E.Organ
+21877	CMN	118	Perc.Organ 1	6:E.Organ
+21878	CMN	119	Perc.Organ 1Rtry	6:E.Organ
+21879	CMN	120	Chorus Organ	6:E.Organ
+21880	CMN	121	Perc.Organ 2	6:E.Organ
+21881	CMN	122	E.Organ 1	6:E.Organ
+21882	CMN	123	E.Organ 1 w	6:E.Organ
+21883	CMN	124	E.Organ 1 Rtry	6:E.Organ
+21884	CMN	125	E.Organ 2	6:E.Organ
+21885	CMN	126	E.Organ 2 Trem	6:E.Organ
+21886	CMN	127	E.Organ 3	6:E.Organ
+21887	CMN	128	Mad Organ	6:E.Organ
+22016	CMN	129	Rock Organ 1	6:E.Organ
+22017	CMN	130	Rock Organ Amp	6:E.Organ
+22018	CMN	131	Rock Organ 2	6:E.Organ
+22019	CMN	132	Rock Organ w	6:E.Organ
+22020	CMN	133	Full Organ Rtry	6:E.Organ
+22021	CMN	134	Full Organ OD	6:E.Organ
+22022	CMN	135	Rotary Organ	6:E.Organ
+22023	CMN	136	Rotary Organ Cho	6:E.Organ
+22024	CMN	137	Church Organ 1	7:Pipe Organ
+22025	CMN	138	Church Organ 1 w	7:Pipe Organ
+22026	CMN	139	Church Organ 2	7:Pipe Organ
+22027	CMN	140	Church Organ 2 w	7:Pipe Organ
+22028	CMN	141	Church Organ 3	7:Pipe Organ
+22029	CMN	142	Church Organ 3 w	7:Pipe Organ
+22030	CMN	143	Reed Organ	8:Reed Organ
+22031	CMN	144	Reed Organ w	8:Reed Organ
+22032	CMN	145	Puff Organ	7:Pipe Organ
+22033	CMN	146	Puff Organ w	7:Pipe Organ
+22034	CMN	147	Accordion 1	12:Accordion
+22035	CMN	148	Accordion 1 w	12:Accordion
+22036	CMN	149	Accordion 2	12:Accordion
+22037	CMN	150	Accordion It	12:Accordion
+22038	CMN	151	Vodkakordion	12:Accordion
+22039	CMN	152	Harmonica	13:Harmonica
+22040	CMN	153	Harmonica w	13:Harmonica
+22041	CMN	154	Bandoneon	12:Accordion
+22042	CMN	155	Bandoneon w	12:Accordion
+22043	CMN	156	Nylon Gtr 1	16:Ac.Guitar
+22044	CMN	157	Ukulele	16:Ac.Guitar
+22045	CMN	158	Nylon Gtr o	16:Ac.Guitar
+22046	CMN	159	Nylon Gtr 2	16:Ac.Guitar
+22047	CMN	160	Nylon Gtr w	16:Ac.Guitar
+22048	CMN	161	Nylon Gtr Amp	16:Ac.Guitar
+22049	CMN	162	Steel-str.Gtr	16:Ac.Guitar
+22050	CMN	163	Steel-str.Gtr w	16:Ac.Guitar
+22051	CMN	164	Steel-str.GtrAmp	16:Ac.Guitar
+22052	CMN	165	Steel-str.GtrDst	16:Ac.Guitar
+22053	CMN	166	Stl Gtr Trem	16:Ac.Guitar
+22054	CMN	167	12-str.Guitar	16:Ac.Guitar
+22055	CMN	168	12-str.Guitar w	16:Ac.Guitar
+22056	CMN	169	Mandolin	16:Ac.Guitar
+22057	CMN	170	Steel+Body	16:Ac.Guitar
+22058	CMN	171	Reso Guitar w	16:Ac.Guitar
+22059	CMN	172	Reso Guitar Amp	16:Ac.Guitar
+22060	CMN	173	Jazz Guitar	17:E.Guitar
+22061	CMN	174	Jazz Guitar w	17:E.Guitar
+22062	CMN	175	Jazz Guitar Atk	17:E.Guitar
+22063	CMN	176	Hawaiian Gtr	17:E.Guitar
+22064	CMN	177	Clean Guitar	17:E.Guitar
+22065	CMN	178	Clean Guitar w	17:E.Guitar
+22066	CMN	179	Clean Gtr Chorus	17:E.Guitar
+22067	CMN	180	Chorus Gtr 1	17:E.Guitar
+22068	CMN	181	Soft Clean Gtr	17:E.Guitar
+22069	CMN	182	Soft Clean Gtr w	17:E.Guitar
+22070	CMN	183	Soft Clean Atk	17:E.Guitar
+22071	CMN	184	Soft Dist Gtr	17:E.Guitar
+22072	CMN	185	Mid Tone Gtr	17:E.Guitar
+22073	CMN	186	Mid Tone Gtr Dly	17:E.Guitar
+22074	CMN	187	Mid Tone GtrTrem	17:E.Guitar
+22075	CMN	188	Muted Guitar	17:E.Guitar
+22076	CMN	189	Muted Guitar w	17:E.Guitar
+22077	CMN	190	Muted Guitar Atk	17:E.Guitar
+22078	CMN	191	Muted Guitar Dst	17:E.Guitar
+22079	CMN	192	Funk Guitar 1	17:E.Guitar
+22080	CMN	193	Funk Guitar 2	17:E.Guitar
+22081	CMN	194	Chorus Gtr 2	17:E.Guitar
+22082	CMN	195	Chorus Gtr2 Echo	17:E.Guitar
+22083	CMN	196	Chorus Gtr2 Step	17:E.Guitar
+22084	CMN	197	Overdrive Gtr 1	18:Dist.Guitar
+22085	CMN	198	Overdrive Gtr 2	18:Dist.Guitar
+22086	CMN	199	Overdrive Chorus	18:Dist.Guitar
+22087	CMN	200	Guitar Pinch	18:Dist.Guitar
+22088	CMN	201	Distortion Gtr 1	18:Dist.Guitar
+22089	CMN	202	Distortion Gtr 2	18:Dist.Guitar
+22090	CMN	203	Distortion Gtr 3	18:Dist.Guitar
+22091	CMN	204	Distortion Gtr 4	18:Dist.Guitar
+22092	CMN	205	Distortion Gtr 5	18:Dist.Guitar
+22093	CMN	206	Gtr Feedback 1	18:Dist.Guitar
+22094	CMN	207	Dist.Rhy Gtr	18:Dist.Guitar
+22095	CMN	208	Dist.Rhy Gtr Amp	18:Dist.Guitar
+22096	CMN	209	Gtr Harmonics	18:Dist.Guitar
+22097	CMN	210	Gtr Harmonics w	18:Dist.Guitar
+22098	CMN	211	Gtr Feedback 2	18:Dist.Guitar
+22099	CMN	212	Gtr Feedback 2 w	18:Dist.Guitar
+22100	CMN	213	Acoustic Bass	19:Ac.Bass
+22101	CMN	214	Acoustic Bass w	19:Ac.Bass
+22102	CMN	215	Fingered Bass	20:E.Bass
+22103	CMN	216	FingeredBass Atk	20:E.Bass
+22104	CMN	217	Finger Slap	20:E.Bass
+22105	CMN	218	Finger Slap Atk	20:E.Bass
+22106	CMN	219	Picked Bass	20:E.Bass
+22107	CMN	220	Picked Bass Atk1	20:E.Bass
+22108	CMN	221	Picked Bass Atk2	20:E.Bass
+22109	CMN	222	Fretless Bass	20:E.Bass
+22110	CMN	223	Fretless Bass w	20:E.Bass
+22111	CMN	224	Slap Bass 1	20:E.Bass
+22112	CMN	225	Slap Bass 1 Atk	20:E.Bass
+22113	CMN	226	Slap Bass 2	20:E.Bass
+22114	CMN	227	Slap Bass 2 Amp	20:E.Bass
+22115	CMN	228	Synth Bass 1	21:Synth Bass
+22116	CMN	229	Synth Bass 1 w	21:Synth Bass
+22117	CMN	230	Warm Syn Bass	21:Synth Bass
+22118	CMN	231	Synth Bass 3	21:Synth Bass
+22119	CMN	232	Clav.Bass	21:Synth Bass
+22120	CMN	233	Clav.Bass w	21:Synth Bass
+22121	CMN	234	Hammer Bass	21:Synth Bass
+22122	CMN	235	Hammer Bass Atk	21:Synth Bass
+22123	CMN	236	Juno Sqr Bass	21:Synth Bass
+22124	CMN	237	MKS-50 Bass	21:Synth Bass
+22125	CMN	238	R&B Bass 1	21:Synth Bass
+22126	CMN	239	R&B Bass 1 w	21:Synth Bass
+22127	CMN	240	R&B Bass 1 Atk	21:Synth Bass
+22128	CMN	241	MC202 Bass	21:Synth Bass
+22129	CMN	242	Compu Bass 1	21:Synth Bass
+22130	CMN	243	Compu Bass 1 Atk	21:Synth Bass
+22131	CMN	244	Muffled Bass	21:Synth Bass
+22132	CMN	245	R&B Bass 2	21:Synth Bass
+22133	CMN	246	R&B Bass 2 w	21:Synth Bass
+22134	CMN	247	R&B Bass 2 Atk	21:Synth Bass
+22135	CMN	248	R&B Bass 3	21:Synth Bass
+22136	CMN	249	R&B Bass 3 w	21:Synth Bass
+22137	CMN	250	R&B Bass 4	21:Synth Bass                                                            24:Ensemble
+22138	CMN	251	MG Bass 1	21:Synth Bass                                                               Strings
+22139	CMN	252	MG Bass 1 w	21:Synth Bass                                                            24:Ensemble
+22140	CMN	253	MG Bass 1 Atk	21:Synth Bass                                                               Strings
+22141	CMN	254	MG Bass 2	21:Synth Bass                                                            24:Ensemble
+22142	CMN	255	MG Bass 2 w	21:Synth Bass
+22143	CMN	256	MG Bass 3	21:Synth Bass
+22272	CMN	257	MG Bass 4	21:Synth Bass                                                            24:Ensemble
+22273	CMN	258	MG Bass 5	21:Synth Bass                                                               Strings
+22274	CMN	259	New Reso Bs 1	21:Synth Bass                                                            24:Ensemble
+22275	CMN	260	New Reso Bs 1 w	21:Synth Bass                                                               Strings
+22276	CMN	261	New Reso Bs 2	21:Synth Bass
+22277	CMN	262	Reso Bass 1	21:Synth Bass
+22278	CMN	263	Rubber Bass	21:Synth Bass
+22279	CMN	264	Reso Bass 2	21:Synth Bass
+22280	CMN	265	Reso Bass 3	21:Synth Bass
+22281	CMN	266	Reso Bass 4	21:Synth Bass
+22282	CMN	267	Acid Bass 1	21:Synth Bass
+22283	CMN	268	Acid Bass 2	21:Synth Bass
+22284	CMN	269	Acid Bass 3	21:Synth Bass                                                            24:Ensemble
+22285	CMN	270	TB Bass 1	21:Synth Bass
+22286	CMN	271	TB Bass 2	21:Synth Bass
+22287	CMN	272	Flat Bass	21:Synth Bass
+22288	CMN	273	Sub Bass	21:Synth Bass
+22289	CMN	274	Sub Bass Atk	21:Synth Bass
+22290	CMN	275	Garage Bass	21:Synth Bass
+22291	CMN	276	Synth Bass 2	21:Synth Bass
+22292	CMN	277	Synth Bass 5	21:Synth Bass
+22293	CMN	278	Synth Bass 4	21:Synth Bass
+22294	CMN	279	Synth Bass 6	21:Synth Bass
+22295	CMN	280	Rubber Syn Bs	21:Synth Bass
+22296	CMN	281	Attack Pulse	21:Synth Bass
+22297	CMN	282	Seq Bass	21:Synth Bass
+22298	CMN	283	106 Bass 1	21:Synth Bass
+22299	CMN	284	106 Bass 2	21:Synth Bass
+22300	CMN	285	Juno Bass	21:Synth Bass
+22301	CMN	286	Filter Env Bs	21:Synth Bass
+22302	CMN	287	Unison Syn Bs	21:Synth Bass
+22303	CMN	288	Unison Syn Bs w	21:Synth Bass
+22304	CMN	289	Alpha Bass	21:Synth Bass
+22305	CMN	290	Alpha Bass w	21:Synth Bass
+22306	CMN	291	Detune Bs	21:Synth Bass
+22307	CMN	292	Detune Bs w	21:Synth Bass
+22308	CMN	293	Ramp Bass	21:Synth Bass
+22309	CMN	294	Ramp Bass Atk	21:Synth Bass
+22310	CMN	295	Pedal Bass 1	21:Synth Bass
+22311	CMN	296	Pedal Bass 2	21:Synth Bass
+22312	CMN	297	Compu Bass 2	21:Synth Bass
+22313	CMN	298	Sqr Bass w	21:Synth Bass
+22314	CMN	299	Modular Bs 1	21:Synth Bass
+22315	CMN	300	Modular Bs 2	21:Synth Bass
+22316	CMN	301	Synth Bass 7	21:Synth Bass
+22317	CMN	302	Pedal Bass 3	21:Synth Bass
+22318	CMN	303	Monster Bass 1	21:Synth Bass
+22319	CMN	304	Monster Bass 2	21:Synth Bass
+22320	CMN	305	Growl Bass 1	21:Synth Bass
+22321	CMN	306	Growl Bass 2	21:Synth Bass
+22322	CMN	307	Violin	23:Solo Strings
+22323	CMN	308	Slow Violin	23:Solo Strings
+22324	CMN	309	Violin w	23:Solo Strings
+22325	CMN	310	Violin Amp	23:Solo Strings
+22326	CMN	311	Viola	23:Solo Strings
+22327	CMN	312	Viola Amp	23:Solo Strings
+22328	CMN	313	Cello	23:Solo Strings
+22329	CMN	314	Cello Amp	23:Solo Strings
+22330	CMN	315	Contrabass	23:Solo Strings
+22331	CMN	316	Contrabass Amp	23:Solo Strings
+22332	CMN	317	Tremolo Str	
+22333	CMN	318	Pizzicato Str	
+22334	CMN	319	Pizzicato Str w	
+22335	CMN	320	Pizz	
+22336	CMN	321	Pops Seq 4	
+22337	CMN	322	Pops Seq 4 w	
+22338	CMN	323	Harp	22:Plucked/Stroke
+22339	CMN	324	Aerial Harp	22:Plucked/Stroke
+22340	CMN	325	Yang Qin	15:Mallet
+22341	CMN	326	Yang Qin w	15:Mallet
+22342	CMN	327	Timpani	47:Percussion
+22343	CMN	328	Timpani w	47:Percussion
+22344	CMN	329	Timpani Low	47:Percussion
+22345	CMN	330	Timpani Atk	47:Percussion
+22346	CMN	331	Strings	
+22347	CMN	332	Orchestra	
+22348	CMN	333	60s Strings	
+22349	CMN	334	Small Strings	
+22350	CMN	335	Hybrid Strings	
+22351	CMN	336	Small Str Stacc	
+22352	CMN	337	Strings Stacc	
+22353	CMN	338	Strings Stacc w	
+22354	CMN	339	Strings Amp	
+22355	CMN	340	Slow Strings	
+22356	CMN	341	Mood Strings	
+22357	CMN	342	Syn Strings 1	36:Synth Pad/Str
+22358	CMN	343	Syn Strings 1 w	36:Synth Pad/Str
+22359	CMN	344	Syn Strings 3	36:Synth Pad/Str
+22360	CMN	345	Syn Strings 3 w	36:Synth Pad/Str
+22361	CMN	346	Syn Strings 2	36:Synth Pad/Str
+22362	CMN	347	Syn Strings 2 w	36:Synth Pad/Str
+22363	CMN	348	Choir 1	32:Vox/Choir
+22364	CMN	349	Choir 2	32:Vox/Choir
+22365	CMN	350	Choir 3	32:Vox/Choir
+22366	CMN	351	Voice Doos	33:Scat
+22367	CMN	352	Humming	32:Vox/Choir
+22368	CMN	353	Synth Voice	32:Vox/Choir
+22369	CMN	354	Analog Voice 1	32:Vox/Choir
+22370	CMN	355	Analog Voice 2	32:Vox/Choir
+22371	CMN	356	Jazz Scat	33:Scat
+22372	CMN	357	Jazz Scat w	33:Scat
+22373	CMN	358	Aerial Choir	32:Vox/Choir
+22374	CMN	359	Aerial Choir w	32:Vox/Choir
+22375	CMN	360	DJ Soft Vox	32:Vox/Choir
+22376	CMN	361	DJ Soft Vox w	32:Vox/Choir
+22377	CMN	362	Syn Vox	32:Vox/Choir
+22378	CMN	363	Syn Vox w	32:Vox/Choir
+22379	CMN	364	VP-330 Choir	32:Vox/Choir
+22380	CMN	365	VP-330 Choir w	32:Vox/Choir
+22381	CMN	366	FXM Voice	32:Vox/Choir
+22382	CMN	367	Cat Voice	32:Vox/Choir
+22383	CMN	368	Cat Voice Wah	32:Vox/Choir
+22384	CMN	369	Orchestra Hit	44:Hit
+22385	CMN	370	Bass Hit	44:Hit
+22386	CMN	371	Bass Hit w	44:Hit
+22387	CMN	372	6th Hit	44:Hit
+22388	CMN	373	6th Hit w	44:Hit
+22389	CMN	374	Euro Hit	44:Hit
+22390	CMN	375	Euro Hit w	44:Hit
+22391	CMN	376	Cheezy Movie	44:Hit
+22392	CMN	377	Cheezy Movie w	44:Hit
+22393	CMN	378	Tao Hit	44:Hit
+22394	CMN	379	Tao Hit w	44:Hit
+22395	CMN	380	House Hit	44:Hit
+22396	CMN	381	House Hit w	44:Hit
+22397	CMN	382	Trumpet	26:Solo Brass
+22398	CMN	383	Trumpet Echo	26:Solo Brass
+22399	CMN	384	Dark Trumpet	26:Solo Brass
+22528	CMN	385	Dark Trumpet w	26:Solo Brass
+22529	CMN	386	Romantic Tp	26:Solo Brass
+22530	CMN	387	Romantic Tp Echo	26:Solo Brass
+22531	CMN	388	Trombone 1	26:Solo Brass
+22532	CMN	389	Trombone 1 w	26:Solo Brass
+22533	CMN	390	Trombone 2	26:Solo Brass
+22534	CMN	391	Bright Tb	26:Solo Brass
+22535	CMN	392	Bright Tb w	26:Solo Brass
+22536	CMN	393	Tuba	26:Solo Brass
+22537	CMN	394	Tuba Atk	26:Solo Brass
+22538	CMN	395	Mute Trumpet 1	26:Solo Brass
+22539	CMN	396	Mute Trumpet 1 w	26:Solo Brass
+22540	CMN	397	Mute Trumpet 2	26:Solo Brass
+22541	CMN	398	Mute Trumpet 2 w	26:Solo Brass
+22542	CMN	399	French Horn 1	27:Ensemble Brass
+22543	CMN	400	French Horn 1 w	27:Ensemble Brass
+22544	CMN	401	French Horn 2	26:Solo Brass
+22545	CMN	402	FrenchHorn2 Echo	26:Solo Brass
+22546	CMN	403	Brass 1	27:Ensemble Brass
+22547	CMN	404	Brass 1 w	27:Ensemble Brass
+22548	CMN	405	Brass 2	27:Ensemble Brass
+22549	CMN	406	Brass Atk	27:Ensemble Brass
+22550	CMN	407	Brass Atk w	27:Ensemble Brass
+22551	CMN	408	Synth Brass 1	35:Synth Brass
+22552	CMN	409	Synth Brass 3	35:Synth Brass
+22553	CMN	410	Synth Brass 3 w	35:Synth Brass
+22554	CMN	411	Analog Brass 1	35:Synth Brass
+22555	CMN	412	Analog Brass 1 w	35:Synth Brass
+22556	CMN	413	Analog Brs 1 w 2	35:Synth Brass
+22557	CMN	414	Jump Brass	35:Synth Brass
+22558	CMN	415	Jump Brass Amp	35:Synth Brass
+22559	CMN	416	JP8 Brass 1	35:Synth Brass
+22560	CMN	417	JP8 Brass 1 w	35:Synth Brass
+22561	CMN	418	Syn Brass	35:Synth Brass
+22562	CMN	419	Syn Brass w	35:Synth Brass
+22563	CMN	420	JP8 Brass 2	35:Synth Brass
+22564	CMN	421	80’s Brass 1	35:Synth Brass
+22565	CMN	422	80’s Brass 2	35:Synth Brass
+22566	CMN	423	Synth Brass 2	35:Synth Brass
+22567	CMN	424	Synth Brass 4	35:Synth Brass
+22568	CMN	425	Analog Brass 2	35:Synth Brass
+22569	CMN	426	Analog Brass 3	35:Synth Brass
+22570	CMN	427	Analog Brass 3 w	35:Synth Brass
+22571	CMN	428	Reso Brass	35:Synth Brass
+22572	CMN	429	Poly Brass	35:Synth Brass
+22573	CMN	430	Soft Brass	35:Synth Brass
+22574	CMN	431	FM Brass	35:Synth Brass
+22575	CMN	432	Warm Syn Brass	35:Synth Brass
+22576	CMN	433	Dual Saw Brass	35:Synth Brass
+22577	CMN	434	Soft Syn Brass	35:Synth Brass
+22578	CMN	435	Vintage Brass	35:Synth Brass
+22579	CMN	436	Vintage Brass w	35:Synth Brass
+22580	CMN	437	Euro Express	35:Synth Brass
+22581	CMN	438	Mix Brass	35:Synth Brass
+22582	CMN	439	Brite Syn Brass	35:Synth Brass
+22583	CMN	440	JP8 Brass 3	35:Synth Brass
+22584	CMN	441	Synth Brass 5	35:Synth Brass
+22585	CMN	442	80’s Brass 3	35:Synth Brass
+22586	CMN	443	80’s Brass 4	35:Synth Brass
+22587	CMN	444	Soprano Sax	30:Sax
+22588	CMN	445	Soprano Sax Amp	30:Sax
+22589	CMN	446	Alto Sax	30:Sax
+22590	CMN	447	Alto Sax Amp	30:Sax
+22591	CMN	448	Tenor Sax	30:Sax
+22592	CMN	449	Tenor Sax Amp	30:Sax
+22593	CMN	450	Baritone Sax	30:Sax
+22594	CMN	451	Baritone Sax Atk	30:Sax
+22595	CMN	452	Oboe	28:Wind
+22596	CMN	453	Oboe w	28:Wind
+22597	CMN	454	English Horn	28:Wind
+22598	CMN	455	Bassoon	28:Wind
+22599	CMN	456	Clarinet	28:Wind
+22600	CMN	457	Piccolo	29:Flute
+22601	CMN	458	Flute	29:Flute
+22602	CMN	459	Flute w	29:Flute
+22603	CMN	460	Flute Echo	29:Flute
+22604	CMN	461	Recorder	31:Recorder
+22605	CMN	462	Pan Flute	29:Flute
+22606	CMN	463	Pan Flute w	29:Flute
+22607	CMN	464	Pan Flute Dly	29:Flute
+22608	CMN	465	Bottle Blow	29:Flute
+22609	CMN	466	Bottle Blow w	29:Flute
+22610	CMN	467	Bottle Blow Dly	29:Flute
+22611	CMN	468	Shakuhachi	29:Flute
+22612	CMN	469	Shakuhachi w	29:Flute
+22613	CMN	470	Shakuhachi Amp	29:Flute
+22614	CMN	471	Whistle	31:Recorder
+22615	CMN	472	Whistle Dly	31:Recorder
+22616	CMN	473	Ocarina	31:Recorder
+22617	CMN	474	Ocarina Echo	31:Recorder
+22618	CMN	475	Square Lead 1	34:Synth Lead
+22619	CMN	476	Square Lead 2	34:Synth Lead
+22620	CMN	477	Sine Lead	34:Synth Lead
+22621	CMN	478	Porta Sine Lead	34:Synth Lead
+22622	CMN	479	Pure Lead Dly	34:Synth Lead
+22623	CMN	480	Dist Flt TB 2	34:Synth Lead
+22624	CMN	481	Dist Flt TB 1	34:Synth Lead
+22625	CMN	482	DistFlt TB 1 Dly	34:Synth Lead
+22626	CMN	483	80’s Tech Lead	34:Synth Lead
+22627	CMN	484	Sqr Buzz Lead	34:Synth Lead
+22628	CMN	485	Ana Vox Lead	34:Synth Lead
+22629	CMN	486	CS Lead	34:Synth Lead
+22630	CMN	487	Classic GR	34:Synth Lead
+22631	CMN	488	Therasaw	34:Synth Lead
+22632	CMN	489	Bell Lead	34:Synth Lead
+22633	CMN	490	Bell Lead w	34:Synth Lead
+22634	CMN	491	Simple Tri	34:Synth Lead
+22635	CMN	492	Spooky Lead	34:Synth Lead
+22636	CMN	493	Soft Lead	34:Synth Lead
+22637	CMN	494	Sqr Lead 1	34:Synth Lead
+22638	CMN	495	Sqr Lead 2	34:Synth Lead
+22639	CMN	496	Sqr Lead 3	34:Synth Lead
+22640	CMN	497	Saw Lead 1	34:Synth Lead
+22641	CMN	498	Saw Lead 1 w	34:Synth Lead
+22642	CMN	499	Saw Lead 2	34:Synth Lead
+22643	CMN	500	Doctor Solo	34:Synth Lead
+22644	CMN	501	Natural Lead	34:Synth Lead
+22645	CMN	502	Sequenced Saw	34:Synth Lead
+22646	CMN	503	Sequenced Saw w	34:Synth Lead
+22647	CMN	504	Ah Super Saw	34:Synth Lead
+22648	CMN	505	Ah SuperSaw Dst1	34:Synth Lead
+22649	CMN	506	Ah SuperSaw Dst2	34:Synth Lead
+22650	CMN	507	Porta Super Saw	34:Synth Lead
+22651	CMN	508	S-Saw Stac Ld	34:Synth Lead
+22652	CMN	509	S-Saw Stac Ld w	34:Synth Lead
+22653	CMN	510	Tekno Lead 1 Atk	34:Synth Lead
+22654	CMN	511	Tekno Lead 1 Bit	34:Synth Lead
+22655	CMN	512	OSC-Sync Ld 1	34:Synth Lead
+22784	CMN	513	Wave Shape Ld	34:Synth Lead
+22785	CMN	514	Wave Shape Ld w	34:Synth Lead
+22786	CMN	515	Legato Tkno	34:Synth Lead
+22787	CMN	516	Legato Tkno w	34:Synth Lead
+22788	CMN	517	Tekno Lead 2	34:Synth Lead
+22789	CMN	518	Buzz Lead	34:Synth Lead
+22790	CMN	519	Buzz Lead Dist	34:Synth Lead
+22791	CMN	520	Saw Buzz Ld	34:Synth Lead
+22792	CMN	521	Saw Buzz Ld w	34:Synth Lead
+22793	CMN	522	Saw Lead 3	34:Synth Lead
+22794	CMN	523	Saw Lead 4	34:Synth Lead
+22795	CMN	524	Classic Lead	34:Synth Lead
+22796	CMN	525	Ramp Lead	34:Synth Lead
+22797	CMN	526	Saw Lead 5	34:Synth Lead
+22798	CMN	527	Jupiter Lead 1	34:Synth Lead
+22799	CMN	528	JupiterLead1 Atk	34:Synth Lead
+22800	CMN	529	Jupiter Lead 2	34:Synth Lead
+22801	CMN	530	Saw Lead 6	34:Synth Lead
+22802	CMN	531	On Air	34:Synth Lead
+22803	CMN	532	Saw Lead 7	34:Synth Lead
+22804	CMN	533	Saw Lead 8	34:Synth Lead
+22805	CMN	534	Warm Lead	34:Synth Lead
+22806	CMN	535	Saw Lead 9	34:Synth Lead
+22807	CMN	536	Saw Lead 10	34:Synth Lead
+22808	CMN	537	EQ Lead	34:Synth Lead
+22809	CMN	538	Saw Lead 11	34:Synth Lead
+22810	CMN	539	Saw Lead 12	34:Synth Lead
+22811	CMN	540	Waspy Lead	34:Synth Lead
+22812	CMN	541	Octa Square	34:Synth Lead
+22813	CMN	542	Octa Juice	34:Synth Lead
+22814	CMN	543	Fat GR Lead	34:Synth Lead
+22815	CMN	544	Octa Saw	34:Synth Lead
+22816	CMN	545	Juicy Lead	34:Synth Lead
+22817	CMN	546	OSC-Sync Ld 2	34:Synth Lead
+22818	CMN	547	OSC-Sync Ld 3	34:Synth Lead
+22819	CMN	548	Syn.Calliope	34:Synth Lead
+22820	CMN	549	Syn.Calliope w	34:Synth Lead
+22821	CMN	550	Syn.Calliope Dly	34:Synth Lead
+22822	CMN	551	Chiffer Lead	34:Synth Lead
+22823	CMN	552	Chiffer Lead w	34:Synth Lead
+22824	CMN	553	Charang	34:Synth Lead
+22825	CMN	554	Wire Lead	34:Synth Lead
+22826	CMN	555	Wire Lead Cho	34:Synth Lead
+22827	CMN	556	Solo Vox	34:Synth Lead
+22828	CMN	557	Solo Vox w	34:Synth Lead
+22829	CMN	558	Solo Vox Cho	34:Synth Lead
+22830	CMN	559	OB Lead	34:Synth Lead
+22831	CMN	560	5th Saw Lead	34:Synth Lead
+22832	CMN	561	5th Saw Lead Dly	34:Synth Lead
+22833	CMN	562	Housechord	34:Synth Lead
+22834	CMN	563	Ju-D Fifths	34:Synth Lead
+22835	CMN	564	Major 7	34:Synth Lead
+22836	CMN	565	Dance Saws 1	34:Synth Lead
+22837	CMN	566	Bass+Lead	34:Synth Lead
+22838	CMN	567	Bass+Lead w	34:Synth Lead
+22839	CMN	568	Delayed Lead	34:Synth Lead
+22840	CMN	569	Delayed Lead w	34:Synth Lead
+22841	CMN	570	Delayed Lead Cho	34:Synth Lead
+22842	CMN	571	Fantasia	37:Synth Bellpad
+22843	CMN	572	D50 Bell	37:Synth Bellpad
+22844	CMN	573	D50 Bell w	37:Synth Bellpad
+22845	CMN	574	Fantasy 1	37:Synth Bellpad
+22846	CMN	575	D50 Fantasy	37:Synth Bellpad
+22847	CMN	576	D50 Fantasy w	37:Synth Bellpad
+22848	CMN	577	Soft Bell	37:Synth Bellpad
+22849	CMN	578	Dreambell	37:Synth Bellpad
+22850	CMN	579	Dreambell w	37:Synth Bellpad
+22851	CMN	580	Dreaming Box	37:Synth Bellpad
+22852	CMN	581	Dreaming Box w	37:Synth Bellpad
+22853	CMN	582	Fantasy 2	37:Synth Bellpad
+22854	CMN	583	Fantasy 2 w	37:Synth Bellpad
+22855	CMN	584	Stacc Heaven	37:Synth Bellpad
+22856	CMN	585	Stacc Heaven w	37:Synth Bellpad
+22857	CMN	586	Warm Pad	36:Synth Pad/Str
+22858	CMN	587	Warm Pad Dly	36:Synth Pad/Str
+22859	CMN	588	Sine Pad	36:Synth Pad/Str
+22860	CMN	589	JP8 Strings 1	36:Synth Pad/Str
+22861	CMN	590	Soft Pad	36:Synth Pad/Str
+22862	CMN	591	JP8 Strings 2	36:Synth Pad/Str
+22863	CMN	592	JUNO Str	36:Synth Pad/Str
+22864	CMN	593	JUNO Str w	36:Synth Pad/Str
+22865	CMN	594	Oct Strings	36:Synth Pad/Str
+22866	CMN	595	Brite Str	36:Synth Pad/Str
+22867	CMN	596	Voyager	36:Synth Pad/Str
+22868	CMN	597	Voyager w	36:Synth Pad/Str
+22869	CMN	598	JP8 Strings 3	36:Synth Pad/Str
+22870	CMN	599	PWM Str 1	36:Synth Pad/Str
+22871	CMN	600	PWM Str 2	36:Synth Pad/Str
+22872	CMN	601	Fading Str	36:Synth Pad/Str
+22873	CMN	602	Vintage Str	36:Synth Pad/Str
+22874	CMN	603	Vintage Str Amp	36:Synth Pad/Str
+22875	CMN	604	Analog Str	36:Synth Pad/Str
+22876	CMN	605	Polysynth	38:Synth PolyKey
+22877	CMN	606	Polysynth Dly	38:Synth PolyKey
+22878	CMN	607	Digitaless	38:Synth PolyKey
+22879	CMN	608	Analog Saws	38:Synth PolyKey
+22880	CMN	609	Super Saws	38:Synth PolyKey
+22881	CMN	610	Super Saws Atk	38:Synth PolyKey
+22882	CMN	611	Dance Saws 2	38:Synth PolyKey
+22883	CMN	612	S-Saw Pad	38:Synth PolyKey
+22884	CMN	613	S-Saw Pad w	38:Synth PolyKey
+22885	CMN	614	DOC Stack	38:Synth PolyKey
+22886	CMN	615	Trance Saws	38:Synth PolyKey
+22887	CMN	616	Trance Saws w	38:Synth PolyKey
+22888	CMN	617	PWM Pad	38:Synth PolyKey
+22889	CMN	618	Space Voice	36:Synth Pad/Str
+22890	CMN	619	Space Voice Dly	36:Synth Pad/Str
+22891	CMN	620	Itopia	36:Synth Pad/Str
+22892	CMN	621	Itopia Dly	36:Synth Pad/Str
+22893	CMN	622	JP8 Hollow 1	36:Synth Pad/Str
+22894	CMN	623	JP8 Hollow 2	36:Synth Pad/Str
+22895	CMN	624	Hollow Pad	36:Synth Pad/Str
+22896	CMN	625	Strobe Pad	36:Synth Pad/Str
+22897	CMN	626	Heaven Pad	36:Synth Pad/Str
+22898	CMN	627	Itopia w	36:Synth Pad/Str
+22899	CMN	628	Bowed Glass	36:Synth Pad/Str
+22900	CMN	629	Bowed Glass Dly	36:Synth Pad/Str
+22901	CMN	630	Brite Wine	36:Synth Pad/Str
+22902	CMN	631	Bell Pad	36:Synth Pad/Str
+22903	CMN	632	Wine Pad	36:Synth Pad/Str
+22904	CMN	633	Fine Wine Pad	36:Synth Pad/Str
+22905	CMN	634	Organ Pad	36:Synth Pad/Str
+22906	CMN	635	Brite Wine w	36:Synth Pad/Str
+22907	CMN	636	Metallic Pad	36:Synth Pad/Str
+22908	CMN	637	Metallic Pad Dly	36:Synth Pad/Str
+22909	CMN	638	Chime Pad	36:Synth Pad/Str
+22910	CMN	639	Halo Pad	36:Synth Pad/Str
+22911	CMN	640	Halo Pad w	36:Synth Pad/Str
+23040	CMN	641	Halo Pad Dly	36:Synth Pad/Str
+23041	CMN	642	Sweep Pad 1	36:Synth Pad/Str
+23042	CMN	643	Sweep Pad 1 Dly	36:Synth Pad/Str
+23043	CMN	644	Trns Sweep Pad w	36:Synth Pad/Str
+23044	CMN	645	Trns Sweep Pad	36:Synth Pad/Str
+23045	CMN	646	Giant Sweep	36:Synth Pad/Str
+23046	CMN	647	Sweep Pad 2 w	36:Synth Pad/Str
+23047	CMN	648	Sweep Pad 2	36:Synth Pad/Str
+23048	CMN	649	Reso Pad	36:Synth Pad/Str
+23049	CMN	650	Ice Rain	36:Synth Pad/Str
+23050	CMN	651	Ice Rain Dly	36:Synth Pad/Str
+23051	CMN	652	Healing Pad	36:Synth Pad/Str
+23052	CMN	653	Healing Pad w	36:Synth Pad/Str
+23053	CMN	654	Soundtrack	36:Synth Pad/Str
+23054	CMN	655	Soundtrack Dly	36:Synth Pad/Str
+23055	CMN	656	Random Str	36:Synth Pad/Str
+23056	CMN	657	Fairy’s Song	36:Synth Pad/Str
+23057	CMN	658	Crystal	40:Synth Seq/Pop
+23058	CMN	659	Crystal w	40:Synth Seq/Pop
+23059	CMN	660	Synth Mallet	40:Synth Seq/Pop
+23060	CMN	661	Synth Mallet w	40:Synth Seq/Pop
+23061	CMN	662	Synth Mallet Dly	40:Synth Seq/Pop
+23062	CMN	663	Sine Mallet	40:Synth Seq/Pop
+23063	CMN	664	Seq Saw	40:Synth Seq/Pop
+23064	CMN	665	Seq 1	40:Synth Seq/Pop
+23065	CMN	666	Seq 1 w	40:Synth Seq/Pop
+23066	CMN	667	Seq 2	40:Synth Seq/Pop
+23067	CMN	668	Seq 3	40:Synth Seq/Pop
+23068	CMN	669	Seq Sqr 1	40:Synth Seq/Pop
+23069	CMN	670	Seq Sqr 1 Atk	40:Synth Seq/Pop
+23070	CMN	671	Seq Sqr 2	40:Synth Seq/Pop
+23071	CMN	672	Seq Tri	40:Synth Seq/Pop
+23072	CMN	673	Seq Tri w	40:Synth Seq/Pop
+23073	CMN	674	Synth Seq 1	40:Synth Seq/Pop
+23074	CMN	675	Synth Seq 2	40:Synth Seq/Pop
+23075	CMN	676	Synth Seq 3	40:Synth Seq/Pop
+23076	CMN	677	Analog Seq	40:Synth Seq/Pop
+23077	CMN	678	Detune Seq	40:Synth Seq/Pop
+23078	CMN	679	Uni-G	40:Synth Seq/Pop
+23079	CMN	680	Seq 4	40:Synth Seq/Pop
+23080	CMN	681	Analog Poly	40:Synth Seq/Pop
+23081	CMN	682	Analog Poly Dly	40:Synth Seq/Pop
+23082	CMN	683	Saws Key	40:Synth Seq/Pop
+23083	CMN	684	Vintage Key	40:Synth Seq/Pop
+23084	CMN	685	Analog Key w	40:Synth Seq/Pop
+23085	CMN	686	Analog Key	40:Synth Seq/Pop
+23086	CMN	687	Bell 1	40:Synth Seq/Pop
+23087	CMN	688	Bell 1 Atk	40:Synth Seq/Pop
+23088	CMN	689	Bell 2	40:Synth Seq/Pop
+23089	CMN	690	Bell 3	40:Synth Seq/Pop
+23090	CMN	691	Bell 3 Amp	40:Synth Seq/Pop
+23091	CMN	692	MusicBox Key w	40:Synth Seq/Pop
+23092	CMN	693	MusicBox Key	40:Synth Seq/Pop
+23093	CMN	694	Music Bells	40:Synth Seq/Pop
+23094	CMN	695	Music Bells w	40:Synth Seq/Pop
+23095	CMN	696	Dreaming Bell	40:Synth Seq/Pop
+23096	CMN	697	FingBell Key	40:Synth Seq/Pop
+23097	CMN	698	FingBell Key w	40:Synth Seq/Pop
+23098	CMN	699	Org Bell	40:Synth Seq/Pop
+23099	CMN	700	Pluck Synth	40:Synth Seq/Pop
+23100	CMN	701	Atmosphere	38:Synth PolyKey
+23101	CMN	702	Atmosphere Cho	38:Synth PolyKey
+23102	CMN	703	Analog Dream	38:Synth PolyKey
+23103	CMN	704	Analog Dream Atk	38:Synth PolyKey
+23104	CMN	705	Choir Key	38:Synth PolyKey
+23105	CMN	706	Choir Key Echo	38:Synth PolyKey
+23106	CMN	707	Brass Key	38:Synth PolyKey
+23107	CMN	708	Harpsi Key	38:Synth PolyKey
+23108	CMN	709	Harpsi Key w	38:Synth PolyKey
+23109	CMN	710	Brightness	38:Synth PolyKey
+23110	CMN	711	Brightness Cho	38:Synth PolyKey
+23111	CMN	712	Vox Key	38:Synth PolyKey
+23112	CMN	713	Air Key 1	38:Synth PolyKey
+23113	CMN	714	Air Key 2	38:Synth PolyKey
+23114	CMN	715	Digital Key	38:Synth PolyKey
+23115	CMN	716	Dreamheaven 1	38:Synth PolyKey
+23116	CMN	717	Dreamheaven 2	38:Synth PolyKey
+23117	CMN	718	Goblins	39:Synth FX
+23118	CMN	719	Cosmic Drops	39:Synth FX
+23119	CMN	720	Echo Drops	39:Synth FX
+23120	CMN	721	Echo Drops Cho	39:Synth FX
+23121	CMN	722	Echo Bell	39:Synth FX
+23122	CMN	723	Echo Bell Cho	39:Synth FX
+23123	CMN	724	Echo Bell Dly	39:Synth FX
+23124	CMN	725	Echo Pan	39:Synth FX
+23125	CMN	726	Echo Pan Cho	39:Synth FX
+23126	CMN	727	LFO Saw	39:Synth FX
+23127	CMN	728	Keep Going	39:Synth FX
+23128	CMN	729	Electrostar	39:Synth FX
+23129	CMN	730	Scream at me	39:Synth FX
+23130	CMN	731	Scream at me w	39:Synth FX
+23131	CMN	732	Star Theme	36:Synth Pad/Str
+23132	CMN	733	Star Theme Dly	36:Synth Pad/Str
+23133	CMN	734	Sitar 1	22:Plucked/Stroke
+23134	CMN	735	Sitar 1 w	22:Plucked/Stroke
+23135	CMN	736	Sitar 2	22:Plucked/Stroke
+23136	CMN	737	Sitar 2 w	22:Plucked/Stroke
+23137	CMN	738	Banjo	22:Plucked/Stroke
+23138	CMN	739	Banjo w	22:Plucked/Stroke
+23139	CMN	740	Shamisen	22:Plucked/Stroke
+23140	CMN	741	Shamisen w	22:Plucked/Stroke
+23141	CMN	742	Koto	22:Plucked/Stroke
+23142	CMN	743	Koto w	22:Plucked/Stroke
+23143	CMN	744	Taisho Koto	22:Plucked/Stroke
+23144	CMN	745	Taisho Koto w	22:Plucked/Stroke
+23145	CMN	746	Kalimba	22:Plucked/Stroke
+23146	CMN	747	Kalimba w	22:Plucked/Stroke
+23147	CMN	748	Bagpipe	28:Wind
+23148	CMN	749	Bagpipe w	28:Wind
+23149	CMN	750	Fiddle	23:Solo Strings
+23150	CMN	751	Fiddle w	23:Solo Strings
+23151	CMN	752	Shanai	28:Wind
+23152	CMN	753	Shanai w	28:Wind
+23153	CMN	754	Tinkle Bell	14:Bell
+23154	CMN	755	Tinkle Bell w	14:Bell
+23155	CMN	756	Agogo	14:Bell
+23156	CMN	757	Agogo w	14:Bell
+23157	CMN	758	Steel Drums	47:Percussion
+23158	CMN	759	Steel Drums w	47:Percussion
+23159	CMN	760	Steel Drums w 2	47:Percussion
+23160	CMN	761	Woodblock	47:Percussion
+23161	CMN	762	Castanets	47:Percussion
+23162	CMN	763	Taiko	47:Percussion
+23163	CMN	764	Concert BD	47:Percussion
+23164	CMN	765	Concert BD w	47:Percussion
+23165	CMN	766	Melodic Tom 1	47:Percussion
+23166	CMN	767	Melodic Tom 2	47:Percussion
+23167	CMN	768	Synth Drum	47:Percussion
+23296	CMN	769	Synth Drum w	47:Percussion
+23297	CMN	770	TR-808 Tom	47:Percussion
+23298	CMN	771	Elec.Perc.	47:Percussion
+23299	CMN	772	Reverse Cym	47:Percussion
+23300	CMN	773	Reverse Cym Atk	47:Percussion
+23301	CMN	774	Gtr Fret Noise	45:Sound FX
+23302	CMN	775	Gtr Cut Noise	45:Sound FX
+23303	CMN	776	Bass String Slap	45:Sound FX
+23304	CMN	777	Breath Noise	45:Sound FX
+23305	CMN	778	Flute Key Click	45:Sound FX
+23306	CMN	779	Seashore	45:Sound FX
+23307	CMN	780	Rain	45:Sound FX
+23308	CMN	781	Thunder	45:Sound FX
+23309	CMN	782	Thunder Dly	45:Sound FX
+23310	CMN	783	Wind	45:Sound FX
+23311	CMN	784	Stream	45:Sound FX
+23312	CMN	785	Stream w	45:Sound FX
+23313	CMN	786	Bubble 1	45:Sound FX
+23314	CMN	787	Bubble 1 w	45:Sound FX
+23315	CMN	788	Bubble 2	45:Sound FX
+23316	CMN	789	FX Scene	45:Sound FX
+23317	CMN	790	Tuned Winds	45:Sound FX
+23318	CMN	791	Tuned Winds w	45:Sound FX
+23319	CMN	792	Sand Noise	45:Sound FX
+23320	CMN	793	Bird 1	45:Sound FX
+23321	CMN	794	Dog	45:Sound FX
+23322	CMN	795	Horse Gallop	45:Sound FX
+23323	CMN	796	Bird 2	45:Sound FX
+23324	CMN	797	Telephone 1	45:Sound FX
+23325	CMN	798	Telephone 2	45:Sound FX
+23326	CMN	799	Door Creaking	45:Sound FX
+23327	CMN	800	Door	45:Sound FX
+23328	CMN	801	Scratch	45:Sound FX
+23329	CMN	802	Wind Chimes	45:Sound FX
+23330	CMN	803	FX Close	45:Sound FX
+23331	CMN	804	Helicopter	45:Sound FX
+23332	CMN	805	Car Engine	45:Sound FX
+23333	CMN	806	Car Stop	45:Sound FX
+23334	CMN	807	Car Pass	45:Sound FX
+23335	CMN	808	Car Crash	45:Sound FX
+23336	CMN	809	Siren	45:Sound FX
+23337	CMN	810	Train	45:Sound FX
+23338	CMN	811	Jetplane	45:Sound FX
+23339	CMN	812	Jetplane Dly	45:Sound FX
+23340	CMN	813	Starship	45:Sound FX
+23341	CMN	814	Starship Dly	45:Sound FX
+23342	CMN	815	Burst Noise	45:Sound FX
+23343	CMN	816	Passing By	45:Sound FX
+23344	CMN	817	FX Pass 1	45:Sound FX
+23345	CMN	818	FX Pass 2	45:Sound FX
+23346	CMN	819	FX Pass 3	45:Sound FX
+23347	CMN	820	FX Pass 4	45:Sound FX
+23348	CMN	821	FX Pass 5	45:Sound FX
+23349	CMN	822	Poly Sweep Nz	45:Sound FX
+23350	CMN	823	Reso Sweep Dn	45:Sound FX
+23351	CMN	824	Applause	45:Sound FX
+23352	CMN	825	Applause w	45:Sound FX
+23353	CMN	826	Laughing	45:Sound FX
+23354	CMN	827	Screaming	45:Sound FX
+23355	CMN	828	Punch	45:Sound FX
+23356	CMN	829	Heart Beat	45:Sound FX
+23357	CMN	830	Footsteps	45:Sound FX
+23358	CMN	831	Gun Shot	45:Sound FX
+23359	CMN	832	Machine Gun	45:Sound FX
+23360	CMN	833	Laser Gun	45:Sound FX
+23361	CMN	834	Explosion	45:Sound FX
+23362	CMN	835	Explosion Dly	45:Sound FX
+23363	CMN	836	Explosion Dist	45:Sound FX
+23364	CMN	837	FX Hit w	45:Sound FX
+23552	PR-A	1	AnalogAtmosphere	38:Synth PolyKey
+23553	PR-A	2	Progre.Pluck Mod	38:Synth PolyKey
+23554	PR-A	3	Stringbell Synth	38:Synth PolyKey
+23555	PR-A	4	P5 Soundtrack	38:Synth PolyKey
+23556	PR-A	5	5th Ambi Pluck	38:Synth PolyKey
+23557	PR-A	6	Juno Poly Stack	38:Synth PolyKey
+23558	PR-A	7	M/S Pulse/Mod	38:Synth PolyKey
+23559	PR-A	8	JUNO On Fire	38:Synth PolyKey
+23560	PR-A	9	Future Poly/Mod	38:Synth PolyKey
+23561	PR-A	10	Synth Edge 1	38:Synth PolyKey
+23562	PR-A	11	Future Poly	38:Synth PolyKey
+23563	PR-A	12	Future Sine Poly	38:Synth PolyKey
+23564	PR-A	13	Close to Lead	38:Synth PolyKey
+23565	PR-A	14	Laser Sync Harp	38:Synth PolyKey
+23566	PR-A	15	Broken Toys	38:Synth PolyKey
+23567	PR-A	16	Arise	38:Synth PolyKey
+23568	PR-A	17	Ring Padding	38:Synth PolyKey
+23569	PR-A	18	JP8 X-MOD Magic	38:Synth PolyKey
+23570	PR-A	19	Heliosphere	38:Synth PolyKey
+23571	PR-A	20	Sweet Sustain	38:Synth PolyKey
+23572	PR-A	21	New Pizzagogo	38:Synth PolyKey
+23573	PR-A	22	S.SAW Orch+Pizz	38:Synth PolyKey
+23574	PR-A	23	Slow Sleeper	38:Synth PolyKey
+23575	PR-A	24	XMod2 JazzGt	38:Synth PolyKey
+23576	PR-A	25	Shine Pad	36:Synth Pad/Str
+23577	PR-A	26	Ambien	36:Synth Pad/Str
+23578	PR-A	27	Formant Pad	36:Synth Pad/Str
+23579	PR-A	28	XMod N Pole	36:Synth Pad/Str
+23580	PR-A	29	Sawchestra	36:Synth Pad/Str
+23581	PR-A	30	Release 2 Mod	36:Synth Pad/Str
+23582	PR-A	31	Pad-o-wan	36:Synth Pad/Str
+23583	PR-A	32	Waterfront	36:Synth Pad/Str
+23584	PR-A	33	Resonant Gravity	36:Synth Pad/Str
+23585	PR-A	34	XMod Pad	36:Synth Pad/Str
+23586	PR-A	35	Droner Pad	36:Synth Pad/Str
+23587	PR-A	36	Chasing Amy	36:Synth Pad/Str
+23588	PR-A	37	Materials Pad	36:Synth Pad/Str
+23589	PR-A	38	Jarresque Pad	36:Synth Pad/Str
+23590	PR-A	39	Delayed Cascade	36:Synth Pad/Str
+23591	PR-A	40	Diorama	36:Synth Pad/Str
+23592	PR-A	41	Enochian	36:Synth Pad/Str
+23593	PR-A	42	Firefly Chaser	36:Synth Pad/Str
+23594	PR-A	43	Echoes of JD-XA	36:Synth Pad/Str
+23595	PR-A	44	In the sky	36:Synth Pad/Str
+23596	PR-A	45	Delicate	36:Synth Pad/Str
+23597	PR-A	46	Hot Ring Pad	36:Synth Pad/Str
+23598	PR-A	47	Blackhole for Me	36:Synth Pad/Str
+23599	PR-A	48	No Juno	36:Synth Pad/Str
+23600	PR-A	49	Teary Strings	36:Synth Pad/Str
+23601	PR-A	50	Polymod	36:Synth Pad/Str
+23602	PR-A	51	Chemtrails	36:Synth Pad/Str
+23603	PR-A	52	Unreal Pad	36:Synth Pad/Str
+23604	PR-A	53	Tricycle	36:Synth Pad/Str
+23605	PR-A	54	Digitalis	36:Synth Pad/Str
+23606	PR-A	55	XMod2 String	36:Synth Pad/Str
+23607	PR-A	56	XMod2 Sweep	36:Synth Pad/Str
+23608	PR-A	57	Linear Synth Pad	37:Synth Bellpad
+23609	PR-A	58	Fantasia 2019	37:Synth Bellpad
+23610	PR-A	59	King’s Choir	32:Vox/Choir
+23611	PR-A	60	Lo-Fi Vox	32:Vox/Choir
+23612	PR-A	61	JX Cream	35:Synth Brass
+23614	PR-A	63	Runner CS Brass	35:Synth Brass
+23615	PR-A	64	Soft Brass	35:Synth Brass
+23616	PR-A	65	Bit Brass	35:Synth Brass
+23617	PR-A	66	XMod2 Soft Brs	35:Synth Brass
+23618	PR-A	67	Wizard Lead	34:Synth Lead
+23619	PR-A	68	Skunk Trunk Lead	34:Synth Lead
+23620	PR-A	69	Future Sync Lead	34:Synth Lead
+23621	PR-A	70	Future Vox Lead	34:Synth Lead
+23622	PR-A	71	JP Ring Baby	34:Synth Lead
+23623	PR-A	72	Fat Mask Lead	34:Synth Lead
+23624	PR-A	73	Metal Crush	34:Synth Lead
+23625	PR-A	74	Harsh Hog Lead	34:Synth Lead
+23626	PR-A	75	XMod Lead	34:Synth Lead
+23627	PR-A	76	Top Hat Lead	34:Synth Lead
+23628	PR-A	77	Digi-8 Lead	34:Synth Lead
+23629	PR-A	78	Cauldron Lead	34:Synth Lead
+23630	PR-A	79	Cone Buzz Lead	34:Synth Lead
+23631	PR-A	80	Mod Swallow	34:Synth Lead
+23632	PR-A	81	Buzzing Fly	34:Synth Lead
+23633	PR-A	82	Brassy VA Lead	34:Synth Lead
+23634	PR-A	83	Saw Super Sync	34:Synth Lead
+23635	PR-A	84	JP-6 Rings	34:Synth Lead
+23636	PR-A	85	Gabba Stabber	34:Synth Lead
+23637	PR-A	86	Sync Metals	34:Synth Lead
+23638	PR-A	87	Power Sync	34:Synth Lead
+23639	PR-A	88	Sync XFM	34:Synth Lead
+23640	PR-A	89	XMod Square	34:Synth Lead
+23641	PR-A	90	XMod JP	34:Synth Lead
+23642	PR-A	91	Cage’s Ring Lead	34:Synth Lead
+23643	PR-A	92	Sync Nativity	34:Synth Lead
+23644	PR-A	93	Ode to...	34:Synth Lead
+23645	PR-A	94	Bellbottom	34:Synth Lead
+23646	PR-A	95	Square Easy	34:Synth Lead
+23647	PR-A	96	Arasquare	34:Synth Lead
+23648	PR-A	97	XMod2 Soft Ld 1	34:Synth Lead
+23649	PR-A	98	XMod2 Soft Ld 2	34:Synth Lead
+23650	PR-A	99	Ambisynthereed	34:Synth Lead
+23651	PR-A	100	TB-Slayer	21:Synth Bass
+23652	PR-A	101	Fizzle Pop	21:Synth Bass
+23653	PR-A	102	Decay Bounce	21:Synth Bass
+23654	PR-A	103	XMod2 Soft Bs	21:Synth Bass
+23655	PR-A	104	Dirt Sub 1	21:Synth Bass
+23656	PR-A	105	Bit Sub	21:Synth Bass
+23657	PR-A	106	XMod2 LoBit Bs	21:Synth Bass
+23658	PR-A	107	XMod2 Oct Bs 1	21:Synth Bass
+23659	PR-A	108	XMod2 Oct Bs 2	21:Synth Bass
+23660	PR-A	109	XMod2 Rubber Bs	21:Synth Bass
+23661	PR-A	110	Electro Leg Bass	21:Synth Bass
+23662	PR-A	111	Noisy Haus Bass	21:Synth Bass
+23663	PR-A	112	24Db Mini Ladder	21:Synth Bass
+23664	PR-A	113	Bass or Lead ?	21:Synth Bass
+23665	PR-A	114	Water Hose Bass	21:Synth Bass
+23666	PR-A	115	Crizzle Bass	21:Synth Bass
+23667	PR-A	116	808 Lo-Bass	21:Synth Bass
+23668	PR-A	117	Cone Pressure	21:Synth Bass
+23669	PR-A	118	Auto JP	21:Synth Bass
+23670	PR-A	119	Reso Pumper Bass	21:Synth Bass
+23671	PR-A	120	Marked Bell	21:Synth Bass
+23672	PR-A	121	LFO Lazor Bass	21:Synth Bass
+23673	PR-A	122	S.C House Bass	21:Synth Bass
+23674	PR-A	123	Future Wobble	21:Synth Bass
+23675	PR-A	124	Madness Wobble	21:Synth Bass
+23676	PR-A	125	Step Mod Bass	21:Synth Bass
+23677	PR-A	126	Mysterions	39:Synth FX
+23678	PR-A	127	Sorrow in Space	39:Synth FX
+23679	PR-A	128	Jewellery Box	39:Synth FX
+23808	PR-A	129	XMod Pizz	39:Synth FX
+23809	PR-A	130	Cosine Porta	39:Synth FX
+23810	PR-A	131	Drifter	39:Synth FX
+23811	PR-A	132	8th Peak	42:Pulsating
+23812	PR-A	133	Step LFO Dream	42:Pulsating
+23813	PR-A	134	S.C Lofi Vox	42:Pulsating
+23814	PR-A	135	Dancing P5	42:Pulsating
+23815	PR-A	136	Layer Cake	42:Pulsating
+23816	PR-A	137	Side Chain Syn	42:Pulsating
+23817	PR-A	138	LFO Pluck / Mod	42:Pulsating
+23818	PR-A	139	Vectorism	42:Pulsating
+23819	PR-A	140	Pad-o-wan Step	42:Pulsating
+23820	PR-A	141	Ripple Shimmer	42:Pulsating
+23821	PR-A	142	Frost Bite	42:Pulsating
+23822	PR-A	143	Alpha Centauri	42:Pulsating
+23823	PR-A	144	Passage	42:Pulsating
+23824	PR-A	145	Dirty Phaser	42:Pulsating
+23825	PR-A	146	Decompose	42:Pulsating
+23826	PR-A	147	LFO POLY MOD.F	42:Pulsating
+23827	PR-A	148	P5 Modulation	42:Pulsating
+23828	PR-A	149	Hyperion 4632	42:Pulsating                                                             24:Ensemble
+23829	PR-A	150	Swing	42:Pulsating                                                                Strings
+23830	PR-A	151	Angels Wings	42:Pulsating                                                             24:Ensemble
+23831	PR-A	152	Dust Spark	42:Pulsating
+23832	PR-A	153	Bamboo	42:Pulsating
+23833	PR-A	154	Sickly Star	42:Pulsating
+23834	PR-A	155	Strange P5	42:Pulsating
+23835	PR-A	156	Noise Pound	42:Pulsating
+23836	PR-A	157	Faulty Neurons	42:Pulsating
+23837	PR-A	158	Not Quite Tine	42:Pulsating
+23838	PR-A	159	Hairy Triangles	42:Pulsating
+23839	PR-A	160	Low Fidelity	42:Pulsating
+23840	PR-A	161	Space Hiccup	42:Pulsating
+23841	PR-A	162	Faint Light	42:Pulsating
+23842	PR-A	163	Step Per Organ	42:Pulsating
+23843	PR-A	164	Donkey Cart	42:Pulsating
+23844	PR-A	165	XMod2 Seq 1	42:Pulsating
+23845	PR-A	166	XMod2 Seq 2	42:Pulsating
+23846	PR-A	167	XMod2 Seq 3	42:Pulsating
+23847	PR-A	168	Data Cram	41:Phrase
+23848	PR-A	169	Electro Birds	41:Phrase
+23849	PR-A	170	Chloroform	41:Phrase
+23850	PR-A	171	Step SQ1 /Mod	41:Phrase
+23851	PR-A	172	Step SQ2 /Mod	41:Phrase
+23852	PR-A	173	Vox Step Lead	41:Phrase
+23853	PR-A	174	Step Growl 1	41:Phrase
+23854	PR-A	175	Step Growl 2	41:Phrase
+23855	PR-A	176	Minimal Beat 1	43:Beat&Groove
+23856	PR-A	177	Minimal Beat 2	43:Beat&Groove
+23857	PR-A	178	Flutter Pulse	42:Pulsating
+23858	PR-A	179	Morse Groove	42:Pulsating
+23859	PR-A	180	808 Conga Syn	47:Percussion
+23860	PR-A	181	Step Mod Per	47:Percussion
+23861	PR-A	182	Who are you?	49:Zone
+23862	PR-A	183	80s Dive	49:Zone
+23863	PR-A	184	Home 1	49:Zone
+23864	PR-A	185	Future LD Kit	49:Zone
+23865	PR-A	186	P&K SE Kit	49:Zone
+23866	PR-A	187	Chiptune Kit	49:Zone
+23867	PR-A	188	Step Bass&Saw	49:Zone
+23868	PR-A	189	Ac Pop Piano 1	1:Ac.Piano
+23869	PR-A	190	Rocker Piano	1:Ac.Piano
+23870	PR-A	191	Ragtime Piano	1:Ac.Piano
+23871	PR-A	192	Ac Pop Piano 2	1:Ac.Piano
+23872	PR-A	193	Piano + Str 1	1:Ac.Piano
+23873	PR-A	194	Piano + Str 2	1:Ac.Piano
+23874	PR-A	195	E.Piano	4:E.Piano1
+23875	PR-A	196	Tremolo E.Piano	4:E.Piano1
+23876	PR-A	197	Phaser EP 1	4:E.Piano1
+23877	PR-A	198	Phaser EP 2	4:E.Piano1
+23878	PR-A	199	Chorus EP 1	4:E.Piano1
+23879	PR-A	200	Chorus EP 2	4:E.Piano1
+23880	PR-A	201	Emotional EP	5:E.Piano2
+23881	PR-A	202	XMod2 EP1	5:E.Piano2
+23882	PR-A	203	XMod2 EP2	5:E.Piano2
+23883	PR-A	204	Dinky	14:Bell
+23884	PR-A	205	XMod2 Marimba	15:Mallet
+23885	PR-A	206	XMod2 Log Drum	15:Mallet
+23886	PR-A	207	Nylon Guitar	16:Ac.Guitar
+23887	PR-A	208	Folk Guitar	16:Ac.Guitar
+23888	PR-A	209	Clean Gtr	17:E.Guitar
+23889	PR-A	210	Chorus Gtr	17:E.Guitar
+23890	PR-A	211	Delay Gtr	17:E.Guitar
+23891	PR-A	212	Dist Guitar 1	18:Dist.Guitar
+23892	PR-A	213	Dist Guitar 2	18:Dist.Guitar
+23893	PR-A	214	Beach Drink	15:Mallet
+23894	PR-A	215	Violin Echo	23:Solo Strings
+23895	PR-A	216	Small Strings	
+23896	PR-A	217	Tremolo Str	
+23897	PR-A	218	Oboe Echo	28:Wind
+23898	PR-A	219	Flute Echo	29:Flute
+23899	PR-A	220	Ghost Flute	29:Flute
+23900	PR-A	221	Ghost Pan	29:Flute
+23901	PR-A	222	Dirt Sub 2	21:Synth Bass
+23902	PR-A	223	Dirt Sub 3	21:Synth Bass
+23903	PR-A	224	Dust Sub	21:Synth Bass
+23904	PR-A	225	Spread Sub 1	21:Synth Bass
+23905	PR-A	226	Spread Sub 2	21:Synth Bass
+23906	PR-A	227	Lurking Bass	21:Synth Bass
+23907	PR-A	228	Bendy Mod	35:Synth Brass
+23908	PR-A	229	Fantom Overture	36:Synth Pad/Str
+23909	PR-A	230	Fade Pad	36:Synth Pad/Str
+23910	PR-A	231	Synth Edge 2	38:Synth PolyKey
+23911	PR-A	232	Randen 1986	38:Synth PolyKey
+23912	PR-A	233	Clean Me	38:Synth PolyKey
+23913	PR-A	234	Cyber Slime	38:Synth PolyKey
+23914	PR-A	235	Sunrise	38:Synth PolyKey
+23915	PR-A	236	Kaihou Keys	38:Synth PolyKey
+23916	PR-A	237	Lost Box	14:Bell
+23917	PR-A	238	Bugendai	39:Synth FX
+23918	PR-A	239	Home 2	49:Zone

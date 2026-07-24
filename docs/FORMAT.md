@@ -83,10 +83,16 @@ It uniquely identifies the zone's tone but is **bank-relative** — not the plai
 
 **Resolved (mechanism confirmed via TONEMAP controlled capture):** `tone_id` is NOT a global tone
 number. When a scene is saved, the Fantom **bundles the USER tones it references into the file's
-`PATa` area and renumbers them**, so for user tones `tone_id` is an **index into `PATa`**; factory
-preset tones instead keep a fixed ROM reference (high bit `0x4000` set — e.g. PR-A = `0x5c00`,
-PR-B = `0x4000`). Verified: TONEMAP `PATa` holds exactly its 3 referenced USER tones, and
-`tone_id` 0/1/2 → `Strings Fall` / `Thriller trillo` / `Jump Brass EmA` (= panel USER 1/2/129).
+`PATa` area and renumbers them**, so for user tones `tone_id` is an **index into `PATa`**. Verified:
+TONEMAP `PATa` holds exactly its 3 referenced USER tones, and `tone_id` 0/1/2 → `Strings Fall` /
+`Thriller trillo` / `Jump Brass EmA` (= panel USER 1/2/129).
+
+**Factory preset tones** instead encode a fixed ROM reference: `tone_id = (LSB << 8) | (PC - 1)`,
+with MSB always 87 for ZEN-Core tones (so the `0x4000` bit is always set — preset LSBs are ≥ 64).
+Verified against Roland's *FANTOM Sound List*: `JX Cream` = PR-A 0061 (LSB 92, PC 61) = `0x5c3c`;
+PR-A 0001 = `0x5c00`; PR-B 0001 = `0x4000`. The 3667 ZEN-Core preset tones are bundled in
+`crates/fantom-core/src/preset_tones.tsv` and resolved by [`presets::lookup`]. (Drum kits use MSB 86
+and share the same 16-bit id space, so they are omitted to avoid mislabelling.)
 
 `PATa` layout mirrors `PRFa`: 16-byte header (`count`, `record_size`, `data_start=0x10`), then
 `count` records of `record_size` bytes; the tone **name** is the first 16 ASCII bytes, and byte
