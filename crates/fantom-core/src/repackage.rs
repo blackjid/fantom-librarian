@@ -121,15 +121,16 @@ impl OutputOpaque {
         }
     }
 
-    fn add(&mut self, family: &OpaqueFamily, index: usize) -> Result<usize> {
+    fn add(&mut self, family: &OpaqueFamily, index: usize, tag: &str) -> Result<usize> {
         if self.format != family.area.format || self.record_size != family.area.record_size {
             return Err(Error::Unrecognized(
                 "opaque dependency record formats differ".into(),
             ));
         }
-        let record = family.area.records.get(index).ok_or_else(|| {
-            Error::Unrecognized(format!("{} record {index} is out of range", "ACBa"))
-        })?;
+        let record =
+            family.area.records.get(index).ok_or_else(|| {
+                Error::Unrecognized(format!("{tag} record {index} is out of range"))
+            })?;
         if let Some(index) = self.indexes.get(record) {
             return Ok(*index);
         }
@@ -138,6 +139,15 @@ impl OutputOpaque {
         self.entries.push(owned.clone());
         self.indexes.insert(owned, output_index);
         Ok(output_index)
+    }
+}
+
+fn opaque_tag(msb: u8, lsb: u8) -> Option<[u8; 4]> {
+    match (msb, lsb) {
+        (107, 0) => Some(*b"ACBa"),
+        (90, 0) => Some(*b"DCWa"),
+        (97, 0) => Some(*b"MDLa"),
+        _ => None,
     }
 }
 
@@ -265,12 +275,6 @@ struct ExportBank {
 impl ExportBank {
     fn parse(raw: &Raw) -> Result<Self> {
         let svd = Svd::parse(raw)?;
-        if svd.area(b"MDLa").is_some() {
-            return Err(Error::Unrecognized(
-                "full backups cannot be repackaged: their user-tone mapping is unresolved".into(),
-            ));
-        }
-
         let prfa = svd
             .area(b"PRFa")
             .ok_or_else(|| Error::Unrecognized("no PRFa (performance) area in file".into()))?;
@@ -336,20 +340,28 @@ impl ExportBank {
         }
 
         let mut opaque = HashMap::new();
-        if let Some(area) = svd.area(b"ACBa") {
-            let (header, record_size, records) =
-                parse_records(svd.area_bytes(raw, area)?, "ACBa", false)?;
-            opaque.insert(
-                *b"ACBa",
-                OpaqueFamily {
-                    area: RecordArea {
-                        header,
-                        format: area.format,
-                        record_size,
-                        records,
+        for tag in [*b"ACBa", *b"DCWa", *b"MDLa"] {
+            if let Some(area) = svd.area(&tag) {
+                let (header, record_size, records) =
+                    parse_records(svd.area_bytes(raw, area)?, &area.tag_str(), false)?;
+                if tag == *b"MDLa" && records.len() > 128 {
+                    return Err(Error::Unrecognized(
+                        "full backups cannot be repackaged: their user-tone mapping is unresolved"
+                            .into(),
+                    ));
+                }
+                opaque.insert(
+                    tag,
+                    OpaqueFamily {
+                        area: RecordArea {
+                            header,
+                            format: area.format,
+                            record_size,
+                            records,
+                        },
                     },
-                },
-            );
+                );
+            }
         }
 
         Ok(Self {
@@ -416,15 +428,21 @@ fn rebuild<'a>(
         let slots: Vec<_> = valid_zone_slots(&scene).collect();
         for slot in slots {
             let at = tone_bank_offset(slot);
-            if scene[at] == 107 && scene[at + 1] == 0 {
-                let tag = *b"ACBa";
+            if let Some(tag) = opaque_tag(scene[at], scene[at + 1]) {
                 let family = bank.opaque.get(&tag).ok_or_else(|| {
-                    Error::Unrecognized("scene references missing ACBa dependency".into())
+                    Error::Unrecognized(format!(
+                        "scene references missing {} dependency",
+                        String::from_utf8_lossy(&tag)
+                    ))
                 })?;
                 let output = opaque_outputs
                     .entry(tag)
                     .or_insert_with(|| OutputOpaque::from_family(family));
-                let new_index = output.add(family, scene[at + 2] as usize)?;
+                let new_index = output.add(
+                    family,
+                    scene[at + 2] as usize,
+                    &String::from_utf8_lossy(&tag),
+                )?;
                 scene[at + 2] = u8::try_from(new_index)
                     .map_err(|_| Error::Unrecognized("too many ACBa records to encode".into()))?;
                 continue;
