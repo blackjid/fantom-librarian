@@ -18,8 +18,8 @@ pub struct RawZone {
     /// +0x09 — key-range upper (MIDI note).
     pub key_high: u8,
     _c: [u8; 0x34],
-    /// +0x3e — constant `cf cd` marker; validates the offset alignment.
-    #[br(assert(marker == [0xcf, 0xcd], "zone marker mismatch: {:02x?}", marker))]
+    /// +0x3e — constant `cf cd` marker on real Fantom-0 zones; used to tell a decodable zone from
+    /// an uninitialized/foreign one rather than as a hard parse assertion (see [`RawZone::MARKER`]).
     pub marker: [u8; 2],
     _d: [u8; 0x20],
 }
@@ -29,6 +29,13 @@ impl RawZone {
     pub const LEN: usize = 0x60;
     /// Record-relative offset of the zone table.
     pub const TABLE_OFFSET: usize = 0x6d0;
+    /// The `cf cd` alignment marker a valid Fantom-0 zone carries at `+0x3e`.
+    pub const MARKER: [u8; 2] = [0xcf, 0xcd];
+
+    /// Whether this looks like a real, decodable zone (correct alignment marker).
+    pub fn is_valid(&self) -> bool {
+        self.marker == Self::MARKER
+    }
 }
 
 /// One entry of the scene record's **zone settings table** (record-relative `0x194`, 16 × 72 bytes).
@@ -69,12 +76,15 @@ mod tests {
         b[0x3f] = 0xcd;
         let z = RawZone::read(&mut Cursor::new(&b)).unwrap();
         assert_eq!((z.enable, z.key_low, z.key_high), (1, 60, 72));
+        assert!(z.is_valid());
     }
 
     #[test]
-    fn raw_zone_rejects_bad_marker() {
-        let b = vec![0u8; RawZone::LEN]; // marker bytes are 0, not cf cd
-        assert!(RawZone::read(&mut Cursor::new(&b)).is_err());
+    fn raw_zone_without_marker_parses_but_is_invalid() {
+        // A zone with no cf cd marker still parses (no hard assert) but reports invalid.
+        let b = vec![0u8; RawZone::LEN];
+        let z = RawZone::read(&mut Cursor::new(&b)).unwrap();
+        assert!(!z.is_valid());
     }
 
     #[test]

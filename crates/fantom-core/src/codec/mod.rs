@@ -38,7 +38,8 @@ const COMMENT_LEN: usize = 64;
 /// Number of zone slots in every scene.
 const ZONE_COUNT: usize = 16;
 
-/// Decode every scene (name only, for now) contained in an SVD backup.
+/// Decode every scene in an SVD file — name, comment, and 16 zones (switch, key range, level, and
+/// tone, with user-tone names resolved for scene exports; see [`read_zones`]).
 pub fn read_scenes(raw: &Raw) -> Result<Vec<Scene>> {
     let svd = Svd::parse(raw)?;
     let prfa = svd
@@ -69,7 +70,7 @@ pub fn read_scenes(raw: &Raw) -> Result<Vec<Scene>> {
                 .map(ascii_trim)
                 .unwrap_or_default();
             for n in 0..ZONE_COUNT {
-                if let Some(id) = zone_tone_id(record, n) {
+                if let Some((_, _, id)) = decode_zone_slot(record, n) {
                     if id & PRESET_FLAG == 0 {
                         user_gids.insert(id);
                     }
@@ -116,27 +117,41 @@ fn zone_tone_id(record: &[u8], n: usize) -> Option<u16> {
     record.get(at..at + 2).map(|s| u16::from_be_bytes([s[0], s[1]]))
 }
 
+/// Decode zone slot `n` of a scene `record`, or `None` when the record is too short to hold it or
+/// the slot lacks the `cf cd` alignment marker (uninitialized, corrupt, or a layout we don't
+/// recognise). This is the single gate for "is this a real zone" — used both to decide which zones
+/// to emit ([`read_zones`]) and which tone ids count toward the gid-rank resolver ([`read_scenes`]),
+/// so an unpopulated slot can never leak a spurious tone id into the resolver.
+fn decode_zone_slot(record: &[u8], n: usize) -> Option<(RawZone, ZoneSettings, u16)> {
+    let zone_off = RawZone::TABLE_OFFSET + n * RawZone::LEN;
+    let settings_off = ZoneSettings::TABLE_OFFSET + n * ZoneSettings::LEN;
+    if record.len() < (zone_off + RawZone::LEN).max(settings_off + ZoneSettings::LEN) {
+        return None;
+    }
+    let z = RawZone::read(&mut cursor_at(record, zone_off)).ok()?;
+    if !z.is_valid() {
+        return None;
+    }
+    let s = ZoneSettings::read(&mut cursor_at(record, settings_off)).ok()?;
+    let tone_id = zone_tone_id(record, n).unwrap_or(0);
+    Some((z, s, tone_id))
+}
+
 /// Decode the 16 zones from a single scene `record` (the slice starting at the zone name).
 ///
 /// Combines the zone table (`0x6d0`, switch + key range) with the settings table (`0x194`, level +
-/// tone id). Returns an empty vector when the record is too short to hold the zone tables — real
-/// Fantom records are 3572 bytes; synthetic/truncated records simply carry no zones.
+/// tone id). `resolver` supplies user-tone names when the file's `PATa` maps by gid rank (scene
+/// exports); it is `None` for full backups, which leave user tones unresolved.
 ///
-/// `resolver` supplies user-tone names when the file's `PATa` maps by gid rank (scene exports); it
-/// is `None` for full backups, which leave user tones unresolved.
+/// Resilient by design: a record too short to hold the zone tables yields no zones, and any
+/// individual zone slot that lacks the `cf cd` alignment marker is skipped rather than failing the
+/// whole file (see [`decode_zone_slot`]).
 fn read_zones(record: &[u8], resolver: Option<&ToneResolver>) -> Result<Vec<Zone>> {
-    let zones_end = RawZone::TABLE_OFFSET + ZONE_COUNT * RawZone::LEN;
-    let settings_end = ZoneSettings::TABLE_OFFSET + ZONE_COUNT * ZoneSettings::LEN;
-    if record.len() < zones_end.max(settings_end) {
-        return Ok(Vec::new());
-    }
-
     let mut zones = Vec::with_capacity(ZONE_COUNT);
     for n in 0..ZONE_COUNT {
-        let z = RawZone::read(&mut cursor_at(record, RawZone::TABLE_OFFSET + n * RawZone::LEN))?;
-        let settings_off = ZoneSettings::TABLE_OFFSET + n * ZoneSettings::LEN;
-        let s = ZoneSettings::read(&mut cursor_at(record, settings_off))?;
-        let tone_id = zone_tone_id(record, n).unwrap_or(0);
+        let Some((z, s, tone_id)) = decode_zone_slot(record, n) else {
+            continue;
+        };
         zones.push(Zone {
             number: n as u8,
             enabled: z.enable != 0,
@@ -302,5 +317,140 @@ mod tests {
             (2, true, 60, 72, 50)
         );
         assert!(!zones[0].enabled);
+    }
+
+    /// Write `s` into `buf[at..at+len]`, space-padding the remainder (matches Fantom's ASCII
+    /// field convention, so `ascii_trim` round-trips it exactly).
+    fn write_ascii(buf: &mut [u8], at: usize, len: usize, s: &str) {
+        let b = s.as_bytes();
+        let n = b.len().min(len);
+        buf[at..at + n].copy_from_slice(&b[..n]);
+        buf[at + n..at + len].fill(b' ');
+    }
+
+    /// Build a real-size (3572-byte) scene record with a name and comment, all 16 zone slots
+    /// zeroed (so they lack the `cf cd` marker and are skipped unless populated by [`golden_zone`]).
+    fn golden_record(name: &str, comment: &str) -> Vec<u8> {
+        let mut r = vec![0u8; 3572];
+        write_ascii(&mut r, 0, NAME_LEN, name);
+        write_ascii(&mut r, COMMENT_OFFSET, COMMENT_LEN, comment);
+        r
+    }
+
+    /// Populate zone slot `n` with a valid marker and the given switch/range/level/tone.
+    fn golden_zone(r: &mut [u8], n: usize, enabled: bool, key_low: u8, key_high: u8, level: u8, tone_id: u16) {
+        let zb = RawZone::TABLE_OFFSET + n * RawZone::LEN;
+        r[zb + 0x04] = enabled as u8;
+        r[zb + 0x08] = key_low;
+        r[zb + 0x09] = key_high;
+        r[zb + 0x3e..zb + 0x40].copy_from_slice(&RawZone::MARKER);
+
+        let sb = ZoneSettings::TABLE_OFFSET + n * ZoneSettings::LEN;
+        r[sb + 0x07] = level;
+        r[sb + TONE_ID_OFFSET..sb + TONE_ID_OFFSET + 2].copy_from_slice(&tone_id.to_be_bytes());
+    }
+
+    /// Lay out `areas` (tag, format, body) as a full SVD5 file: header, area table, then bodies
+    /// back to back. Mirrors the confirmed Fantom-0 envelope (see `container::svd`).
+    fn build_svd(areas: &[(&[u8; 4], &[u8; 4], &[u8])]) -> Raw {
+        let table_len = areas.len() * 16;
+        let header_size = 14 + table_len as u16;
+
+        let mut table = Vec::new();
+        let mut bodies = Vec::new();
+        let mut offset = 0x10 + table_len;
+        for (tag, format, body) in areas {
+            table.extend_from_slice(*tag);
+            table.extend_from_slice(*format);
+            table.extend_from_slice(&(offset as u32).to_le_bytes());
+            table.extend_from_slice(&(body.len() as u32).to_le_bytes());
+            bodies.extend_from_slice(body);
+            offset += body.len();
+        }
+
+        let mut file = Vec::new();
+        file.extend_from_slice(&header_size.to_le_bytes());
+        file.extend_from_slice(b"SVD5");
+        file.extend_from_slice(&[0u8; 10]);
+        file.extend_from_slice(&table);
+        file.extend_from_slice(&bodies);
+        Raw::from_bytes(file)
+    }
+
+    /// End-to-end regression test over a real-size, real-shaped SVD5 file: two PRFa scenes plus a
+    /// matching PATa tone list, decoded through the public `read_scenes` entry point. Exercises the
+    /// container envelope, scene name/comment, per-zone switch/range/level, the gid-rank user-tone
+    /// resolver, factory preset resolution, and the "skip invalid zone slots" behavior — all in one
+    /// committable fixture, independent of any real Fantom file.
+    #[test]
+    fn golden_file_round_trips_through_read_scenes() {
+        // JX Cream = PR-A 0061 (LSB 92, PC 61) -> (92<<8)|(61-1) = 0x5c3c; a real bundled preset.
+        const JX_CREAM: u16 = 0x5c3c;
+        const USER_A_GID: u16 = 100;
+        const USER_B_GID: u16 = 200;
+
+        let mut scene1 = golden_record("Golden Scene", "regression fixture");
+        golden_zone(&mut scene1, 0, true, 0, 60, 100, USER_A_GID);
+        golden_zone(&mut scene1, 1, false, 61, 127, 90, JX_CREAM);
+        golden_zone(&mut scene1, 2, true, 0, 127, 127, USER_B_GID);
+        // Zones 3..16 are left zeroed (no marker) — expected to be skipped, not errored.
+
+        let scene2 = golden_record("Second Scene", "");
+        // No zones populated at all: expect an empty zone list, not a parse failure.
+
+        let mut prfa = Vec::new();
+        prfa.extend_from_slice(&2u32.to_le_bytes()); // declared count
+        prfa.extend_from_slice(&(scene1.len() as u32).to_le_bytes()); // record_size
+        prfa.extend_from_slice(&[0u8; 8]);
+        prfa.extend_from_slice(&scene1);
+        prfa.extend_from_slice(&scene2);
+
+        // PATa gid-sorted: rank(USER_A_GID)=0, rank(USER_B_GID)=1 (ranks assigned by ascending
+        // gid), so PATa[0]/[1] must be named accordingly for the export-style resolver to fire.
+        let mut pata = Vec::new();
+        pata.extend_from_slice(&2u32.to_le_bytes()); // count
+        pata.extend_from_slice(&32u32.to_le_bytes()); // record_size
+        pata.extend_from_slice(&[0u8; 8]);
+        for name in ["Golden User A", "Golden User B"] {
+            let mut rec = vec![0u8; 32];
+            write_ascii(&mut rec, 0, NAME_LEN, name);
+            pata.extend_from_slice(&rec);
+        }
+
+        let raw = build_svd(&[(b"PRFa", b"KY19", &prfa), (b"PATa", b"KY19", &pata)]);
+        let scenes = read_scenes(&raw).unwrap();
+
+        assert_eq!(scenes.len(), 2);
+
+        let s1 = &scenes[0];
+        assert_eq!(s1.name, "Golden Scene");
+        assert_eq!(s1.comment, "regression fixture");
+        assert_eq!(s1.zones.len(), 3, "zones without a marker must be skipped");
+
+        assert_eq!(s1.zones[0].number, 0);
+        assert!(s1.zones[0].enabled);
+        assert_eq!((s1.zones[0].key_low, s1.zones[0].key_high, s1.zones[0].level), (0, 60, 100));
+        assert_eq!(
+            s1.zones[0].tone,
+            ToneRef::User { id: USER_A_GID, name: Some("Golden User A".into()) }
+        );
+
+        assert_eq!(s1.zones[1].number, 1);
+        assert!(!s1.zones[1].enabled);
+        assert_eq!(s1.zones[1].tone, ToneRef::Preset { id: JX_CREAM });
+        assert_eq!(s1.zones[1].tone.name(), Some("JX Cream"));
+        assert_eq!(s1.zones[1].tone.preset().unwrap().bank, "PR-A");
+        assert_eq!(s1.zones[1].tone.preset().unwrap().number, 61);
+
+        assert_eq!(s1.zones[2].number, 2);
+        assert_eq!(
+            s1.zones[2].tone,
+            ToneRef::User { id: USER_B_GID, name: Some("Golden User B".into()) }
+        );
+
+        let s2 = &scenes[1];
+        assert_eq!(s2.name, "Second Scene");
+        assert_eq!(s2.comment, "");
+        assert!(s2.zones.is_empty());
     }
 }
