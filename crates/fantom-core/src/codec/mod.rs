@@ -177,7 +177,7 @@ fn bundled_tone_names(raw: &Raw, svd: &Svd) -> HashMap<(u8, u8, u8), String> {
             .area(tag)
             .and_then(|area| svd.area_bytes(raw, area).ok())
             .and_then(|area| {
-                let offset = if tag == b"MDLa" { 0x10 } else { 0x0c };
+                let offset = if tag == b"MDLa" { 0x10 } else { 0 };
                 record_names_at(area, offset)
             })
             .unwrap_or_default();
