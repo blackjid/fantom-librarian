@@ -4,6 +4,7 @@
 //! from the `PRFa` area today; the zone/tone contents of each record are still being
 //! reverse-engineered (see `docs/FORMAT.md`).
 
+use std::collections::{BTreeSet, HashMap};
 use std::io::Cursor;
 
 use binrw::BinRead as _;
@@ -51,16 +52,14 @@ pub fn read_scenes(raw: &Raw) -> Result<Vec<Scene>> {
         return Err(Error::Unrecognized("PRFa record size is zero".into()));
     }
 
-    // User-tone names live in the PATa area. `tone_id` indexes it directly only in scene exports;
-    // full backups (which carry an `MDLa` model-tone area) use a global address we don't map yet,
-    // so we resolve names only for exports and leave backup user tones as bare ids.
     let pat = PatArea::from_svd(raw, &svd).ok();
-    let resolvable = svd.area(b"MDLa").is_none();
+    let is_backup = svd.area(b"MDLa").is_some();
 
-    let mut scenes = Vec::new();
-    // Records start right after the header and are capped by the declared count.
+    // Pass 1: collect the scene records and every referenced user tone id.
+    let mut records: Vec<(String, String, &[u8])> = Vec::new();
+    let mut user_gids: BTreeSet<u16> = BTreeSet::new();
     let mut pos = AREA_HEADER_LEN;
-    while pos + NAME_LEN <= area.len() && scenes.len() < declared_count {
+    while pos + NAME_LEN <= area.len() && records.len() < declared_count {
         let name = ascii_trim(&area[pos..pos + NAME_LEN]);
         // Empty-named slots pad the bank to a fixed capacity; keep only real scenes.
         if !name.is_empty() {
@@ -69,15 +68,52 @@ pub fn read_scenes(raw: &Raw) -> Result<Vec<Scene>> {
                 .get(COMMENT_OFFSET..COMMENT_OFFSET + COMMENT_LEN)
                 .map(ascii_trim)
                 .unwrap_or_default();
-            scenes.push(Scene {
-                name,
-                comment,
-                zones: read_zones(record, pat.as_ref(), resolvable)?,
-            });
+            for n in 0..ZONE_COUNT {
+                if let Some(id) = zone_tone_id(record, n) {
+                    if id & PRESET_FLAG == 0 {
+                        user_gids.insert(id);
+                    }
+                }
+            }
+            records.push((name, comment, record));
         }
         pos += record_size;
     }
-    Ok(scenes)
+
+    // A user tone indexes `PATa` by the **rank** of its gid among all referenced gids: `PATa` is
+    // stored gid-sorted and de-duplicated, so the Nth-smallest gid is `PATa[N]`. This holds only
+    // when `PATa` contains exactly the referenced tones — true for scene exports, detected by the
+    // unique-gid count matching the `PATa` count. Full backups keep every tone in `PATa` (and carry
+    // an `MDLa` area), so the rank does not apply and their user tones stay unresolved.
+    let rank: HashMap<u16, usize> = user_gids.iter().enumerate().map(|(i, &g)| (g, i)).collect();
+    let resolver = pat
+        .as_ref()
+        .filter(|_| !is_backup)
+        .filter(|p| p.tones().len() == rank.len())
+        .map(|p| ToneResolver { pat: p, rank: &rank });
+
+    records
+        .into_iter()
+        .map(|(name, comment, record)| {
+            Ok(Scene {
+                name,
+                comment,
+                zones: read_zones(record, resolver.as_ref())?,
+            })
+        })
+        .collect()
+}
+
+/// Resolves user-tone gids to `PATa` names for one file (see [`read_scenes`]).
+struct ToneResolver<'a> {
+    pat: &'a PatArea,
+    rank: &'a HashMap<u16, usize>,
+}
+
+/// Read a zone's raw tone id (settings table `+0x01`, big-endian), if the record is long enough.
+fn zone_tone_id(record: &[u8], n: usize) -> Option<u16> {
+    let at = ZoneSettings::TABLE_OFFSET + n * ZoneSettings::LEN + TONE_ID_OFFSET;
+    record.get(at..at + 2).map(|s| u16::from_be_bytes([s[0], s[1]]))
 }
 
 /// Decode the 16 zones from a single scene `record` (the slice starting at the zone name).
@@ -86,9 +122,9 @@ pub fn read_scenes(raw: &Raw) -> Result<Vec<Scene>> {
 /// tone id). Returns an empty vector when the record is too short to hold the zone tables — real
 /// Fantom records are 3572 bytes; synthetic/truncated records simply carry no zones.
 ///
-/// `pat` supplies user-tone names; `resolvable` gates whether `tone_id` may be used as a direct
-/// `PATa` index (true for scene exports, false for full backups).
-pub fn read_zones(record: &[u8], pat: Option<&PatArea>, resolvable: bool) -> Result<Vec<Zone>> {
+/// `resolver` supplies user-tone names when the file's `PATa` maps by gid rank (scene exports); it
+/// is `None` for full backups, which leave user tones unresolved.
+fn read_zones(record: &[u8], resolver: Option<&ToneResolver>) -> Result<Vec<Zone>> {
     let zones_end = RawZone::TABLE_OFFSET + ZONE_COUNT * RawZone::LEN;
     let settings_end = ZoneSettings::TABLE_OFFSET + ZONE_COUNT * ZoneSettings::LEN;
     if record.len() < zones_end.max(settings_end) {
@@ -100,11 +136,11 @@ pub fn read_zones(record: &[u8], pat: Option<&PatArea>, resolvable: bool) -> Res
         let z = RawZone::read(&mut cursor_at(record, RawZone::TABLE_OFFSET + n * RawZone::LEN))?;
         let settings_off = ZoneSettings::TABLE_OFFSET + n * ZoneSettings::LEN;
         let s = ZoneSettings::read(&mut cursor_at(record, settings_off))?;
-        let tone_id = read_u16_be(record, settings_off + TONE_ID_OFFSET)?;
+        let tone_id = zone_tone_id(record, n).unwrap_or(0);
         zones.push(Zone {
             number: n as u8,
             enabled: z.enable != 0,
-            tone: resolve_tone(tone_id, pat, resolvable),
+            tone: resolve_tone(tone_id, resolver),
             key_low: z.key_low,
             key_high: z.key_high,
             level: s.level,
@@ -114,24 +150,16 @@ pub fn read_zones(record: &[u8], pat: Option<&PatArea>, resolvable: bool) -> Res
 }
 
 /// Resolve a raw 16-bit tone id into a [`ToneRef`].
-fn resolve_tone(id: u16, pat: Option<&PatArea>, resolvable: bool) -> ToneRef {
+fn resolve_tone(id: u16, resolver: Option<&ToneResolver>) -> ToneRef {
     if id & PRESET_FLAG != 0 {
         ToneRef::Preset { id }
     } else {
-        let name = if resolvable {
-            pat.and_then(|p| p.get(id as usize)).map(|t| t.name.clone())
-        } else {
-            None
-        };
+        let name = resolver.and_then(|r| {
+            let idx = *r.rank.get(&id)?;
+            Some(r.pat.get(idx)?.name.clone())
+        });
         ToneRef::User { id, name }
     }
-}
-
-fn read_u16_be(bytes: &[u8], at: usize) -> Result<u16> {
-    let slice = bytes
-        .get(at..at + 2)
-        .ok_or_else(|| Error::Unrecognized(format!("record truncated at offset {at}")))?;
-    Ok(u16::from_be_bytes(slice.try_into().unwrap()))
 }
 
 fn cursor_at(bytes: &[u8], at: usize) -> Cursor<&[u8]> {
@@ -216,9 +244,9 @@ mod tests {
     }
 
     #[test]
-    fn resolve_tone_distinguishes_user_and_preset() {
+    fn resolve_tone_maps_gid_rank_and_presets() {
         use crate::container::PatArea;
-        // A tiny PATa with two tones.
+        // A tiny gid-sorted PATa with two tones.
         let mut area = Vec::new();
         area.extend_from_slice(&2u32.to_le_bytes()); // count
         area.extend_from_slice(&32u32.to_le_bytes()); // record_size
@@ -229,19 +257,19 @@ mod tests {
             area.extend_from_slice(&rec);
         }
         let pat = PatArea::parse(&area).unwrap();
+        // gids 10 and 42 rank to PATa[0] and PATa[1].
+        let rank: HashMap<u16, usize> = [(10u16, 0usize), (42, 1)].into_iter().collect();
+        let r = ToneResolver { pat: &pat, rank: &rank };
 
-        // User tone, resolvable export → named.
         assert_eq!(
-            resolve_tone(1, Some(&pat), true),
-            ToneRef::User { id: 1, name: Some("Jump Brass EmA".into()) }
+            resolve_tone(42, Some(&r)),
+            ToneRef::User { id: 42, name: Some("Jump Brass EmA".into()) }
         );
-        // User tone in a backup (not resolvable) → id only.
-        assert_eq!(
-            resolve_tone(1, Some(&pat), false),
-            ToneRef::User { id: 1, name: None }
-        );
-        // Preset flag set → Preset regardless of PATa.
-        assert_eq!(resolve_tone(0x5c00, Some(&pat), true), ToneRef::Preset { id: 0x5c00 });
+        // A gid not in the rank map, or no resolver at all → id only.
+        assert_eq!(resolve_tone(99, Some(&r)), ToneRef::User { id: 99, name: None });
+        assert_eq!(resolve_tone(10, None), ToneRef::User { id: 10, name: None });
+        // Preset flag set → Preset regardless.
+        assert_eq!(resolve_tone(0x5c00, Some(&r)), ToneRef::Preset { id: 0x5c00 });
     }
 
     /// Build a full-size (3572-byte) record with valid markers, so `read_zones` runs the real path.
@@ -266,7 +294,7 @@ mod tests {
     #[test]
     fn read_zones_decodes_switch_key_range_and_level() {
         let rec = record_with_zone(2, 1, 60, 72, 50);
-        let zones = read_zones(&rec, None, false).unwrap();
+        let zones = read_zones(&rec, None).unwrap();
         assert_eq!(zones.len(), 16);
         let z = &zones[2];
         assert_eq!(

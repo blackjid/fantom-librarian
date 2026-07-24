@@ -99,8 +99,12 @@ and share the same 16-bit id space, so they are omitted to avoid mislabelling.)
 `count` records of `record_size` bytes; the tone **name** is the first 16 ASCII bytes, and byte
 `+0x10` is the tone **category** (`0x23` = brass).
 
-- **Scene exports** (`SOUND/…`, single/multi-scene): `tone_id` indexes `PATa` directly (offset 0).
-  Verified across TONEMAP and the NARF export.
+- **Scene exports** (`SOUND/…`, single/multi-scene): `PATa` holds exactly the referenced user tones,
+  stored **gid-sorted and de-duplicated**, so a tone's `PATa` index is the **rank of its `tone_id`
+  among all user gids referenced in the file** (not a fixed offset — gids are sparse, e.g. the NARF
+  export uses gids 0–603 for 348 tones). Detected by `unique user gids == PATa count`. Verified
+  end-to-end: NARF scene 44 "Sledgehammer" → `Sledgehammer Sha / Sledge + Hammer / …` matching the
+  panel; TONEMAP (gids 0/1/2) still direct.
 - **Full backups**: the reference is **per-scene**, not global. Each scene's user tones are a
   **contiguous bundle** in `PATa`, and its zone gids equal `bundle_base_index + per_scene_offset`.
   Confirmed against panel truth: `Africa Main` offset 826 (gid 827/828 → `PATa[1,2]` = Africa
