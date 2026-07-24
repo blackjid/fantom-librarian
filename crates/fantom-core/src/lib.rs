@@ -19,6 +19,7 @@ pub mod codec;
 pub mod container;
 pub mod model;
 pub mod presets;
+pub mod repackage;
 
 mod error;
 

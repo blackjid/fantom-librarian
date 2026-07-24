@@ -35,10 +35,17 @@ sample scenes.
 directly for **scene exports** (`SOUND/…`); in **full backups** user tones use a global address that
 isn't fully mapped yet, so they show as `user #id`. See [`docs/FORMAT.md`](docs/FORMAT.md).
 
-**Write path (in place, byte-faithful):** `rename` and `comment` overwrite only the scene's
-name/comment field and nothing else (verified byte-diff; round-trip is byte-identical). The `DIFa`
-checksum is left as-is — evidence (svd5tool) says the hardware doesn't enforce it, but this is **not
-yet verified on a FANTOM-6**, so test one edited file before trusting it.
+**Write path:** `rename` and `comment` overwrite only the scene's name/comment field and nothing
+else (verified by byte diff and confirmed on a FANTOM-6). `extract` and `merge` rebuild scene-export
+banks with an exact referenced-user-tone to `PATa` mapping, copy complete opaque scene/tone records,
+and rewrite only bundled user-tone references. Repackaging rejects files where that mapping cannot
+be proven, including full backups and some older exports.
+
+Extraction and a two-scene merge were hardware-confirmed on a FANTOM-6 using NARF: canary tone names
+proved that the rebuilt `PATa` was imported, while zones, keyboard groups, tones, and samples
+continued to work. Merge currently rebundles `PATa` only and retains every other area from the
+target file. A source scene that depends on source-only rhythm, sample, or other engine data may
+therefore need additional area-specific bundling; arbitrary cross-bank merges are not yet claimed.
 
 ## Usage
 
@@ -61,6 +68,15 @@ cargo run -p fantom-cli -- tones path/to/FANTOM.SVD
 # Edit scene metadata (dry run without -o; pass -o to write a copy).
 cargo run -p fantom-cli -- rename  path/to/FANTOM.SVD 44 "My Scene"   -o out.svd
 cargo run -p fantom-cli -- comment path/to/FANTOM.SVD 44 "split at B4" -o out.svd
+
+# Build a smaller bank from scenes 44 and 3, in that order, with their referenced user tones.
+cargo run -p fantom-cli -- extract path/to/FANTOM.SVD 44 3 -o extracted/FANTOM.SVD
+
+# Build a one-scene hardware-test bank with visible CNY scene/tone names.
+cargo run -p fantom-cli -- canary path/to/FANTOM.SVD 44 -o canary/FANTOM.SVD
+
+# Append all scenes from one scene-export bank to another, de-duplicating identical user tones.
+cargo run -p fantom-cli -- merge base/FANTOM.SVD additions/FANTOM.SVD -o merged/FANTOM.SVD
 
 cargo build            # build everything
 cargo test             # run tests

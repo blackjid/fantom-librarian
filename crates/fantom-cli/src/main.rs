@@ -86,6 +86,40 @@ enum Command {
         #[arg(short, long)]
         output: Option<PathBuf>,
     },
+
+    /// Build a new bank from a self-contained scene export and selected scenes.
+    Extract {
+        /// Source with an exact referenced-user-tone to PATa mapping.
+        file: PathBuf,
+        /// Scene numbers to include, 1-based and in the desired output order.
+        #[arg(required = true, num_args = 1..)]
+        scenes: Vec<usize>,
+        /// Write the extracted bank here.
+        #[arg(short, long)]
+        output: PathBuf,
+    },
+
+    /// Extract one scene with visible canary names for hardware tone-bundle validation.
+    Canary {
+        /// Source with an exact referenced-user-tone to PATa mapping.
+        file: PathBuf,
+        /// Scene number to extract, 1-based.
+        scene: usize,
+        /// Write the canary bank here.
+        #[arg(short, long)]
+        output: PathBuf,
+    },
+
+    /// Merge two self-contained scene-export banks and rebundle their user tones.
+    Merge {
+        /// Bank whose scenes and non-scene areas form the base of the output.
+        target: PathBuf,
+        /// Bank whose scenes will be appended.
+        source: PathBuf,
+        /// Write the merged bank here.
+        #[arg(short, long)]
+        output: PathBuf,
+    },
 }
 
 fn main() -> ExitCode {
@@ -105,6 +139,21 @@ fn main() -> ExitCode {
                 fantom_core::codec::set_scene_comment(raw, scene, &text)
             })
         }
+        Command::Extract {
+            file,
+            scenes,
+            output,
+        } => run_extract(&file, &scenes, &output),
+        Command::Canary {
+            file,
+            scene,
+            output,
+        } => run_canary(&file, scene, &output),
+        Command::Merge {
+            target,
+            source,
+            output,
+        } => run_merge(&target, &source, &output),
     };
     match result {
         Ok(text) => print_output(&text),
@@ -243,6 +292,47 @@ fn run_edit(
         }
     }
     Ok(out)
+}
+
+fn run_extract(file: &PathBuf, scenes: &[usize], output: &PathBuf) -> fantom_core::Result<String> {
+    let raw = Raw::open(file)?;
+    let extracted = fantom_core::repackage::extract_scenes(&raw, scenes)?;
+    extracted.save(output)?;
+    Ok(format!(
+        "extracted {} scene{} to {}\n",
+        scenes.len(),
+        if scenes.len() == 1 { "" } else { "s" },
+        output.display()
+    ))
+}
+
+fn run_canary(file: &PathBuf, scene: usize, output: &PathBuf) -> fantom_core::Result<String> {
+    let raw = Raw::open(file)?;
+    let canary = fantom_core::repackage::canary_scene(&raw, scene)?;
+    let svd = fantom_core::container::Svd::parse(&canary)?;
+    let tone_count = fantom_core::container::PatArea::from_svd(&canary, &svd)?
+        .tones()
+        .len();
+    canary.save(output)?;
+    Ok(format!(
+        "wrote scene {scene} canary with {tone_count} marked tone{} to {}\n",
+        if tone_count == 1 { "" } else { "s" },
+        output.display()
+    ))
+}
+
+fn run_merge(target: &PathBuf, source: &PathBuf, output: &PathBuf) -> fantom_core::Result<String> {
+    let target_raw = Raw::open(target)?;
+    let source_raw = Raw::open(source)?;
+    let source_count = fantom_core::codec::read_scenes(&source_raw)?.len();
+    let merged = fantom_core::repackage::merge_scenes(&target_raw, &source_raw)?;
+    merged.save(output)?;
+    Ok(format!(
+        "appended {source_count} scene{} from {} to {}\n",
+        if source_count == 1 { "" } else { "s" },
+        source.display(),
+        output.display()
+    ))
 }
 
 /// Render a zone's tone reference for display.

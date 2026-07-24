@@ -190,8 +190,34 @@ header + record table of `id / signature / offset / length`, each area prefixed 
 
 Metadata edits are therefore done **in place**: a scene rename overwrites the 16-byte name field, a
 comment overwrites the 64-byte field at `+0x40`, and nothing else changes (verified: renaming a
-7-char scene touches exactly the differing name bytes). **Unverified on hardware** — load one edited
-file on a FANTOM-6 to confirm before trusting it.
+7-char scene touches exactly the differing name bytes). A renamed scene-export bank was loaded
+successfully on a FANTOM-6 and displayed the edited name.
+
+Scene-export repackaging uses the confirmed gid-rank rule above. Extract/merge copy complete opaque
+scene and tone records, assign a fresh dense user-tone id set, rewrite the settings-table user-tone
+ids, and rebuild `PRFa`/`PATa`; preset ids and every other area are retained. Identical full tone
+records are de-duplicated. Repackaging requires `unique referenced user gids == PATa count`; full
+backups are rejected because their gid mapping is unresolved. The older PRISMA export is also
+rejected safely (18 apparent user gids but only 15 `PATa` records), indicating that at least one
+additional reference kind or mapping remains to be decoded.
+
+The `canary` command strengthens that hardware test without changing synthesis parameters: it
+extracts one scene, prefixes its name with `CNY`, and renames its bundled tones `CNY01…CNYNN`.
+Seeing those names in the imported scene's zones proves that the FANTOM read the rebuilt `PATa`
+bundle rather than merely resolving pre-existing tone names.
+
+**Hardware-confirmed on a FANTOM-6:** extracting NARF scene 44 produced one `CNY Sledgehammer`
+scene with its eight renamed bundled tones; the names appeared on the instrument and its zones,
+keyboard groups, tones, and samples worked. Merging independently extracted `CNY Africa Main` and
+`CNY Sledgehammer` produced a two-scene, ten-tone bank and both scenes worked on the instrument.
+This confirms `PRFa` rebuilding, `PATa` rebuilding, tone-id rebasing, and same-origin multi-scene
+merging.
+
+**Merge boundary:** only `PRFa` and `PATa` are rebuilt. All other areas come from the target file;
+source `RHYa`, `INSa`, `VTWa`, `SNAa`, `ZAPa`, `ZEPa`, sample data, and other still-opaque
+dependencies are not merged. The hardware test used two scenes derived from the same NARF export,
+so arbitrary cross-bank merging of scenes with source-only non-`PATa` dependencies remains
+unverified and may be incomplete.
 
 ## Prior art
 
