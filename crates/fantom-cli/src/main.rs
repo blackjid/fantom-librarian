@@ -279,8 +279,28 @@ fn run_scenes(file: &PathBuf) -> fantom_core::Result<String> {
     let scenes = fantom_core::codec::read_scenes(&raw)?;
     let mut out = String::new();
     let _ = writeln!(out, "{} scenes:", scenes.len());
+    let _ = writeln!(out, "{:<4} {:<20} REFERENCES", "NO.", "NAME");
     for (i, scene) in scenes.iter().enumerate() {
-        let _ = writeln!(out, "{:>4}  {}", i + 1, scene.name);
+        let mut references = Vec::new();
+        for zone in scene.zones.iter().filter(|zone| zone.enabled) {
+            let tone = &zone.tone;
+            let bank = tone.bank().unwrap_or("raw");
+            let reference = format!(
+                "{} {} PC {:03}",
+                tone.tone_type().label(),
+                bank,
+                tone.address.pc
+            );
+            if !references.contains(&reference) {
+                references.push(reference);
+            }
+        }
+        let summary = if references.is_empty() {
+            "(no enabled zones)".to_string()
+        } else {
+            references.join(", ")
+        };
+        let _ = writeln!(out, "{:>4} {:<20} {}", i + 1, scene.name, summary);
     }
     Ok(out)
 }
