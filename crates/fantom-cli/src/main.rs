@@ -42,6 +42,12 @@ enum Command {
         file: PathBuf,
     },
 
+    /// Report opaque ACB, V-Piano, and Model dependency areas.
+    Dependencies {
+        /// Path to a `.svd` file.
+        file: PathBuf,
+    },
+
     /// List the scene names in an SVD backup.
     Scenes {
         /// Path to a `.svd` file.
@@ -130,6 +136,7 @@ fn main() -> ExitCode {
     let result = match Cli::parse().command {
         Command::Inspect { file, len, offset } => run_inspect(&file, offset, len),
         Command::Areas { file } => run_areas(&file),
+        Command::Dependencies { file } => run_dependencies(&file),
         Command::Scenes { file } => run_scenes(&file),
         Command::Show { file, scene, all } => run_show(&file, scene, all),
         Command::Tones { file } => run_tones(&file),
@@ -228,6 +235,43 @@ fn run_areas(file: &PathBuf) -> fantom_core::Result<String> {
         );
     }
     Ok(out)
+}
+
+fn run_dependencies(file: &PathBuf) -> fantom_core::Result<String> {
+    let raw = Raw::open(file)?;
+    let svd = fantom_core::container::Svd::parse(&raw)?;
+    let mut out = String::new();
+    let _ = writeln!(
+        out,
+        "{:<6} {:<6} {:>10} {:<24}",
+        "TAG", "FORMAT", "SIZE", "STATUS"
+    );
+    for tag in [b"ACBa", b"DCWa", b"MDLa"] {
+        if let Some(area) = svd.area(tag) {
+            let _ = writeln!(
+                out,
+                "{:<6} {:<6} {:>10} {:<24}",
+                area.tag_str(),
+                String::from_utf8_lossy(&area.format),
+                area.size,
+                "opaque; preserved, not decoded"
+            );
+        } else {
+            let _ = writeln!(
+                out,
+                "{:<6} {:<6} {:>10} {:<24}",
+                area_tag(tag),
+                "-",
+                "-",
+                "absent"
+            );
+        }
+    }
+    Ok(out)
+}
+
+fn area_tag(tag: &[u8; 4]) -> String {
+    String::from_utf8_lossy(tag).into_owned()
 }
 
 fn run_scenes(file: &PathBuf) -> fantom_core::Result<String> {
