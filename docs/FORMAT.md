@@ -93,10 +93,15 @@ PR-B = `0x4000`). Verified: TONEMAP `PATa` holds exactly its 3 referenced USER t
 `+0x10` is the tone **category** (`0x23` = brass).
 
 - **Scene exports** (`SOUND/…`, single/multi-scene): `tone_id` indexes `PATa` directly (offset 0).
-- **Full backups**: `PATa` holds all 2048 tone slots and scenes use a *global* address — user tones
-  sit at `PATa index + 826` (e.g. `Africa Brass` = `PATa[1]`, referenced `827`), and ROM/expansion
-  tones (id beyond the `PATa` range) are not resolvable without Roland's ROM tone list. The `826`
-  base (preset-tone count) is not yet located in the file — **remaining TODO for backups**.
+  Verified across TONEMAP and the NARF export.
+- **Full backups**: NOT a constant offset. Confirmed against panel ground truth, the mapping is
+  non-linear: `Africa Brass` (gid `827`) is `PATa[1]`, but `Sledgehammer Sha` (gid `1058`) is
+  `PATa[546]`. A single base (e.g. 826) fits one scene and mislabels another, so the code resolves
+  names **only for exports** and leaves backup user tones as bare ids. `PATa` also contains many
+  **duplicate** tones (`Africa Brass` appears at indices 1, 210, 226, 234, 443, 459), and records
+  do not embed their gid — so a proper backup resolver needs the gid→`PATa` mapping/sort table,
+  **still to be found**. (The panel USER numbers add another layer: USER 448→gid 827, USER 417→gid
+  1058, also non-constant.)
 
 **Validation** — "Africa Main" (scene 385) decodes to exactly the panel's 4 zones:
 Z1 Brass 0–71 · Z2 Kalimba 73–127 · Z3 Kalimba 72–72 · Z4 JX-Cream 0–71 (levels 107/107/100/82).
