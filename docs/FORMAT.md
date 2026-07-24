@@ -214,6 +214,31 @@ Z1 Brass 0–71 · Z2 Kalimba 73–127 · Z3 Kalimba 72–72 · Z4 JX-Cream 0–
 
 **Still TBD:** pan and other per-zone params; the scene-common block before `0x194`.
 
+### Controlled user-tone parameter diffs (TONEMAP4/5)
+
+Single-scene exports with one in-place parameter edit confirm the following offsets within the
+first user-tone record of the opaque engine areas. These are read-only observations, not yet a
+complete decoder; all other bytes must remain opaque.
+
+| Area | Relative offset | Confirmed parameter | Observed change |
+|------|-----------------|---------------------|-----------------|
+| `DCWa` | `0x0025` | V-Piano tuning type | PRESET -> OFF (`01 -> 00`) |
+| `DCWa` | `0x008D` | V-Piano lid | 3 -> 5 |
+| `DCWa` | `0x0090` | V-Piano hammer noise (signed) | +2 -> -2 (`02 -> FE`) |
+| `DCWa` | `0x0096` | V-Piano key-off noise | OFF -> 4 |
+| `MDLa` | `0x05D8` | Model OSC cross-mod | 1143 -> 1068 |
+| `MDLa` | `0x06B6` | Model filter cutoff (LE u16) | 962 -> 566 |
+| `MDLa` | `0x06B8` | Model filter resonance (LE u16) | 863 -> 0 |
+| `MDLa` | `0x06D0` | Model ENV2 attack (LE u16) | unknown -> 299 |
+| `ACBa` | `0x1B70` | ACB VCO1 wave | TRI -> SAW |
+| `ACBa` | `0x1BE4` | ACB ENV1 sustain | 0 -> 176 |
+| `ACBa` | `0x1D40` | ACB effect type | Phaser -> Fuzz |
+| `ACBa` | `0x1D54` | ACB LFO rate | 155 -> 142 |
+
+The edits also change a small number of neighboring/derived fields. No scene or system bytes
+changed in these captures. The offsets are relative to the area start (including its 16-byte
+area header), and must not be applied to multi-record areas without first locating the record.
+
 Confirmed across banks: PRISMA 16, NARF 50, TOP80 83, full backup **512** scenes
 (PRFa size 1828880 = 16-byte header + 512 × 3572). Two adjacent names sit 0xdf4 apart
 (`DSOTM Breathe` @0xc0, `On The Run` @0xeb4).
