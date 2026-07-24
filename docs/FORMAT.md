@@ -100,14 +100,18 @@ and share the same 16-bit id space, so they are omitted to avoid mislabelling.)
 
 - **Scene exports** (`SOUND/…`, single/multi-scene): `tone_id` indexes `PATa` directly (offset 0).
   Verified across TONEMAP and the NARF export.
-- **Full backups**: NOT a constant offset. Confirmed against panel ground truth, the mapping is
-  non-linear: `Africa Brass` (gid `827`) is `PATa[1]`, but `Sledgehammer Sha` (gid `1058`) is
-  `PATa[546]`. A single base (e.g. 826) fits one scene and mislabels another, so the code resolves
-  names **only for exports** and leaves backup user tones as bare ids. `PATa` also contains many
-  **duplicate** tones (`Africa Brass` appears at indices 1, 210, 226, 234, 443, 459), and records
-  do not embed their gid — so a proper backup resolver needs the gid→`PATa` mapping/sort table,
-  **still to be found**. (The panel USER numbers add another layer: USER 448→gid 827, USER 417→gid
-  1058, also non-constant.)
+- **Full backups**: the reference is **per-scene**, not global. Each scene's user tones are a
+  **contiguous bundle** in `PATa`, and its zone gids equal `bundle_base_index + per_scene_offset`.
+  Confirmed against panel truth: `Africa Main` offset 826 (gid 827/828 → `PATa[1,2]` = Africa
+  Brass/Kalimba); `Sledgehammer` offset 512 (gid 1058.. → `PATa[546..]` = Sledgehammer Sha…). Proof
+  it is per-scene: the *same* tone `Sledge Syn Vox` (`PATa[551]`) is gid 806 in one scene and 1063
+  in another. `PATa` holds many **duplicate** tones, records don't embed their gid, and the
+  per-scene offset is **not** stored in the scene record — so a backup resolver needs the per-scene
+  tone directory, most likely inside the large `USDa` ("user data") area. **Open / future work.**
+  Until then the code resolves names only for exports and shows backup user tones as bare ids.
+
+  Cross-file trick that works today: a matching scene **export** (`SOUND/…`) resolves the same
+  tones by content, so `export ↔ backup` matching can recover names without the directory.
 
 **Validation** — "Africa Main" (scene 385) decodes to exactly the panel's 4 zones:
 Z1 Brass 0–71 · Z2 Kalimba 73–127 · Z3 Kalimba 72–72 · Z4 JX-Cream 0–71 (levels 107/107/100/82).
