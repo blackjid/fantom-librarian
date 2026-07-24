@@ -168,6 +168,9 @@ fn bundled_tone_names(raw: &Raw, svd: &Svd) -> HashMap<(u8, u8, u8), String> {
         (b"VTWa", 91, 0),
         (b"ZAPa", 105, 0),
         (b"ZEPa", 105, 1),
+        (b"ACBa", 107, 0),
+        (b"DCWa", 90, 0),
+        (b"MDLa", 97, 0),
     ]
     .into_iter()
     .flat_map(|(tag, msb, lsb)| {
