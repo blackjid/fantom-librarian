@@ -44,8 +44,12 @@ impl Raw {
         field[n..].fill(b' ');
     }
 
-    /// Write the (possibly edited) bytes back to a file.
+    /// Write the (possibly edited) bytes back to a file, creating parent directories as needed.
     pub fn save(&self, path: impl AsRef<Path>) -> Result<()> {
+        let path = path.as_ref();
+        if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+            std::fs::create_dir_all(parent)?;
+        }
         std::fs::write(path, &self.bytes)?;
         Ok(())
     }

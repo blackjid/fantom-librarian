@@ -55,30 +55,18 @@ pub fn read_scenes(raw: &Raw) -> Result<Vec<Scene>> {
 
     let pat = PatArea::from_svd(raw, &svd).ok();
     let is_backup = svd.area(b"MDLa").is_some();
+    let records = scene_records(area, declared_count, record_size);
 
-    // Pass 1: collect the scene records and every referenced user tone id.
-    let mut records: Vec<(String, String, &[u8])> = Vec::new();
+    // Collect every referenced user tone id — from valid zone slots only (see decode_zone_slot).
     let mut user_gids: BTreeSet<u16> = BTreeSet::new();
-    let mut pos = AREA_HEADER_LEN;
-    while pos + NAME_LEN <= area.len() && records.len() < declared_count {
-        let name = ascii_trim(&area[pos..pos + NAME_LEN]);
-        // Empty-named slots pad the bank to a fixed capacity; keep only real scenes.
-        if !name.is_empty() {
-            let record = &area[pos..(pos + record_size).min(area.len())];
-            let comment = record
-                .get(COMMENT_OFFSET..COMMENT_OFFSET + COMMENT_LEN)
-                .map(ascii_trim)
-                .unwrap_or_default();
-            for n in 0..ZONE_COUNT {
-                if let Some((_, _, id)) = decode_zone_slot(record, n) {
-                    if id & PRESET_FLAG == 0 {
-                        user_gids.insert(id);
-                    }
+    for &(_, record) in &records {
+        for n in 0..ZONE_COUNT {
+            if let Some((_, _, id)) = decode_zone_slot(record, n) {
+                if id & PRESET_FLAG == 0 {
+                    user_gids.insert(id);
                 }
             }
-            records.push((name, comment, record));
         }
-        pos += record_size;
     }
 
     // A user tone indexes `PATa` by the **rank** of its gid among all referenced gids: `PATa` is
@@ -95,52 +83,55 @@ pub fn read_scenes(raw: &Raw) -> Result<Vec<Scene>> {
 
     records
         .into_iter()
-        .map(|(name, comment, record)| {
+        .map(|(_, record)| {
             Ok(Scene {
-                name,
-                comment,
+                name: record.get(..NAME_LEN).map(ascii_trim).unwrap_or_default(),
+                comment: record
+                    .get(COMMENT_OFFSET..COMMENT_OFFSET + COMMENT_LEN)
+                    .map(ascii_trim)
+                    .unwrap_or_default(),
                 zones: read_zones(record, resolver.as_ref())?,
             })
         })
         .collect()
 }
 
-/// Absolute file offset of each scene record, in the same order and filtering as [`read_scenes`]
-/// (empty-named slots skipped). The Nth entry is the record for scene `N+1`.
-pub fn scene_offsets(raw: &Raw) -> Result<Vec<usize>> {
-    let svd = Svd::parse(raw)?;
-    let prfa = svd
-        .area(PRFA)
-        .ok_or_else(|| Error::Unrecognized("no PRFa (performance) area in file".into()))?;
-    let base = prfa.offset as usize;
-    let area = svd.area_bytes(raw, prfa)?;
-    let declared = read_u32(area, AREA_COUNT_OFFSET)? as usize;
-    let record_size = read_u32(area, AREA_RECORD_SIZE_OFFSET)? as usize;
+/// Area-relative offset and byte slice of each non-empty scene record in the PRFa `area`, in file
+/// order, capped at `declared`. The single source of truth for which records are scenes and where,
+/// so scene reading and in-place editing can never disagree.
+fn scene_records(area: &[u8], declared: usize, record_size: usize) -> Vec<(usize, &[u8])> {
+    let mut records = Vec::new();
     if record_size == 0 {
-        return Err(Error::Unrecognized("PRFa record size is zero".into()));
+        return records;
     }
-
-    let mut offsets = Vec::new();
     let mut pos = AREA_HEADER_LEN;
-    while pos + NAME_LEN <= area.len() && offsets.len() < declared {
+    while pos + NAME_LEN <= area.len() && records.len() < declared {
+        // Empty-named slots pad the bank to a fixed capacity; keep only real scenes.
         if !ascii_trim(&area[pos..pos + NAME_LEN]).is_empty() {
-            offsets.push(base + pos);
+            records.push((pos, &area[pos..(pos + record_size).min(area.len())]));
         }
         pos += record_size;
     }
-    Ok(offsets)
+    records
 }
 
 /// The absolute file offset of the `scene_number` (1-based) scene record.
 fn scene_record_offset(raw: &Raw, scene_number: usize) -> Result<usize> {
-    let offsets = scene_offsets(raw)?;
-    offsets
+    let svd = Svd::parse(raw)?;
+    let prfa = svd
+        .area(PRFA)
+        .ok_or_else(|| Error::Unrecognized("no PRFa (performance) area in file".into()))?;
+    let area = svd.area_bytes(raw, prfa)?;
+    let declared = read_u32(area, AREA_COUNT_OFFSET)? as usize;
+    let record_size = read_u32(area, AREA_RECORD_SIZE_OFFSET)? as usize;
+    let records = scene_records(area, declared, record_size);
+    records
         .get(scene_number.wrapping_sub(1))
-        .copied()
+        .map(|&(pos, _)| prfa.offset as usize + pos)
         .ok_or_else(|| {
             Error::Unrecognized(format!(
                 "scene {scene_number} out of range (file has {})",
-                offsets.len()
+                records.len()
             ))
         })
 }
