@@ -42,7 +42,7 @@ enum Command {
         file: PathBuf,
     },
 
-    /// Report opaque ACB, V-Piano, and Model dependency areas.
+    /// Report bundled ACB, V-Piano, and Model dependency areas.
     Dependencies {
         /// Path to a `.svd` file.
         file: PathBuf,
@@ -65,7 +65,7 @@ enum Command {
         all: bool,
     },
 
-    /// List the tones bundled in a file's PATa area.
+    /// List every named user tone bundled in an SVD.
     Tones {
         /// Path to a `.svd` file.
         file: PathBuf,
@@ -240,6 +240,7 @@ fn run_areas(file: &PathBuf) -> fantom_core::Result<String> {
 fn run_dependencies(file: &PathBuf) -> fantom_core::Result<String> {
     let raw = Raw::open(file)?;
     let svd = fantom_core::container::Svd::parse(&raw)?;
+    let tones = fantom_core::codec::read_bundled_tones(&raw)?;
     let mut out = String::new();
     let _ = writeln!(
         out,
@@ -248,13 +249,14 @@ fn run_dependencies(file: &PathBuf) -> fantom_core::Result<String> {
     );
     for tag in [b"ACBa", b"DCWa", b"MDLa"] {
         if let Some(area) = svd.area(tag) {
+            let count = tones.iter().filter(|tone| tone.area == *tag).count();
             let _ = writeln!(
                 out,
                 "{:<6} {:<6} {:>10} {:<24}",
                 area.tag_str(),
                 String::from_utf8_lossy(&area.format),
                 area.size,
-                "opaque; preserved, not decoded"
+                format!("{count} tones; names decoded")
             );
         } else {
             let _ = writeln!(
@@ -353,12 +355,19 @@ fn run_show(file: &PathBuf, scene: usize, all: bool) -> fantom_core::Result<Stri
 
 fn run_tones(file: &PathBuf) -> fantom_core::Result<String> {
     let raw = Raw::open(file)?;
-    let svd = fantom_core::container::Svd::parse(&raw)?;
-    let pat = fantom_core::container::PatArea::from_svd(&raw, &svd)?;
+    let tones = fantom_core::codec::read_bundled_tones(&raw)?;
     let mut out = String::new();
-    let _ = writeln!(out, "{} tones:", pat.tones().len());
-    for (i, tone) in pat.tones().iter().enumerate() {
-        let _ = writeln!(out, "{i:>5}  {}", tone.name);
+    let _ = writeln!(out, "{} bundled tones:", tones.len());
+    let _ = writeln!(out, "{:<6} {:<9} {:>5}  NAME", "AREA", "TYPE", "INDEX");
+    for tone in tones {
+        let _ = writeln!(
+            out,
+            "{:<6} {:<9} {:>5}  {}",
+            area_tag(&tone.area),
+            tone.tone_type.label(),
+            tone.index,
+            tone.name
+        );
     }
     Ok(out)
 }

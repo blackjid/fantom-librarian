@@ -1,8 +1,8 @@
 //! Mapping between container bytes and the [`crate::model`] types.
 //!
 //! This is where a confirmed byte layout becomes [`crate::model`] values: scene name, comment, and
-//! 16 zones (switch, key range, level, tone) from the `PRFa` area, with user-tone names resolved
-//! from `PATa` where possible (see `docs/FORMAT.md`).
+//! 16 zones (switch, key range, level, tone) from the `PRFa` area, with bundled user-tone names
+//! resolved from their engine areas where possible (see `docs/FORMAT.md`).
 
 use std::collections::{BTreeSet, HashMap};
 use std::io::Cursor;
@@ -10,7 +10,7 @@ use std::io::Cursor;
 use binrw::BinRead as _;
 
 use crate::container::{ascii_trim, PatArea, Raw, RawZone, Svd, ZoneSettings};
-use crate::model::{Scene, ToneRef, Zone};
+use crate::model::{Scene, ToneRef, ToneType, Zone};
 use crate::{Error, Result};
 
 /// The area tag holding Performances/Scenes in a FANTOM-6 SVD backup.
@@ -36,6 +36,64 @@ const COMMENT_LEN: usize = 64;
 
 /// Number of zone slots in every scene.
 const ZONE_COUNT: usize = 16;
+
+/// One named user-tone record physically bundled in an SVD area.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BundledTone {
+    /// Four-byte SVD area tag containing the record.
+    pub area: [u8; 4],
+    /// Sound engine that owns the record.
+    pub tone_type: ToneType,
+    /// Zero-based record index within the area.
+    pub index: usize,
+    /// Decoded 16-byte tone name.
+    pub name: String,
+}
+
+struct ToneAreaSpec {
+    tag: [u8; 4],
+    msb: u8,
+    lsb: u8,
+    tone_type: ToneType,
+    name_offset: usize,
+    word_swapped: bool,
+}
+
+const fn tone_area(
+    tag: [u8; 4],
+    msb: u8,
+    lsb: u8,
+    tone_type: ToneType,
+    name_offset: usize,
+    word_swapped: bool,
+) -> ToneAreaSpec {
+    ToneAreaSpec {
+        tag,
+        msb,
+        lsb,
+        tone_type,
+        name_offset,
+        word_swapped,
+    }
+}
+
+const TONE_AREAS: [ToneAreaSpec; 9] = [
+    tone_area(*b"PATa", 87, 0, ToneType::ZenCore, 0, false),
+    tone_area(*b"RHYa", 86, 0, ToneType::Drum, 0, false),
+    tone_area(*b"SNAa", 89, 0, ToneType::SnA, 0, false),
+    tone_area(*b"VTWa", 91, 0, ToneType::Vtw, 0, false),
+    tone_area(*b"ZAPa", 105, 0, ToneType::SnAp, 0, false),
+    tone_area(*b"ZEPa", 105, 1, ToneType::SnEp, 0, false),
+    tone_area(*b"DCWa", 90, 0, ToneType::VPiano, 0, false),
+    tone_area(*b"MDLa", 97, 0, ToneType::Model, 0x10, false),
+    tone_area(*b"ACBa", 107, 0, ToneType::Acb, 0x1c44, true),
+];
+
+/// Decode every named user-tone record bundled in an SVD.
+pub fn read_bundled_tones(raw: &Raw) -> Result<Vec<BundledTone>> {
+    let svd = Svd::parse(raw)?;
+    Ok(bundled_tones_from_svd(raw, &svd))
+}
 
 /// Decode every scene in an SVD file — name, comment, and 16 zones (switch, key range, level, and
 /// tone, with user-tone names resolved for scene exports; see [`read_zones`]).
@@ -162,44 +220,58 @@ struct ToneResolver<'a> {
 }
 
 fn bundled_tone_names(raw: &Raw, svd: &Svd) -> HashMap<(u8, u8, u8), String> {
-    [
-        (b"RHYa", 86, 0),
-        (b"SNAa", 89, 0),
-        (b"VTWa", 91, 0),
-        (b"ZAPa", 105, 0),
-        (b"ZEPa", 105, 1),
-        (b"DCWa", 90, 0),
-        (b"MDLa", 97, 0),
-    ]
-    .into_iter()
-    .flat_map(|(tag, msb, lsb)| {
-        let names = svd
-            .area(tag)
-            .and_then(|area| svd.area_bytes(raw, area).ok())
-            .and_then(|area| {
-                let offset = if tag == b"MDLa" { 0x10 } else { 0 };
-                record_names_at(area, offset)
-            })
-            .unwrap_or_default();
-        names
-            .into_iter()
-            .take(128)
-            .enumerate()
-            .map(move |(pc, name)| ((msb, lsb, pc as u8), name))
-    })
-    .collect()
+    bundled_tones_from_svd(raw, svd)
+        .into_iter()
+        .filter_map(|tone| {
+            let spec = TONE_AREAS.iter().find(|spec| spec.tag == tone.area)?;
+            if spec.tag == *b"PATa" || tone.index >= 128 {
+                return None;
+            }
+            Some(((spec.msb, spec.lsb, tone.index as u8), tone.name))
+        })
+        .collect()
 }
 
-fn record_names_at(area: &[u8], name_offset: usize) -> Option<Vec<String>> {
+fn bundled_tones_from_svd(raw: &Raw, svd: &Svd) -> Vec<BundledTone> {
+    TONE_AREAS
+        .iter()
+        .flat_map(|spec| {
+            let names = svd
+                .area(&spec.tag)
+                .and_then(|area| svd.area_bytes(raw, area).ok())
+                .and_then(|area| record_names_at(area, spec.name_offset, spec.word_swapped))
+                .unwrap_or_default();
+            names
+                .into_iter()
+                .enumerate()
+                .map(move |(index, name)| BundledTone {
+                    area: spec.tag,
+                    tone_type: spec.tone_type,
+                    index,
+                    name,
+                })
+        })
+        .collect()
+}
+
+fn record_names_at(area: &[u8], name_offset: usize, word_swapped: bool) -> Option<Vec<String>> {
     let count = read_u32(area, AREA_COUNT_OFFSET).ok()? as usize;
     let record_size = read_u32(area, AREA_RECORD_SIZE_OFFSET).ok()? as usize;
-    if record_size < NAME_LEN {
+    if record_size < name_offset + NAME_LEN {
         return None;
     }
     (0..count)
         .map(|index| {
             let start = AREA_HEADER_LEN + index * record_size + name_offset;
-            area.get(start..start + NAME_LEN).map(ascii_trim)
+            let bytes = area.get(start..start + NAME_LEN)?;
+            if !word_swapped {
+                return Some(ascii_trim(bytes));
+            }
+            let mut decoded = [0u8; NAME_LEN];
+            for (source, target) in bytes.chunks_exact(4).zip(decoded.chunks_exact_mut(4)) {
+                target.copy_from_slice(&[source[3], source[2], source[1], source[0]]);
+            }
+            Some(ascii_trim(&decoded))
         })
         .collect()
 }
@@ -516,6 +588,41 @@ mod tests {
         Raw::from_bytes(file)
     }
 
+    fn named_record_area(record_size: usize, name_offset: usize, names: &[&str]) -> Vec<u8> {
+        let mut area = Vec::new();
+        area.extend_from_slice(&(names.len() as u32).to_le_bytes());
+        area.extend_from_slice(&(record_size as u32).to_le_bytes());
+        area.extend_from_slice(&[0u8; 8]);
+        for name in names {
+            let mut record = vec![0u8; record_size];
+            write_ascii(&mut record, name_offset, NAME_LEN, name);
+            area.extend_from_slice(&record);
+        }
+        area
+    }
+
+    #[test]
+    fn lists_multi_record_model_and_vpiano_tones() {
+        let dcwa = named_record_area(684, 0, &["Stage Grand4", "Stage Grand4 3"]);
+        let mdla = named_record_area(2048, 0x10, &["Berlin Night  4", "Berlin Night  6"]);
+        let raw = build_svd(&[(b"DCWa", b"KY19", &dcwa), (b"MDLa", b"KY19", &mdla)]);
+
+        let tones = read_bundled_tones(&raw).unwrap();
+        let tones: Vec<_> = tones
+            .iter()
+            .map(|tone| (tone.area, tone.tone_type, tone.index, tone.name.as_str()))
+            .collect();
+        assert_eq!(
+            tones,
+            [
+                (*b"DCWa", ToneType::VPiano, 0, "Stage Grand4"),
+                (*b"DCWa", ToneType::VPiano, 1, "Stage Grand4 3"),
+                (*b"MDLa", ToneType::Model, 0, "Berlin Night  4"),
+                (*b"MDLa", ToneType::Model, 1, "Berlin Night  6"),
+            ]
+        );
+    }
+
     /// End-to-end regression test over a real-size, real-shaped SVD5 file: two PRFa scenes plus a
     /// matching PATa tone list, decoded through the public `read_scenes` entry point. Exercises the
     /// container envelope, scene name/comment, per-zone switch/range/level, the gid-rank user-tone
@@ -597,6 +704,46 @@ mod tests {
         assert_eq!(s2.name, "Second Scene");
         assert_eq!(s2.comment, "");
         assert!(s2.zones.is_empty());
+    }
+
+    #[test]
+    fn resolves_word_swapped_acb_user_name() {
+        let mut scene = golden_record("ACB Scene", "");
+        golden_zone(&mut scene, 0, true, 0, 127, 100, 0);
+        scene[ZoneSettings::TABLE_OFFSET + TONE_MSB_OFFSET] = 107;
+
+        let mut prfa = Vec::new();
+        prfa.extend_from_slice(&1u32.to_le_bytes());
+        prfa.extend_from_slice(&(scene.len() as u32).to_le_bytes());
+        prfa.extend_from_slice(&[0u8; 8]);
+        prfa.extend_from_slice(&scene);
+
+        let mut acb_record = vec![0u8; 9984];
+        let name = b"Soft & Subtle3  ";
+        for (source, target) in name
+            .chunks_exact(4)
+            .zip(acb_record[0x1c44..0x1c54].chunks_exact_mut(4))
+        {
+            target.copy_from_slice(&[source[3], source[2], source[1], source[0]]);
+        }
+        let mut acba = Vec::new();
+        acba.extend_from_slice(&1u32.to_le_bytes());
+        acba.extend_from_slice(&(acb_record.len() as u32).to_le_bytes());
+        acba.extend_from_slice(&[0u8; 8]);
+        acba.extend_from_slice(&acb_record);
+
+        let raw = build_svd(&[(b"PRFa", b"KY19", &prfa), (b"ACBa", b"KY19", &acba)]);
+        let scenes = read_scenes(&raw).unwrap();
+        assert_eq!(scenes[0].zones[0].tone.name(), Some("Soft & Subtle3"));
+        assert_eq!(
+            read_bundled_tones(&raw).unwrap(),
+            [BundledTone {
+                area: *b"ACBa",
+                tone_type: ToneType::Acb,
+                index: 0,
+                name: "Soft & Subtle3".into(),
+            }]
+        );
     }
 
     #[test]

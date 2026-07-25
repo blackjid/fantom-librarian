@@ -149,6 +149,10 @@ The `fixtures/TONEMAP/FANTOM.SVD` export adds these observed bank mappings:
 
 The export did not contain a JD-800 MODEL zone, so its bank address remains unknown.
 
+`TONEMAP2` confirms that native ACB factory references are address-only in a scene export. Its
+JP8 PC 0 and PC 1 scenes have no `ACBa` area, and their `PRFa` records differ only in the scene
+name and PC byte; no factory tone name is serialized.
+
 For historical comparison, the old LSB/PC-as-BE16 representation looked like this:
 | Tone (panel)        | tone_id (BE16) | hi   | lo   |
 |---------------------|----------------|------|------|
@@ -253,9 +257,16 @@ The single-tone TONEMAP6 exports establish the corresponding record sizes:
 | `DCWa` | V-Piano USER | `700` | `684` |
 | `MDLa` | Model USER | `2064` | `2048` |
 
+ACB USER tone names occupy 16 bytes at record offset `0x1c44`. Each four-byte word is stored
+byte-reversed: for example, `tfoS S & ltbu  2e` decodes to `Soft & Subtle2`. Confirmed by the
+controlled `TONEMAP9_ACB` / `TONEMAP9_ACB2` rename pair, whose files differ only at the final
+name character. The scene's `107/0/PC` reference indexes these `ACBa` records directly.
+
 For scene exports, USER references use the record's zero-based PC index. This makes record-level
-deduplication and index rebasing possible; multi-record V-Piano and Model captures are still
-needed before enabling those two families in the merger.
+deduplication and index rebasing possible. `TONEMAP10_MOD` hardware-confirms the multi-record
+Model case: two `MDLa` records named `Berlin Night  4` and `Berlin Night  6` are referenced as
+PC 0 and PC 1. `TONEMAP10_VP` confirms the same rule for V-Piano: two `DCWa` records named
+`Stage Grand4` and `Stage Grand4 3` are referenced as PC 0 and PC 1.
 
 Confirmed across banks: PRISMA 16, NARF 50, TOP80 83, full backup **512** scenes
 (PRFa size 1828880 = 16-byte header + 512 × 3572). Two adjacent names sit 0xdf4 apart

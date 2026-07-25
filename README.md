@@ -25,8 +25,8 @@ fixtures/        # sample files (gitignored by default) + golden snapshots
 Reads the SVD5 container envelope (verified on a Roland **FANTOM-6**), lists **scene names**, and
 shows each scene's **comment/memo** and its **16 zones** (type, bank, tone, switch, key range,
 level). It retains every zone's raw MSB/LSB/PC address and resolves bundled names for ZEN-Core,
-Drum, SN-A, SN-AP, SN-EP, and VTW USER sounds. Documented EX engine selectors are recognized as
-VPiano, MODEL, EXZ, EXSN, and ACB even when their exact bank or bundled name remains unresolved.
+Drum, SN-A, SN-AP, SN-EP, VTW, V-Piano, MODEL, and ACB USER sounds. Factory references whose
+names are not serialized remain visible by engine, bank, and program number.
 
 > Only tested on a FANTOM-6. Not yet verified on the FANTOM-06/07/08 ("Fantom-0" series — a
 > different, cheaper product line despite the similar name) or FANTOM-6/7/8 EX.
@@ -44,10 +44,10 @@ unsupported because their ZEN-Core mapping cannot be derived safely.
 
 Extraction and merging were hardware-confirmed on a FANTOM-6 using NARF and a cross-bank
 NARF/PRISMA canary: zones, keyboard groups, tones, and samples continued to work, including the
-PRISMA scene's SN-A and SN-EP dependencies. Copying external sample waveform files remains open.
-VPiano, MODEL/ABM, ACB, and newer EX-only USER dependencies are not yet mapped for repackaging;
-references to installed factory/model/expansion banks are preserved but require the same content
-on the destination.
+PRISMA scene's SN-A and SN-EP dependencies. V-Piano, MODEL/ABM, and ACB USER records are also
+rebundled and rebased, with their multi-record indexing confirmed on hardware. Copying external
+sample waveform files remains open; references to installed factory/model/expansion banks are
+preserved but require the same content on the destination.
 
 ## Usage
 
