@@ -1,7 +1,7 @@
 use std::fmt::{self, Write as _};
 use std::path::Path;
 
-use crate::Result;
+use crate::{Error, Result};
 
 /// A Fantom file loaded verbatim into memory, with generic inspection helpers.
 ///
@@ -16,7 +16,13 @@ pub struct Raw {
 impl Raw {
     /// Read a file from disk verbatim.
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
-        Ok(Self::from_bytes(std::fs::read(path)?))
+        let path = path.as_ref();
+        let bytes = std::fs::read(path).map_err(|source| Error::File {
+            action: "read",
+            path: path.display().to_string(),
+            source,
+        })?;
+        Ok(Self::from_bytes(bytes))
     }
 
     /// Wrap already-loaded bytes.
@@ -60,9 +66,17 @@ impl Raw {
     pub fn save(&self, path: impl AsRef<Path>) -> Result<()> {
         let path = path.as_ref();
         if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
-            std::fs::create_dir_all(parent)?;
+            std::fs::create_dir_all(parent).map_err(|source| Error::File {
+                action: "create directory",
+                path: parent.display().to_string(),
+                source,
+            })?;
         }
-        std::fs::write(path, &self.bytes)?;
+        std::fs::write(path, &self.bytes).map_err(|source| Error::File {
+            action: "write",
+            path: path.display().to_string(),
+            source,
+        })?;
         Ok(())
     }
 
