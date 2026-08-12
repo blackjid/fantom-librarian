@@ -75,6 +75,8 @@ pub enum Finding {
     },
     /// Differing bytes inside an area's 16-byte header.
     AreaHeader { tag: String, runs: Vec<ByteRun> },
+    /// Differing bytes in an area that is not a record table, compared whole.
+    AreaBytes { tag: String, runs: Vec<ByteRun> },
     /// Differing bytes inside a record shared by both files.
     Record {
         tag: String,
@@ -92,6 +94,7 @@ impl Finding {
             | Self::RecordCountDiffers { tag, .. }
             | Self::RecordOnlyIn { tag, .. }
             | Self::AreaHeader { tag, .. }
+            | Self::AreaBytes { tag, .. }
             | Self::Record { tag, .. } => tag,
         }
     }
@@ -99,9 +102,9 @@ impl Finding {
     /// How many differing bytes this finding accounts for.
     pub fn changed_bytes(&self) -> usize {
         match self {
-            Self::AreaHeader { runs, .. } | Self::Record { runs, .. } => {
-                runs.iter().map(|r| r.left.len()).sum()
-            }
+            Self::AreaHeader { runs, .. }
+            | Self::AreaBytes { runs, .. }
+            | Self::Record { runs, .. } => runs.iter().map(|r| r.left.len()).sum(),
             _ => 0,
         }
     }
@@ -122,7 +125,26 @@ pub fn compare(left: &Raw, right: &Raw) -> Result<Vec<Finding>> {
     for area in &left_svd.areas {
         seen.push(area.tag);
         let tag = area.tag_str();
-        let left_table = RecordTable::parse(area, left_svd.area_bytes(left, area)?)?;
+        let left_bytes = left_svd.area_bytes(left, area)?;
+
+        // Not every area is a record table — `DIFa` is a bare checksum blob, `USDa` a waveform
+        // directory. One area we cannot parse must not abort the whole comparison, so fall back to
+        // comparing its bytes.
+        let Ok(left_table) = RecordTable::parse(area, left_bytes) else {
+            if let Some(right_area) = right_svd.area(&area.tag) {
+                let right_bytes = right_svd.area_bytes(right, right_area)?;
+                let runs = runs_between(
+                    left_bytes,
+                    right_bytes,
+                    area.offset as usize,
+                    right_area.offset as usize,
+                );
+                if !runs.is_empty() || left_bytes.len() != right_bytes.len() {
+                    findings.push(Finding::AreaBytes { tag, runs });
+                }
+            }
+            continue;
+        };
 
         let Some(right_area) = right_svd.area(&area.tag) else {
             findings.push(Finding::AreaOnlyIn {
@@ -395,6 +417,52 @@ mod tests {
             }
         ));
         assert_eq!(findings[0].tag(), "ACBa");
+    }
+
+    /// An area that is not a record table (a zeroed `DIFa`, say) must not abort the comparison of
+    /// everything else — it falls back to a byte-level diff of that area.
+    #[test]
+    fn an_area_that_is_not_a_record_table_falls_back_to_comparing_bytes() {
+        fn with_raw_difa(scene: &str, difa: &[u8]) -> Raw {
+            let mut bytes = Vec::new();
+            bytes.extend_from_slice(&(14u16 + 32).to_le_bytes());
+            bytes.extend_from_slice(b"SVD5");
+            bytes.extend_from_slice(&[0u8; 10]);
+            let prfa = {
+                let mut b = vec![0u8; 16];
+                b[0..4].copy_from_slice(&1u32.to_le_bytes());
+                b[4..8].copy_from_slice(&32u32.to_le_bytes());
+                b.extend_from_slice(&named(scene)[..32]);
+                b
+            };
+            let first = 0x10 + 32;
+            for (tag, body) in [(b"PRFa", &prfa), (b"DIFa", &difa.to_vec())] {
+                bytes.extend_from_slice(tag);
+                bytes.extend_from_slice(b"KY19");
+                let at = if tag == b"PRFa" { first } else { first + prfa.len() };
+                bytes.extend_from_slice(&(at as u32).to_le_bytes());
+                bytes.extend_from_slice(&(body.len() as u32).to_le_bytes());
+            }
+            bytes.extend_from_slice(&prfa);
+            bytes.extend_from_slice(difa);
+            Raw::from_bytes(bytes)
+        }
+
+        // A DIFa of all zeros decodes as record_size = 0, which is not a parseable record table.
+        let a = with_raw_difa("Scene", &[0u8; 32]);
+        let mut zeros = [0u8; 32];
+        zeros[20] = 0x99;
+        let b = with_raw_difa("Scene", &zeros);
+
+        let findings = compare(&a, &b).unwrap();
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        let Finding::AreaBytes { tag, runs } = &findings[0] else {
+            panic!("expected a byte-level area diff, got {:?}", findings[0]);
+        };
+        assert_eq!(tag, "DIFa");
+        assert_eq!(runs.len(), 1);
+        assert_eq!(runs[0].offset, 20);
+        assert_eq!(runs[0].right, [0x99]);
     }
 
     #[test]

@@ -340,6 +340,18 @@ fn run_diff(
                     );
                 }
             }
+            Finding::AreaBytes { tag, runs } => {
+                if runs.is_empty() {
+                    let _ = writeln!(out, "{tag}  sizes differ (not a record table)");
+                }
+                for run in runs {
+                    let _ = writeln!(
+                        out,
+                        "{}",
+                        render_run(&format!("{tag}.bytes"), run, &left_raw, &right_raw, context)
+                    );
+                }
+            }
             Finding::Record { tag, record, runs } => {
                 for run in runs {
                     let _ = writeln!(
@@ -380,7 +392,13 @@ fn render_run(
     let (left_bytes, right_bytes, offset) = if context == 0 {
         (run.left.clone(), run.right.clone(), run.offset)
     } else {
-        let before = context.min(run.left_at).min(run.right_at);
+        // Clamp against the record-relative offset as well as the two file offsets: a run at the
+        // start of a record (a scene rename lands at offset 0) has less context available before
+        // it than the caller asked for.
+        let before = context
+            .min(run.offset)
+            .min(run.left_at)
+            .min(run.right_at);
         let after = context;
         (
             window(left, run.left_at - before, before + run.left.len() + after),
@@ -747,4 +765,38 @@ fn note_name(n: u8) -> String {
         "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B",
     ];
     format!("{}{}", NAMES[(n % 12) as usize], (n / 12) as i16 - 1)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use fantom_core::diff::ByteRun;
+
+    fn run_at(offset: usize, file_offset: usize) -> ByteRun {
+        ByteRun {
+            offset,
+            left_at: file_offset,
+            right_at: file_offset,
+            left: vec![b'S'],
+            right: vec![b'X'],
+        }
+    }
+
+    /// A scene rename changes the first byte of a record, so the run sits at record offset 0 with
+    /// no context available before it — while its *file* offset is thousands of bytes in. Clamping
+    /// against the file offset alone underflowed and panicked.
+    #[test]
+    fn context_is_clamped_to_what_the_record_actually_has() {
+        let raw = Raw::from_bytes(vec![b'.'; 4096]);
+        for context in [1, 4, 12, 512] {
+            let rendered = render_run("PRFa[0]", &run_at(0, 0x50), &raw, &raw, context);
+            assert!(
+                rendered.starts_with("PRFa[0]+0x0000"),
+                "context {context} moved the reported offset: {rendered}"
+            );
+        }
+        // With room to spare, context still widens the window as intended.
+        let rendered = render_run("DCWa[0]", &run_at(11, 0x100), &raw, &raw, 4);
+        assert!(rendered.starts_with("DCWa[0]+0x0007"), "{rendered}");
+    }
 }
