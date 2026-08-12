@@ -1,30 +1,42 @@
 use std::io::Cursor;
 
-use binrw::{binread, BinRead};
+use binrw::BinRead;
 
 use crate::container::Raw;
 use crate::{Error, Result};
 
-/// A parsed SVD5 container: the file header plus its table of memory areas.
+/// Which envelope a file uses. Both put their area table at `0x10`; they differ in the preamble.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Kind {
+    /// `SVD5` — scene banks and full backups. A u16 header length, then the magic at `0x02`.
+    Svd,
+    /// `SVZa` — tone exports. The magic leads at `0x00`, and byte `0x04` is the area count.
+    Svz,
+}
+
+impl Kind {
+    /// The four-character magic that identifies this envelope.
+    pub fn magic(self) -> &'static [u8; 4] {
+        match self {
+            Self::Svd => b"SVD5",
+            Self::Svz => b"SVZa",
+        }
+    }
+}
+
+/// Bytes before the area table. The same in both envelopes.
+pub const PREAMBLE_LEN: usize = 0x10;
+
+/// A parsed container: the file preamble plus its table of memory areas.
 ///
 /// This is the *envelope* only — it tells you which areas exist and where their bytes live, not
 /// what those bytes mean. Layout is documented in `docs/FORMAT.md` and confirmed against FANTOM-6
-/// backups.
-#[binread]
+/// backups and tone exports.
 #[derive(Debug, Clone, PartialEq)]
-#[br(little)]
 pub struct Svd {
-    /// Bytes from offset 0x02 to the first data area; also encodes the area count.
-    pub header_size: u16,
-
-    #[br(assert(&magic == b"SVD5", "not an SVD5 container (magic = {:?})", magic))]
-    pub magic: [u8; 4],
-
-    #[br(temp, count = 10)]
-    _reserved: Vec<u8>,
-
+    /// Which envelope this file uses.
+    pub kind: Kind,
     /// One entry per memory area (Performances, Patches, System, …).
-    #[br(count = (header_size as usize).saturating_sub(14) / Area::LEN)]
     pub areas: Vec<Area>,
 }
 
@@ -64,10 +76,44 @@ impl Area {
 }
 
 impl Svd {
-    /// Parse an SVD5 container from raw file bytes.
+    /// Parse a container from raw file bytes, accepting either envelope.
     pub fn parse(raw: &Raw) -> Result<Self> {
-        let mut cursor = Cursor::new(raw.bytes());
-        Ok(Self::read(&mut cursor)?)
+        let bytes = raw.bytes();
+        let head = bytes
+            .get(..PREAMBLE_LEN)
+            .ok_or_else(|| Error::Unrecognized("file is shorter than a container header".into()))?;
+
+        // SVZ leads with its magic; SVD puts a u16 length first and the magic at 0x02.
+        let (kind, count) = if &head[..4] == Kind::Svz.magic() {
+            (Kind::Svz, head[4] as usize)
+        } else if &head[2..6] == Kind::Svd.magic() {
+            let header_size = u16::from_le_bytes([head[0], head[1]]) as usize;
+            (Kind::Svd, header_size.saturating_sub(14) / Area::LEN)
+        } else {
+            return Err(Error::Unrecognized(format!(
+                "not an SVD5 or SVZa container (starts with {:?})",
+                &head[..6]
+            )));
+        };
+
+        let table = bytes
+            .get(PREAMBLE_LEN..PREAMBLE_LEN + count * Area::LEN)
+            .ok_or_else(|| {
+                Error::Unrecognized(format!("area table of {count} entries exceeds the file"))
+            })?;
+        let mut cursor = Cursor::new(table);
+        let areas = (0..count)
+            .map(|_| Area::read(&mut cursor))
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+
+        Ok(Self { kind, areas })
+    }
+
+    /// The bytes before the area table, carried verbatim when rebuilding a file.
+    pub fn preamble<'a>(&self, raw: &'a Raw) -> Result<&'a [u8]> {
+        raw.bytes()
+            .get(..PREAMBLE_LEN)
+            .ok_or_else(|| Error::Unrecognized("container header is truncated".into()))
     }
 
     /// Find the first area with the given four-character tag.
@@ -118,14 +164,65 @@ mod tests {
         Raw::from_bytes(b)
     }
 
+    /// A minimal SVZ tone export: the magic leads, and byte 0x04 is the area count.
+    fn synthetic_svz() -> Raw {
+        let mut b = Vec::new();
+        b.extend_from_slice(b"SVZa"); // 0x00
+        b.push(1); // 0x04 area count
+        b.push(3); // 0x05 format revision
+        b.extend_from_slice(b"KY019$"); // 0x06
+        b.extend_from_slice(&[0u8; 4]); // 0x0c
+        // area table (0x10): one PATa entry
+        b.extend_from_slice(b"PATa");
+        b.extend_from_slice(b"ZCOR");
+        b.extend_from_slice(&0x20u32.to_le_bytes()); // offset
+        b.extend_from_slice(&0x34u32.to_le_bytes()); // size: info 20 + one 32-byte record
+        // area body: count, record_size, info_length = 20 (16 + one 4-byte word)
+        b.extend_from_slice(&1u32.to_le_bytes());
+        b.extend_from_slice(&0x20u32.to_le_bytes());
+        b.extend_from_slice(&20u32.to_le_bytes());
+        b.extend_from_slice(&[0u8; 4]);
+        b.extend_from_slice(&0xdeadbeefu32.to_le_bytes()); // per-record info word
+        b.extend_from_slice(b"ACYL Lead\0\0\0\0\0\0\0");
+        b.extend_from_slice(&[0u8; 16]);
+        Raw::from_bytes(b)
+    }
+
     #[test]
     fn parses_header_and_single_area() {
         let raw = synthetic_svd();
         let svd = Svd::parse(&raw).unwrap();
-        assert_eq!(&svd.magic, b"SVD5");
+        assert_eq!(svd.kind, Kind::Svd);
         assert_eq!(svd.areas.len(), 1);
         assert_eq!(svd.areas[0].tag_str(), "PRFa");
         assert_eq!(svd.areas[0].offset, 0x20);
+    }
+
+    /// SVZ tone exports use a different preamble but the same area table.
+    #[test]
+    fn parses_an_svz_tone_export() {
+        let raw = synthetic_svz();
+        let svd = Svd::parse(&raw).unwrap();
+        assert_eq!(svd.kind, Kind::Svz);
+        assert_eq!(svd.areas.len(), 1);
+        assert_eq!(svd.areas[0].tag_str(), "PATa");
+        assert_eq!(svd.areas[0].format_str(), "ZCOR");
+    }
+
+    /// The records sit after `info_length` bytes, not after a fixed 16.
+    #[test]
+    fn svz_records_start_after_the_declared_info_block() {
+        let raw = synthetic_svz();
+        let svd = Svd::parse(&raw).unwrap();
+        let area = svd.area(b"PATa").unwrap();
+        let table =
+            crate::container::RecordTable::parse(area, svd.area_bytes(&raw, area).unwrap()).unwrap();
+
+        assert_eq!(table.info_len, 20);
+        assert_eq!(table.len(), 1);
+        assert_eq!(&table.record(0).unwrap()[..9], b"ACYL Lead");
+        assert_eq!(table.info_stride(), 4);
+        assert_eq!(table.record_info(0).unwrap(), 0xdeadbeefu32.to_le_bytes());
     }
 
     #[test]

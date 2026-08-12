@@ -1,13 +1,18 @@
 use crate::container::{Area, Raw, Svd};
 use crate::{Error, Result};
 
-/// A fixed-stride record table — the shape every named SVD area shares.
+/// A fixed-stride record table — the shape every named area shares.
 ///
-/// An area body opens with a 16-byte header (`count`, `record_size`, `info_length`, reserved) and
-/// is followed by `count` records of `record_size` bytes. `PRFa` holds scenes this way, `PATa`
-/// tones, `SMPa` samples, and so on; only the record *contents* differ per area.
+/// An area body opens with `count`, `record_size`, `info_length`, then records of `record_size`
+/// bytes. `PRFa` holds scenes this way, `PATa` tones, `SMPa` samples, and so on; only the record
+/// *contents* differ per area.
 ///
-/// Confirmed on FANTOM-6 backups and scene exports — see `docs/FORMAT.md`.
+/// **`info_length` is the header size, and it is not always 16.** Every area of every SVD5 file
+/// declares 16, which is why treating it as fixed worked; SVZ tone exports declare 20, 24, 56, 168,
+/// 1112 — sixteen bytes plus a **four-byte word per record**. Those words are high-entropy and look
+/// like per-record checksums; they are carried alongside their record rather than interpreted.
+///
+/// Confirmed on FANTOM-6 backups, scene exports, and tone exports — see `docs/FORMAT.md`.
 pub struct RecordTable<'a> {
     /// Four-character area tag, e.g. `PRFa`.
     pub tag: [u8; 4],
@@ -19,15 +24,18 @@ pub struct RecordTable<'a> {
     pub declared_count: usize,
     /// Bytes per record.
     pub record_size: usize,
+    /// Bytes of header before the first record, as declared by the area itself.
+    pub info_len: usize,
     /// The area bytes, header included.
     bytes: &'a [u8],
 }
 
 impl<'a> RecordTable<'a> {
-    /// Size of the per-area header that precedes the records.
+    /// The fixed part of an area header: `count`, `record_size`, `info_length`, reserved.
     pub const HEADER_LEN: usize = 0x10;
     const COUNT_OFFSET: usize = 0x00;
     const RECORD_SIZE_OFFSET: usize = 0x04;
+    const INFO_LEN_OFFSET: usize = 0x08;
 
     /// Parse an area's record table from its bytes.
     pub fn parse(area: &Area, bytes: &'a [u8]) -> Result<Self> {
@@ -37,12 +45,21 @@ impl<'a> RecordTable<'a> {
         if record_size == 0 {
             return Err(Error::Unrecognized(format!("{tag} record size is zero")));
         }
+        // Trust the declared header size, but never let a bad value push records out of the area
+        // or overlap the header we just read.
+        let declared = read_u32(bytes, Self::INFO_LEN_OFFSET, &tag)? as usize;
+        let info_len = if (Self::HEADER_LEN..=bytes.len()).contains(&declared) {
+            declared
+        } else {
+            Self::HEADER_LEN
+        };
         Ok(Self {
             tag: area.tag,
             format: area.format,
             area_offset: area.offset as usize,
             declared_count: count,
             record_size,
+            info_len,
             bytes,
         })
     }
@@ -55,14 +72,38 @@ impl<'a> RecordTable<'a> {
         Ok(Some(Self::parse(area, svd.area_bytes(raw, area)?)?))
     }
 
-    /// The 16-byte area header.
+    /// The fixed 16 bytes of the area header.
     pub fn header(&self) -> &'a [u8] {
         &self.bytes[..Self::HEADER_LEN.min(self.bytes.len())]
     }
 
+    /// The whole header, including any per-record info words that follow the fixed part.
+    pub fn info(&self) -> &'a [u8] {
+        &self.bytes[..self.info_len.min(self.bytes.len())]
+    }
+
+    /// Bytes of per-record info each record carries, or 0 when the area has none.
+    pub fn info_stride(&self) -> usize {
+        let extra = self.info_len.saturating_sub(Self::HEADER_LEN);
+        if self.declared_count == 0 {
+            return 0;
+        }
+        extra / self.declared_count
+    }
+
+    /// The per-record info word for record `index`, when the area carries them.
+    pub fn record_info(&self, index: usize) -> Option<&'a [u8]> {
+        let stride = self.info_stride();
+        if stride == 0 {
+            return None;
+        }
+        let start = Self::HEADER_LEN + index * stride;
+        self.bytes.get(start..start + stride)
+    }
+
     /// How many whole records the area actually contains, never more than declared.
     pub fn len(&self) -> usize {
-        let body = self.bytes.len().saturating_sub(Self::HEADER_LEN);
+        let body = self.bytes.len().saturating_sub(self.info_len);
         self.declared_count.min(body / self.record_size)
     }
 
@@ -76,7 +117,7 @@ impl<'a> RecordTable<'a> {
         if index >= self.len() {
             return None;
         }
-        let start = Self::HEADER_LEN + index * self.record_size;
+        let start = self.info_len + index * self.record_size;
         self.bytes.get(start..start + self.record_size)
     }
 
@@ -87,7 +128,7 @@ impl<'a> RecordTable<'a> {
 
     /// Absolute file offset of record `index`, whether or not it is present.
     pub fn record_offset(&self, index: usize) -> usize {
-        self.area_offset + Self::HEADER_LEN + index * self.record_size
+        self.area_offset + self.info_len + index * self.record_size
     }
 }
 
