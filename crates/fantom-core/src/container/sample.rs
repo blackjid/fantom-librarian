@@ -216,24 +216,40 @@ fn read_data(raw: &Raw, svd: &Svd) -> Result<Vec<SampleData>> {
     Ok(out)
 }
 
+/// The factory-default multisample record: the `INITIAL MSMPL` name followed by 128 identical
+/// per-key entries. Byte-identical in all 384 records across three backups.
+fn factory_multisample(record_size: usize) -> Vec<u8> {
+    let mut record = Vec::with_capacity(record_size);
+    let mut name = [b' '; 16];
+    name[..13].copy_from_slice(b"INITIAL MSMPL");
+    record.extend_from_slice(&name);
+    while record.len() < record_size {
+        record.extend_from_slice(&[0x00, 0x00, 0x7f, 0x00, 0x80, 0x00, 0x00, 0x00]);
+    }
+    record.truncate(record_size);
+    record
+}
+
 fn read_multisamples(raw: &Raw, svd: &Svd) -> Result<Vec<Multisample>> {
     let Some(table) = RecordTable::from_svd(raw, svd, b"MLSa")? else {
         return Ok(Vec::new());
     };
-    let default = table.record(0).map(<[u8]>::to_vec);
+    // Compare against the known factory bytes rather than against this file's own record 0 —
+    // using record 0 as the template would hide it if it were the one the user edited, and would
+    // then report every untouched slot as edited.
+    let default = factory_multisample(table.record_size);
     let mut out = Vec::new();
     for index in 0..table.len() {
         let Some(record) = table.record(index) else {
             break;
         };
-        let edited = Some(record) != default.as_deref();
-        if !edited {
+        if record == default {
             continue;
         }
         out.push(Multisample {
             index,
             name: ascii_trim(&record[..16.min(record.len())]),
-            edited,
+            edited: true,
         });
     }
     Ok(out)
@@ -366,6 +382,49 @@ mod tests {
         assert_eq!(orphans.len(), 2);
         assert!(orphans[0].contains("no waveform data"));
         assert!(orphans[1].contains("unused slot 7"));
+    }
+
+    fn multisample_area(records: &[Vec<u8>], record_size: usize) -> Vec<u8> {
+        let mut area = Vec::new();
+        area.extend_from_slice(&(records.len() as u32).to_le_bytes());
+        area.extend_from_slice(&(record_size as u32).to_le_bytes());
+        area.extend_from_slice(&16u32.to_le_bytes());
+        area.extend_from_slice(&[0u8; 4]);
+        for record in records {
+            let mut r = record.clone();
+            r.resize(record_size, 0);
+            area.extend_from_slice(&r);
+        }
+        area
+    }
+
+    /// The default must be the known factory bytes, not this file's own record 0 — otherwise an
+    /// edit to slot 0 hides itself and makes every untouched slot look edited.
+    #[test]
+    fn an_edited_first_multisample_is_reported_and_does_not_taint_the_rest() {
+        const LEN: usize = 1040;
+        let mut edited = factory_multisample(LEN);
+        edited[..16].copy_from_slice(b"My Multisample  ");
+
+        let records = vec![
+            edited,
+            factory_multisample(LEN),
+            factory_multisample(LEN),
+        ];
+        let (raw, svd) = svd_with(&[(b"MLSa", multisample_area(&records, LEN))]);
+        let bank = read(&raw, &svd).unwrap();
+
+        assert_eq!(bank.multisamples.len(), 1, "only the edited slot is reported");
+        assert_eq!(bank.multisamples[0].index, 0);
+        assert_eq!(bank.multisamples[0].name, "My Multisample");
+    }
+
+    #[test]
+    fn untouched_multisamples_are_all_recognised_as_factory_defaults() {
+        const LEN: usize = 1040;
+        let records = vec![factory_multisample(LEN); 4];
+        let (raw, svd) = svd_with(&[(b"MLSa", multisample_area(&records, LEN))]);
+        assert!(read(&raw, &svd).unwrap().multisamples.is_empty());
     }
 
     /// A file with no sampling at all — every scene export, and a backup whose user never sampled.
