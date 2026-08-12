@@ -703,8 +703,51 @@ fn sample_warning(output: &Raw, source: &Raw) -> String {
     out
 }
 
+/// How many user samples a file carries, for reporting what an extract left behind.
+fn sample_count(raw: &Raw) -> usize {
+    fantom_core::container::Svd::parse(raw)
+        .and_then(|svd| fantom_core::container::read_samples(raw, &svd))
+        .map(|bank| bank.slots.len())
+        .unwrap_or(0)
+}
+
+/// Whether a file is an SVZ tone bank rather than a scene bank.
+fn is_tone_bank(raw: &Raw) -> bool {
+    fantom_core::container::Svd::parse(raw)
+        .map(|svd| svd.kind == fantom_core::container::Kind::Svz)
+        .unwrap_or(false)
+}
+
 fn run_extract(file: &PathBuf, scenes: &[usize], output: &PathBuf) -> fantom_core::Result<String> {
     let raw = Raw::open(file)?;
+    if is_tone_bank(&raw) {
+        let extracted = fantom_core::tonebank::extract_tones(&raw, scenes)?;
+        extracted.save(output)?;
+        let mut out = String::new();
+        // Samples travel with the tones that play them; anything unreferenced is left behind, so
+        // say so rather than silently shrinking the file.
+        let (before, after) = (sample_count(&raw), sample_count(&extracted));
+        if before > after {
+            let _ = writeln!(
+                out,
+                "note: left behind {} sample{} no selected tone references",
+                before - after,
+                if before - after == 1 { "" } else { "s" }
+            );
+        }
+        let _ = writeln!(
+            out,
+            "extracted {} tone{}{} to {}",
+            scenes.len(),
+            if scenes.len() == 1 { "" } else { "s" },
+            match after {
+                0 => String::new(),
+                n => format!(" with {n} sample{}", if n == 1 { "" } else { "s" }),
+            },
+            output.display()
+        );
+        return Ok(out);
+    }
     let extracted = fantom_core::repackage::extract_scenes(&raw, scenes)?;
     extracted.save(output)?;
     Ok(format!(
@@ -730,6 +773,18 @@ fn run_canary(file: &PathBuf, scene: usize, output: &PathBuf) -> fantom_core::Re
 fn run_merge(target: &PathBuf, source: &PathBuf, output: &PathBuf) -> fantom_core::Result<String> {
     let target_raw = Raw::open(target)?;
     let source_raw = Raw::open(source)?;
+    if is_tone_bank(&target_raw) {
+        let before = fantom_core::codec::read_bundled_tones(&target_raw)?.len();
+        let merged = fantom_core::tonebank::merge_tones(&target_raw, &source_raw)?;
+        let after = fantom_core::codec::read_bundled_tones(&merged)?.len();
+        merged.save(output)?;
+        return Ok(format!(
+            "merged to {} tones ({} new) in {}\n",
+            after,
+            after - before,
+            output.display()
+        ));
+    }
     let source_count = fantom_core::codec::read_scenes(&source_raw)?.len();
     let merged = fantom_core::repackage::merge_scenes(&target_raw, &source_raw)?;
     merged.save(output)?;

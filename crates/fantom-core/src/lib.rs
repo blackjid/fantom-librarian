@@ -11,6 +11,7 @@
 //! - [`codec`] — maps container bytes onto [`model`] types (read now, write later).
 //! - [`presets`] — factory ZEN-Core preset tone name lookup (bundled sound list).
 //! - [`diff`] — compares two files by area and record; the tool that finds new offsets.
+//! - [`tonebank`] — repackaging SVZ tone banks, which carry their samples.
 //!
 //! The layout was reverse-engineered from a Roland FANTOM-6 and validated against panel ground
 //! truth; see `docs/FORMAT.md` (including a note on Roland's confusingly similar model names).
@@ -24,6 +25,7 @@ pub mod diff;
 pub mod model;
 pub mod presets;
 pub mod repackage;
+pub mod tonebank;
 
 mod error;
 
