@@ -12,6 +12,7 @@
 //! - [`presets`] — factory ZEN-Core preset tone name lookup (bundled sound list).
 //! - [`diff`] — compares two files by area and record; the tool that finds new offsets.
 //! - [`tonebank`] — repackaging SVZ tone banks, which carry their samples.
+//! - [`checksum`] / [`verify`] — the CRC-32 Roland stores per record, and checking a file against it.
 //!
 //! The layout was reverse-engineered from a Roland FANTOM-6 and validated against panel ground
 //! truth; see `docs/FORMAT.md` (including a note on Roland's confusingly similar model names).
@@ -19,6 +20,7 @@
 //! still unknown.
 
 pub mod address;
+pub mod checksum;
 pub mod codec;
 pub mod container;
 pub mod diff;
@@ -26,6 +28,7 @@ pub mod model;
 pub mod presets;
 pub mod repackage;
 pub mod tonebank;
+pub mod verify;
 
 mod error;
 
