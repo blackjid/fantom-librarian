@@ -9,6 +9,7 @@
 //! - [`model`] — the domain: [`model::Scene`], [`model::Zone`], [`model::ToneRef`], metadata.
 //! - [`codec`] — maps container bytes onto [`model`] types (read now, write later).
 //! - [`presets`] — factory ZEN-Core preset tone name lookup (bundled sound list).
+//! - [`diff`] — compares two files by area and record; the tool that finds new offsets.
 //!
 //! The layout was reverse-engineered from a Roland FANTOM-6 and validated against panel ground
 //! truth; see `docs/FORMAT.md` (including a note on Roland's confusingly similar model names).
@@ -17,6 +18,7 @@
 
 pub mod codec;
 pub mod container;
+pub mod diff;
 pub mod model;
 pub mod presets;
 pub mod repackage;

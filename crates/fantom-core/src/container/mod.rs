@@ -8,11 +8,13 @@
 
 mod pat;
 mod raw;
+mod records;
 mod svd;
 mod zone;
 
 pub use pat::{PatArea, Tone};
 pub use raw::Raw;
+pub use records::RecordTable;
 pub use svd::{Area, Svd};
 pub use zone::{RawZone, ZoneSettings};
 pub(crate) use svd::ascii_trim;
