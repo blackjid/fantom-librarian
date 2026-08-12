@@ -488,7 +488,23 @@ fn rebuild_container(
     for (_, _, body) in areas {
         bytes.extend_from_slice(&body);
     }
-    Ok(Raw::from_bytes(bytes))
+
+    // Check the result before handing it back: a rebuilt bank whose areas disagree with their own
+    // geometry is a bug here, and it should not reach the instrument.
+    let raw = Raw::from_bytes(bytes);
+    let report = crate::verify::check(&raw)?;
+    if !report.is_ok() {
+        return Err(Error::Unrecognized(format!(
+            "repackaging produced an inconsistent file: {}",
+            report
+                .problems
+                .iter()
+                .map(|p| p.to_string())
+                .collect::<Vec<_>>()
+                .join("; ")
+        )));
+    }
+    Ok(raw)
 }
 
 fn valid_zone_slots(record: &[u8]) -> impl Iterator<Item = usize> + '_ {
@@ -600,10 +616,17 @@ mod tests {
         Raw::from_bytes(bytes)
     }
 
+    /// Wrap opaque bytes in a valid one-record area. `SYSa` in a real file is a proper record
+    /// table (count 1, 904-byte record), so tests must build one too — a bare blob is a shape the
+    /// instrument never writes, and the output self-check rightly rejects it.
+    fn system_area(bytes: &[u8]) -> Vec<u8> {
+        record_area(&[bytes.to_vec()], bytes.len())
+    }
+
     fn bank(scenes: Vec<Vec<u8>>, tones: Vec<Vec<u8>>, system: &[u8]) -> Raw {
         build_svd(&[
             (b"PRFa", record_area(&scenes, SCENE_SIZE)),
-            (b"SYSa", system.to_vec()),
+            (b"SYSa", system_area(system)),
             (b"PATa", record_area(&tones, TONE_SIZE)),
         ])
     }
@@ -644,7 +667,7 @@ mod tests {
             .unwrap();
         let names: Vec<_> = pat.tones().iter().map(|tone| tone.name.as_str()).collect();
         assert_eq!(names, ["Tone B", "Tone C"]);
-        assert_eq!(area_bytes(&extracted, b"SYSa"), b"opaque system bytes");
+        assert_eq!(area_bytes(&extracted, b"SYSa"), system_area(b"opaque system bytes"));
     }
 
     #[test]
@@ -686,7 +709,7 @@ mod tests {
         let pat =
             crate::container::PatArea::from_svd(&merged, &Svd::parse(&merged).unwrap()).unwrap();
         assert_eq!(pat.tones().len(), 2);
-        assert_eq!(area_bytes(&merged, b"SYSa"), b"target system");
+        assert_eq!(area_bytes(&merged, b"SYSa"), system_area(b"target system"));
     }
 
     #[test]
@@ -717,7 +740,7 @@ mod tests {
                 &extracted_pat[start + NAME_LEN..start + TONE_SIZE]
             );
         }
-        assert_eq!(area_bytes(&canary, b"SYSa"), b"opaque system bytes");
+        assert_eq!(area_bytes(&canary, b"SYSa"), system_area(b"opaque system bytes"));
     }
 
     #[test]
@@ -809,14 +832,14 @@ mod tests {
             ),
             (b"SNAa", record_area(&[tone("Source SNA", 0x33)], TONE_SIZE)),
             (b"ZEPa", record_area(&[tone("Source ZEP", 0x44)], TONE_SIZE)),
-            (b"SYSa", b"source system".to_vec()),
+            (b"SYSa", system_area(b"source system")),
         ]);
 
         let merged = merge_scenes(&target, &source).unwrap();
         let svd = Svd::parse(&merged).unwrap();
         assert!(svd.area(b"SNAa").is_some());
         assert!(svd.area(b"ZEPa").is_some());
-        assert_eq!(area_bytes(&merged, b"SYSa"), b"target system");
+        assert_eq!(area_bytes(&merged, b"SYSa"), system_area(b"target system"));
 
         let scenes = read_scenes(&merged).unwrap();
         assert_eq!(scenes[1].zones[0].tone.name(), Some("Source Tone"));
@@ -914,7 +937,7 @@ mod tests {
                 b"INSa",
                 record_area(&[tone("Kit Instruments", 0x66)], TONE_SIZE),
             ),
-            (b"SYSa", b"system".to_vec()),
+            (b"SYSa", system_area(b"system")),
         ]);
 
         let extracted = extract_scenes(&raw, &[1]).unwrap();

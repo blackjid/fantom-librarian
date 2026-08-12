@@ -14,6 +14,7 @@
 use std::collections::BTreeMap;
 
 use crate::address::{self, AreaSpec};
+use crate::checksum::crc32;
 use crate::container::{Area, Kind, Raw, RecordTable, Svd, PREAMBLE_LEN};
 use crate::{Error, Result};
 
@@ -22,6 +23,8 @@ const HEADER_LEN: usize = RecordTable::HEADER_LEN;
 const DIRECTORY_ENTRY: usize = 16;
 /// Byte at `0x04` of the preamble: how many areas the file has.
 const AREA_COUNT_BYTE: usize = 0x04;
+/// A four-byte per-record info word is that record's CRC-32.
+const CHECKSUM_LEN: usize = 4;
 
 /// One area loaded whole: its header, the per-record info words, and its records.
 struct LoadedArea {
@@ -57,23 +60,51 @@ impl LoadedArea {
 
     /// Rebuild the area body from a chosen subset of its records, in the given order.
     fn build(&self, keep: &[usize]) -> Result<Vec<u8>> {
+        let records: Vec<&[u8]> = keep
+            .iter()
+            .map(|&index| {
+                self.records
+                    .get(index)
+                    .map(Vec::as_slice)
+                    .ok_or_else(|| out_of_range(self, index))
+            })
+            .collect::<Result<_>>()?;
+        let info: Vec<&[u8]> = keep
+            .iter()
+            .map(|&index| {
+                self.info
+                    .get(index)
+                    .map(Vec::as_slice)
+                    .ok_or_else(|| out_of_range(self, index))
+            })
+            .collect::<Result<_>>()?;
+        Ok(self.assemble(&records, &info))
+    }
+
+    /// Lay out a body from records and their info words, refreshing any checksum.
+    fn assemble(&self, records: &[&[u8]], info: &[&[u8]]) -> Vec<u8> {
         let mut header = self.header;
-        let info_len = HEADER_LEN + keep.len() * self.info_stride;
-        header[0..4].copy_from_slice(&(keep.len() as u32).to_le_bytes());
+        let info_len = HEADER_LEN + records.len() * self.info_stride;
+        header[0..4].copy_from_slice(&(records.len() as u32).to_le_bytes());
         header[4..8].copy_from_slice(&(self.record_size as u32).to_le_bytes());
         header[8..12].copy_from_slice(&(info_len as u32).to_le_bytes());
 
-        let mut body = Vec::with_capacity(info_len + keep.len() * self.record_size);
+        let mut body = Vec::with_capacity(info_len + records.len() * self.record_size);
         body.extend_from_slice(&header);
-        for &index in keep {
-            let info = self.info.get(index).ok_or_else(|| out_of_range(self, index))?;
-            body.extend_from_slice(info);
+        for (index, record) in records.iter().enumerate() {
+            // A four-byte info word is that record's CRC-32. Recomputing rather than copying keeps
+            // it right when a record was edited on the way through — carrying the original would
+            // silently hand the instrument a record that fails its own integrity check.
+            if self.info_stride == CHECKSUM_LEN {
+                body.extend_from_slice(&crc32(record).to_le_bytes());
+            } else {
+                body.extend_from_slice(info.get(index).copied().unwrap_or_default());
+            }
         }
-        for &index in keep {
-            let record = self.records.get(index).ok_or_else(|| out_of_range(self, index))?;
+        for record in records {
             body.extend_from_slice(record);
         }
-        Ok(body)
+        body
     }
 }
 
@@ -266,17 +297,26 @@ fn rebuild(bank: &ToneBank, keep: &[usize]) -> Result<Raw> {
 
     let mut areas: Vec<([u8; 4], [u8; 4], Vec<u8>)> = Vec::new();
     for (position, area) in bank.family.iter().enumerate() {
-        let mut body = area.build(keep)?;
-        // Rewrite the sample references of the tone records we just copied.
-        if position == 0 && !slot_map.is_empty() {
-            let info_len = HEADER_LEN + keep.len() * area.info_stride;
-            for slot in 0..keep.len() {
-                let at = info_len + slot * area.record_size;
-                let record = &mut body[at..at + area.record_size];
-                crate::container::remap_sample_slots(record, &slot_map);
+        // Rewrite each tone's sample references *before* the body is laid out, so the checksum
+        // written alongside it covers the record we actually emit.
+        let mut records = Vec::with_capacity(keep.len());
+        for &index in keep {
+            let mut record = area
+                .records
+                .get(index)
+                .cloned()
+                .ok_or_else(|| out_of_range(area, index))?;
+            if position == 0 && !slot_map.is_empty() {
+                crate::container::remap_sample_slots(&mut record, &slot_map);
             }
+            records.push(record);
         }
-        areas.push((area.tag, area.format, body));
+        let info: Vec<&[u8]> = keep
+            .iter()
+            .map(|&i| area.info.get(i).map(Vec::as_slice).unwrap_or_default())
+            .collect();
+        let rows: Vec<&[u8]> = records.iter().map(Vec::as_slice).collect();
+        areas.push((area.tag, area.format, area.assemble(&rows, &info)));
     }
 
     if !slot_map.is_empty() {
@@ -371,19 +411,9 @@ fn merge(a: &ToneBank, b: &ToneBank) -> Result<Raw> {
 
     let mut areas: Vec<([u8; 4], [u8; 4], Vec<u8>)> = Vec::new();
     for (position, area) in a.family.iter().enumerate() {
-        let mut header = area.header;
-        let info_len = HEADER_LEN + records.len() * area.info_stride;
-        header[0..4].copy_from_slice(&(records.len() as u32).to_le_bytes());
-        header[8..12].copy_from_slice(&(info_len as u32).to_le_bytes());
-        let mut body = Vec::new();
-        body.extend_from_slice(&header);
-        for entry in &info {
-            body.extend_from_slice(&entry[position]);
-        }
-        for entry in &records {
-            body.extend_from_slice(&entry[position]);
-        }
-        areas.push((area.tag, area.format, body));
+        let rows: Vec<&[u8]> = records.iter().map(|e| e[position].as_slice()).collect();
+        let words: Vec<&[u8]> = info.iter().map(|e| e[position].as_slice()).collect();
+        areas.push((area.tag, area.format, area.assemble(&rows, &words)));
     }
 
     if !waveforms.is_empty() {
@@ -392,19 +422,9 @@ fn merge(a: &ToneBank, b: &ToneBank) -> Result<Raw> {
             .as_ref()
             .or(b.slots.as_ref())
             .ok_or_else(|| Error::Unrecognized("sampled tones without a USPa area".into()))?;
-        let mut header = slots.header;
-        let info_len = HEADER_LEN + slot_records.len() * slots.info_stride;
-        header[0..4].copy_from_slice(&(slot_records.len() as u32).to_le_bytes());
-        header[8..12].copy_from_slice(&(info_len as u32).to_le_bytes());
-        let mut body = Vec::new();
-        body.extend_from_slice(&header);
-        for entry in &slot_info {
-            body.extend_from_slice(entry);
-        }
-        for entry in &slot_records {
-            body.extend_from_slice(entry);
-        }
-        areas.push((slots.tag, slots.format, body));
+        let rows: Vec<&[u8]> = slot_records.iter().map(Vec::as_slice).collect();
+        let words: Vec<&[u8]> = slot_info.iter().map(Vec::as_slice).collect();
+        areas.push((slots.tag, slots.format, slots.assemble(&rows, &words)));
         let refs: Vec<&Waveform> = waveforms.iter().collect();
         areas.push((*b"USDa", slots.format, build_waveform_area(&refs)?));
     }
@@ -442,6 +462,11 @@ fn build_waveform_area(waveforms: &[&Waveform]) -> Result<Vec<u8>> {
 }
 
 /// Write the preamble, area table, and bodies of a new SVZ, keeping the source's area order.
+///
+/// The result is checked before it is returned: every record must match the checksum written
+/// beside it, and every area's geometry must match its size. A file that fails is a bug here, and
+/// it is better to fail loudly than to hand the instrument something it will reject — or worse,
+/// accept.
 fn assemble(
     preamble: &[u8; PREAMBLE_LEN],
     order: &[[u8; 4]],
@@ -466,7 +491,20 @@ fn assemble(
     for (_, _, body) in &areas {
         bytes.extend_from_slice(body);
     }
-    Ok(Raw::from_bytes(bytes))
+    let raw = Raw::from_bytes(bytes);
+    let report = crate::verify::check(&raw)?;
+    if !report.is_ok() {
+        return Err(Error::Unrecognized(format!(
+            "repackaging produced an inconsistent file: {}",
+            report
+                .problems
+                .iter()
+                .map(|p| p.to_string())
+                .collect::<Vec<_>>()
+                .join("; ")
+        )));
+    }
+    Ok(raw)
 }
 
 #[cfg(test)]
@@ -495,8 +533,15 @@ mod tests {
         body.extend_from_slice(&(record_size as u32).to_le_bytes());
         body.extend_from_slice(&(info_len as u32).to_le_bytes());
         body.extend_from_slice(&[0u8; 4]);
-        for (i, _) in records.iter().enumerate() {
-            body.extend_from_slice(&(0xa000_0000u32 + i as u32).to_le_bytes()[..info_stride]);
+        for record in records {
+            // Real files store each record's CRC-32 here; a fixture must too, or the output
+            // self-check will (rightly) reject the file built from it.
+            let word = if info_stride == CHECKSUM_LEN {
+                crc32(record)
+            } else {
+                0
+            };
+            body.extend_from_slice(&word.to_le_bytes()[..info_stride]);
         }
         for record in records {
             body.extend_from_slice(record);
@@ -662,6 +707,46 @@ mod tests {
         });
         let error = extract_tones(&raw, &[0]).unwrap_err().to_string();
         assert!(error.contains("not an SVZ tone bank"), "{error}");
+    }
+
+    /// The checksum must cover the record we actually emit. Rewriting a tone's sample reference
+    /// after computing its CRC once produced a record the instrument's own check would reject.
+    #[test]
+    fn a_rewritten_record_gets_a_checksum_that_matches_it() {
+        let extracted = extract_tones(&sampled_bank(), &[2]).unwrap();
+        let report = crate::verify::check(&extracted).unwrap();
+        assert!(report.is_ok(), "{:?}", report.problems);
+        assert!(report.checked > 0, "nothing was actually checked");
+
+        // The rewritten record's checksum must differ from the source's, since its bytes did.
+        let source = sampled_bank();
+        let svd = Svd::parse(&source).unwrap();
+        let area = svd.area(b"PATa").unwrap();
+        let table = RecordTable::parse(area, svd.area_bytes(&source, area).unwrap()).unwrap();
+        let original = u32::from_le_bytes(table.record_info(2).unwrap().try_into().unwrap());
+
+        let svd = Svd::parse(&extracted).unwrap();
+        let area = svd.area(b"PATa").unwrap();
+        let table = RecordTable::parse(area, svd.area_bytes(&extracted, area).unwrap()).unwrap();
+        let emitted = u32::from_le_bytes(table.record_info(0).unwrap().try_into().unwrap());
+        assert_ne!(emitted, original, "checksum was carried over, not recomputed");
+    }
+
+    /// A record copied through untouched must keep its original checksum exactly.
+    #[test]
+    fn an_untouched_record_keeps_its_checksum() {
+        let source = sampled_bank();
+        let extracted = extract_tones(&source, &[0]).unwrap();
+
+        let svd = Svd::parse(&source).unwrap();
+        let area = svd.area(b"PATa").unwrap();
+        let table = RecordTable::parse(area, svd.area_bytes(&source, area).unwrap()).unwrap();
+        let original = table.record_info(0).unwrap().to_vec();
+
+        let svd = Svd::parse(&extracted).unwrap();
+        let area = svd.area(b"PATa").unwrap();
+        let table = RecordTable::parse(area, svd.area_bytes(&extracted, area).unwrap()).unwrap();
+        assert_eq!(table.record_info(0).unwrap(), original.as_slice());
     }
 
     #[test]
