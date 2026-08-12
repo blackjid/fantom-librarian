@@ -372,10 +372,68 @@ Confirmed across banks: PRISMA 16, NARF 50, TOP80 83, full backup **512** scenes
 > to have exactly 16 scenes and a 16-byte header. NARF (count 0x32) disproved that — records always
 > begin at a fixed 16-byte header, and +0 is the scene count.
 
-### SVZ tone export (`EXPORT_Z-Core.svz`)
-Same area-table shape, but the preamble differs: magic `SVZa` at 0x00, then a 12-byte preamble
-(`02 02` looks like an area count = 2), area table at 0x10 with `format` = `ZCOR` (ZEN-Core).
-Areas: `DIFa`, `PATa`. A 16-char tone name (`ACYL Lead`) sits ~0x9c.
+## SVZ tone export — CONFIRMED
+
+An `.svz` is the tone-level counterpart to a scene bank: no `PRFa`, just one engine area plus its
+dependencies. Verified against `EXPORT_Z-Core.svz` (10 ZEN-Core tones), `Z-Core_20260623.svz`
+(274 tones, 2 samples) and `DRUM_20260623.svz` (38 kits).
+
+### Preamble (16 bytes, then the area table at 0x10 as usual)
+
+| Off | Size | Field | Notes |
+|-----|------|-------|-------|
+| 0x00 | 4 | magic | `SVZa` — no u16 length prefix, unlike SVD5 |
+| 0x04 | 1 | area count | 2, 3, 4 across the three fixtures, matching their area tables |
+| 0x05 | 1 | revision | 2 on the older export, 3 on both 2026 ones |
+| 0x06 | 6 | stamp | `KY019$` |
+| 0x0c | 4 | reserved | zeros |
+
+The area table entries and the `format` stamp work as in SVD5, with `ZCOR` (ZEN-Core) in place of
+`KY19`. Areas seen: `DIFa`, `PATa`, `RHYa`+`INSa`, `USPa`, `USDa`.
+
+### `info_length` is the area header size, and SVZ proves it varies
+
+Every area body starts with `count`, `record_size`, `info_length`. **Records begin at
+`info_length`, not at a fixed 16.** Every area of every SVD5 file declares 16, which is why
+treating it as constant worked; SVZ declares 20, 24, 56, 168, 1112 — always `16 + 4 × count`:
+
+| Area | count | record_size | info_length | `16 + 4×count` |
+|------|-------|-------------|-------------|----------------|
+| `PATa` (old export) | 10 | 1632 | 56 | 56 ✓ |
+| `PATa` (2026) | 274 | 1632 | 1112 | 1112 ✓ |
+| `RHYa` / `INSa` | 38 | 3328 / 19008 | 168 | 168 ✓ |
+| `USPa` | 2 | 64 | 24 | 24 ✓ |
+| `DIFa` | 1 | 32 | 20 | 20 ✓ |
+
+So an SVZ area carries a **four-byte word per record** between the header and the records. The
+values are high-entropy (`0xb1e1_c007`, `0xe483_9ff6`, …) and look like per-record checksums; they
+are carried alongside their record rather than interpreted. `info_length + count × record_size`
+equals the area size exactly in every case.
+
+Tone records are byte-identical in layout to an SVD's: 1632 bytes, name at `+0x00`, category at
+`+0x10`, the four partials at stride 124. Everything the reader knows about tones applies unchanged.
+
+### `USPa` and `USDa` — an SVZ carries its samples
+
+This is the format's most useful property, and the opposite of a scene export:
+
+- **`USPa`** — the sample slot table, 64 bytes per record: name at `+0x00`, in-use at `+0x14`,
+  level `+0x15`, original key `+0x19`, end point in frames at `+0x24`. Slot 0 of
+  `Z-Core_20260623.svz` is named `Sample003;F#3-F#` and stores key `0x36` = 54 = F#3.
+- **`USDa`** — variable-size records (`record_size = 0`). A 16-byte header, then one 16-byte
+  directory entry per section — `{u32 slot, u32 offset, u32 size, u32 word}`, offsets relative to
+  the area body — then the `SMPd` sections themselves. In an SVZ's `SMPd`, the 16-bit sample count
+  sits at `+0x04` and the rate at `+0x0c` (44100 in this fixture), with the name still at `+0x10`.
+  `384 + frames × 4` equals the section size exactly for both samples, i.e. a 384-byte header and
+  16-bit stereo audio.
+
+A tone references a sample exactly as in an SVD — wave group 2, 1-based `USPa` slot — so the same
+decode drives both. `Z-Core_20260623.svz` has one sampled tone, `MyPolySyn1`, pointing at slot 2.
+
+**Repackaging** (`crate::tonebank`) selects tones by index, carries the paired `INSa` for drum kits,
+and carries the `USPa` slots and `USDa` sections the selected tones play, renumbering the tone's
+references to match. Samples nothing references are left behind, and the CLI says so. Area order is
+preserved from the source.
 
 ## How to inspect
 

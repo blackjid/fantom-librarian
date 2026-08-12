@@ -315,6 +315,92 @@ fn the_sample_bank_agrees_with_its_waveform_directory() {
         .is_empty());
 }
 
+/// SVZ tone banks, which use a different envelope and carry their samples.
+const TONE_BANKS: [&str; 3] = [
+    "Z-Core_20260623.svz",              // 274 ZEN-Core tones, 2 samples
+    "DRUM_20260623.svz",                // 38 drum kits with paired INSa instrument sets
+    "backup/ROLAND/SOUND/EXPORT_Z-Core.svz", // 10 tones, older revision
+];
+
+/// Every tone of a bank must survive a round trip through extraction unchanged.
+///
+/// This exercises the parts of the SVZ envelope that differ from an SVD: the magic leads the file,
+/// the area count is a single byte, and each area declares its own header length with a four-byte
+/// info word per record. Getting any of those wrong shows up here as scrambled records.
+#[test]
+fn extracting_every_tone_of_an_svz_reproduces_it() {
+    for path in TONE_BANKS {
+        let Some(raw) = open(path) else { continue };
+        let before = fantom_core::codec::read_bundled_tones(&raw).unwrap();
+        let all: Vec<usize> = (0..before.len()).collect();
+
+        let extracted = fantom_core::tonebank::extract_tones(&raw, &all).unwrap();
+        let after = fantom_core::codec::read_bundled_tones(&extracted).unwrap();
+        assert_eq!(after, before, "{path}: re-extracting every tone changed them");
+    }
+}
+
+/// A sampled tone taken out of a bank keeps its audio, which is what an SVZ is for.
+#[test]
+fn extracting_a_sampled_tone_carries_its_waveform() {
+    let Some(raw) = open("Z-Core_20260623.svz") else {
+        return;
+    };
+    let svd = fantom_core::container::Svd::parse(&raw).unwrap();
+    let source = fantom_core::container::read_samples(&raw, &svd).unwrap();
+    assert_eq!(source.slots.len(), 2, "fixture should carry two samples");
+
+    // `MyPolySyn1` is the only tone in this bank that plays a user sample.
+    let tones = fantom_core::codec::read_bundled_tones(&raw).unwrap();
+    let index = tones
+        .iter()
+        .position(|t| t.name == "MyPolySyn1")
+        .expect("sampled tone present");
+
+    let extracted = fantom_core::tonebank::extract_tones(&raw, &[index]).unwrap();
+    let svd = fantom_core::container::Svd::parse(&extracted).unwrap();
+    let carried = fantom_core::container::read_samples(&extracted, &svd).unwrap();
+
+    assert_eq!(carried.slots.len(), 1, "only the sample it plays travels");
+    assert_eq!(carried.slots[0].name, "Sample005;G#3-G#");
+    assert!(carried.orphans().is_empty(), "{:?}", carried.orphans());
+    // Same audio, not a re-encode: frames and rate must match the source exactly.
+    let original = source
+        .data
+        .iter()
+        .find(|d| d.name == "Sample005;G#3-G#")
+        .unwrap();
+    assert_eq!(carried.data[0].words, original.words);
+    assert_eq!(carried.data[0].sample_rate, original.sample_rate);
+}
+
+/// A drum kit is `RHYa` plus its 88 instruments in `INSa`; the two must stay index-locked.
+#[test]
+fn extracting_drum_kits_keeps_their_instrument_sets_paired() {
+    let Some(raw) = open("DRUM_20260623.svz") else {
+        return;
+    };
+    let extracted = fantom_core::tonebank::extract_tones(&raw, &[0, 5]).unwrap();
+
+    let svd = fantom_core::container::Svd::parse(&extracted).unwrap();
+    let rhy = fantom_core::container::RecordTable::from_svd(&extracted, &svd, b"RHYa")
+        .unwrap()
+        .unwrap();
+    let ins = fantom_core::container::RecordTable::from_svd(&extracted, &svd, b"INSa")
+        .unwrap()
+        .unwrap();
+    assert_eq!(rhy.len(), 2);
+    assert_eq!(ins.len(), rhy.len(), "INSa must match RHYa one for one");
+
+    // And each INSa record must be the one that belonged to its kit in the source.
+    let source_svd = fantom_core::container::Svd::parse(&raw).unwrap();
+    let source_ins = fantom_core::container::RecordTable::from_svd(&raw, &source_svd, b"INSa")
+        .unwrap()
+        .unwrap();
+    assert_eq!(ins.record(0), source_ins.record(0));
+    assert_eq!(ins.record(1), source_ins.record(5));
+}
+
 /// Panel ground truth for one scene, transcribed from the instrument's own display.
 #[test]
 fn africa_main_decodes_to_the_panel_display() {

@@ -62,10 +62,18 @@ NARF/PRISMA canary: zones, keyboard groups, tones, and samples continued to work
 PRISMA scene's SN-A and SN-EP dependencies. V-Piano, MODEL/ABM, and ACB USER records are also
 rebundled and rebased, with their multi-record indexing confirmed on hardware.
 
-**User samples do not travel yet.** `SMPa` slots, `MLSa` multisamples, and the `USDa` waveform
-payload are decoded and listed by `fantom samples`, but nothing decoded links a *tone* to a sample,
-so repackaging drops them and says so. References to installed factory/model/expansion banks are
-preserved but require the same content on the destination.
+**SVZ tone banks** are read and repackaged too. An `.svz` holds tones rather than scenes — `PATa`,
+or `RHYa` with its paired `INSa` — and unlike a scene export it **carries the audio of any user
+sample its tones play**. `extract` and `merge` work on them with the same verbs, selecting by the
+indexes `tones` prints, carrying each selected tone's samples and renumbering the references;
+samples nothing references are left behind, and the CLI says so.
+
+**In a scene bank, user samples do not travel** — and that is Roland's own behaviour, not a
+limitation here: the instrument's scene exports carry sample *slot references* and no audio. A tone
+references a sample by slot (wave group 2 on a partial, see `docs/FORMAT.md`), so `extract` names
+the exact slots a destination must already hold. To move a sampled sound between instruments, export
+it as `.svz`. References to installed factory/model/expansion banks are preserved but require the
+same content on the destination.
 
 ## Usage
 
@@ -92,6 +100,11 @@ cargo run -p fantom-cli -- tones path/to/FANTOM.SVD
 
 # List the user samples and multisamples a file carries.
 cargo run -p fantom-cli -- samples path/to/FANTOM.SVD
+
+# SVZ tone banks use the same verbs. Numbers are the indexes `tones` prints.
+cargo run -p fantom-cli -- tones   path/to/Z-Core.svz
+cargo run -p fantom-cli -- extract path/to/Z-Core.svz 0 12 3 -o subset.svz
+cargo run -p fantom-cli -- merge   a.svz b.svz -o combined.svz
 
 # Edit scene metadata (dry run without -o; pass -o to write a copy).
 cargo run -p fantom-cli -- rename  path/to/FANTOM.SVD 44 "My Scene"   -o out.svd
