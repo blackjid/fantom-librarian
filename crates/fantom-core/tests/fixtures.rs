@@ -401,6 +401,46 @@ fn extracting_drum_kits_keeps_their_instrument_sets_paired() {
     assert_eq!(ins.record(1), source_ins.record(5));
 }
 
+/// Every file the instrument wrote must pass our own integrity check — otherwise the check is
+/// wrong, not the file.
+#[test]
+fn files_written_by_the_instrument_verify_clean() {
+    for path in TONE_BANKS.iter().chain(&[
+        "backup/ROLAND/SOUND/NARF/FANTOM.SVD",
+        "backup/ROLAND/SOUND/PRISMA/FANTOM.SVD",
+        "backup/ROLAND/FANTOM/BACKUP/Black NARFSOUNDS/FANTOM.SVD",
+        "TONEMAP9_ACB/FANTOM.SVD",
+        "tests/TEST 1/FANTOM.SVD",
+    ]) {
+        let Some(raw) = open(path) else { continue };
+        let report = fantom_core::verify::check(&raw).unwrap();
+        assert!(report.is_ok(), "{path}: {:?}", report.problems);
+    }
+}
+
+/// And so must everything we write, including the sample-carrying path that edits a record.
+#[test]
+fn repackaged_tone_banks_verify_clean() {
+    let Some(raw) = open("Z-Core_20260623.svz") else {
+        return;
+    };
+    let tones = fantom_core::codec::read_bundled_tones(&raw).unwrap();
+    let sampled = tones.iter().position(|t| t.name == "MyPolySyn1").unwrap();
+
+    for selection in [vec![0], vec![sampled], vec![0, sampled, 3]] {
+        let out = fantom_core::tonebank::extract_tones(&raw, &selection).unwrap();
+        let report = fantom_core::verify::check(&out).unwrap();
+        assert!(report.is_ok(), "{selection:?}: {:?}", report.problems);
+        assert!(report.checked > 0);
+    }
+
+    let a = fantom_core::tonebank::extract_tones(&raw, &[0, 1]).unwrap();
+    let b = fantom_core::tonebank::extract_tones(&raw, &[sampled]).unwrap();
+    let merged = fantom_core::tonebank::merge_tones(&a, &b).unwrap();
+    let report = fantom_core::verify::check(&merged).unwrap();
+    assert!(report.is_ok(), "merge: {:?}", report.problems);
+}
+
 /// Panel ground truth for one scene, transcribed from the instrument's own display.
 #[test]
 fn africa_main_decodes_to_the_panel_display() {

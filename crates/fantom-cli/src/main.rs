@@ -94,6 +94,15 @@ enum Command {
         file: PathBuf,
     },
 
+    /// Check a file's structure and record checksums.
+    ///
+    /// SVZ areas store a CRC-32 per record; this recomputes every one. Run it on anything this
+    /// tool wrote before loading it on the instrument.
+    Verify {
+        /// Path to a `.svd` / `.svz` file.
+        file: PathBuf,
+    },
+
     /// Rename a scene. Without --output this is a dry run.
     Rename {
         /// Path to a `.svd` file.
@@ -170,6 +179,7 @@ fn main() -> ExitCode {
         Command::Show { file, scene, all } => run_show(&file, scene, all),
         Command::Tones { file } => run_tones(&file),
         Command::Samples { file } => run_samples(&file),
+        Command::Verify { file } => run_verify(&file),
         Command::Rename {
             file,
             scene,
@@ -701,6 +711,38 @@ fn sample_warning(output: &Raw, source: &Raw) -> String {
         let _ = writeln!(out, "           slot {slot:>3}  {name:<20} (played by {tone:?})");
     }
     out
+}
+
+fn run_verify(file: &PathBuf) -> fantom_core::Result<String> {
+    let raw = Raw::open(file)?;
+    let report = fantom_core::verify::check(&raw)?;
+
+    let mut out = String::new();
+    let _ = writeln!(out, "file:  {}", file.display());
+    let _ = writeln!(
+        out,
+        "checked {} record checksum{} across {} area{}",
+        report.checked,
+        if report.checked == 1 { "" } else { "s" },
+        report.areas_with_checksums,
+        if report.areas_with_checksums == 1 { "" } else { "s" },
+    );
+    if report.areas_with_checksums == 0 {
+        let _ = writeln!(out, "(this container stores no per-record checksums)");
+    }
+    for problem in &report.problems {
+        let _ = writeln!(out, "  problem: {problem}");
+    }
+    if !report.is_ok() {
+        // Exit non-zero so this is usable as a gate in a script.
+        return Err(fantom_core::Error::Unrecognized(format!(
+            "{out}{} problem{} found",
+            report.problems.len(),
+            if report.problems.len() == 1 { "" } else { "s" }
+        )));
+    }
+    let _ = writeln!(out, "OK");
+    Ok(out)
 }
 
 /// How many user samples a file carries, for reporting what an extract left behind.

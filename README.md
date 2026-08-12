@@ -101,6 +101,9 @@ cargo run -p fantom-cli -- tones path/to/FANTOM.SVD
 # List the user samples and multisamples a file carries.
 cargo run -p fantom-cli -- samples path/to/FANTOM.SVD
 
+# Check structure and record checksums. Exits non-zero on a problem, so it works as a gate.
+cargo run -p fantom-cli -- verify path/to/FANTOM.SVD
+
 # SVZ tone banks use the same verbs. Numbers are the indexes `tones` prints.
 cargo run -p fantom-cli -- tones   path/to/Z-Core.svz
 cargo run -p fantom-cli -- extract path/to/Z-Core.svz 0 12 3 -o subset.svz

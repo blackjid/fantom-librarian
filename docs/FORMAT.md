@@ -405,10 +405,16 @@ treating it as constant worked; SVZ declares 20, 24, 56, 168, 1112 — always `1
 | `USPa` | 2 | 64 | 24 | 24 ✓ |
 | `DIFa` | 1 | 32 | 20 | 20 ✓ |
 
-So an SVZ area carries a **four-byte word per record** between the header and the records. The
-values are high-entropy (`0xb1e1_c007`, `0xe483_9ff6`, …) and look like per-record checksums; they
-are carried alongside their record rather than interpreted. `info_length + count × record_size`
-equals the area size exactly in every case.
+So an SVZ area carries a **four-byte word per record** between the header and the records, and
+that word is a **CRC-32 of the record** — the standard reflected polynomial `0xEDB88320`, init and
+final xor `0xFFFFFFFF`, over the record's bytes. Confirmed on **366 of 366 records**: every record
+of every area across all three SVZ fixtures, including `DIFa`, `USPa`, `RHYa` and `INSa`.
+`info_length + count × record_size` equals the area size exactly in every case.
+
+This is a real integrity check, and the tool now uses it both ways: a record copied through keeps
+its checksum, a record edited on the way gets a fresh one, and `fantom verify` recomputes every
+one. The `USDa` directory's fourth word is *not* a CRC-32 of its section — still unknown, but those
+sections are copied verbatim so it travels correctly.
 
 Tone records are byte-identical in layout to an SVD's: 1632 bytes, name at `+0x00`, category at
 `+0x10`, the four partials at stride 124. Everything the reader knows about tones applies unchanged.
