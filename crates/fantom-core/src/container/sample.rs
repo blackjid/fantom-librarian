@@ -134,8 +134,27 @@ const LOOP_POINT: usize = 0x4c;
 const END: usize = 0x50;
 const SLOT_LEN: usize = 0x54;
 
+/// `USPa` — the sample slot table of an SVZ tone export. A 64-byte record, laid out differently
+/// from `SMPa`: in-use and level at `+0x14`, original key at `+0x19`, end point at `+0x24`.
+///
+/// Confirmed against `Z-Core_20260623.svz`: slot 0 is named `Sample003;F#3-F#` and stores key
+/// `0x36` = 54 = F#3, and `384 + end * 4` is exactly its `SMPd` section size for both slots.
+mod usp {
+    pub const IN_USE: usize = 0x14;
+    pub const LEVEL: usize = 0x15;
+    pub const ORIGINAL_KEY: usize = 0x19;
+    pub const END: usize = 0x24;
+    pub const LEN: usize = 0x28;
+}
+
 const DIRECTORY_END: u32 = u32::MAX;
 const SMPD_MAGIC: &[u8; 4] = b"SMPd";
+
+/// SVZ `USDa` directory entry: `{u32 slot, u32 offset, u32 size, u32 word}`.
+pub(crate) const SVZ_DIRECTORY_ENTRY: usize = 16;
+/// In an SVZ `SMPd`, the 16-bit sample count and rate sit closer to the front than in a backup's.
+const SVZ_SMPD_WORDS: usize = 0x04;
+const SVZ_SMPD_RATE: usize = 0x0c;
 const SMPD_SIZE: usize = 0x08;
 const SMPD_WORDS: usize = 0x0c;
 const SMPD_NAME: usize = 0x10;
@@ -143,12 +162,85 @@ const SMPD_RATE: usize = 0x20;
 const SMPD_HEADER_LEN: usize = 0x24;
 
 /// Read whatever user sampling a file carries. A file with no sample areas yields an empty bank.
+///
+/// Two shapes exist. A backup stores slots in `SMPa` and audio in a single `USDa` record; an SVZ
+/// tone export stores slots in `USPa` and audio as variable-size `USDa` records. The presence of
+/// `USPa` selects between them.
 pub fn read(raw: &Raw, svd: &Svd) -> Result<SampleBank> {
+    if svd.area(b"USPa").is_some() {
+        return Ok(SampleBank {
+            slots: read_svz_slots(raw, svd)?,
+            data: read_svz_data(raw, svd)?,
+            multisamples: Vec::new(),
+        });
+    }
     Ok(SampleBank {
         slots: read_slots(raw, svd)?,
         data: read_data(raw, svd)?,
         multisamples: read_multisamples(raw, svd)?,
     })
+}
+
+fn read_svz_slots(raw: &Raw, svd: &Svd) -> Result<Vec<SampleSlot>> {
+    let Some(table) = RecordTable::from_svd(raw, svd, b"USPa")? else {
+        return Ok(Vec::new());
+    };
+    let mut slots = Vec::new();
+    for index in 0..table.len() {
+        let Some(record) = table.record(index) else {
+            break;
+        };
+        if record.len() < usp::LEN {
+            break;
+        }
+        slots.push(SampleSlot {
+            index,
+            name: ascii_trim(&record[..16]),
+            in_use: record[usp::IN_USE] != 0,
+            level: record[usp::LEVEL],
+            loop_mode: 0,
+            original_key: record[usp::ORIGINAL_KEY],
+            start: 0,
+            loop_point: 0,
+            end: le_u32(record, usp::END),
+        });
+    }
+    Ok(slots)
+}
+
+/// An SVZ `USDa` holds variable-size records: a 16-byte directory entry per section
+/// (`{slot, offset, size, word}`) followed by the `SMPd` sections themselves.
+fn read_svz_data(raw: &Raw, svd: &Svd) -> Result<Vec<SampleData>> {
+    let Some(area) = svd.area(b"USDa") else {
+        return Ok(Vec::new());
+    };
+    let bytes = svd.area_bytes(raw, area)?;
+    let count = le_u32(bytes, 0) as usize;
+
+    let mut out = Vec::new();
+    for index in 0..count {
+        let entry = RecordTable::HEADER_LEN + index * SVZ_DIRECTORY_ENTRY;
+        let Some(entry) = bytes.get(entry..entry + SVZ_DIRECTORY_ENTRY) else {
+            break;
+        };
+        let slot = le_u32(entry, 0);
+        let offset = le_u32(entry, 4) as usize;
+        let Some(section) = bytes.get(offset..offset + SMPD_HEADER_LEN) else {
+            break;
+        };
+        if &section[..4] != SMPD_MAGIC {
+            break;
+        }
+        out.push(SampleData {
+            slot,
+            offset,
+            name: ascii_trim(&section[SMPD_NAME..SMPD_NAME + 16]),
+            size: le_u32(entry, 8),
+            words: le_u32(section, SVZ_SMPD_WORDS),
+            sample_rate: le_u32(section, SVZ_SMPD_RATE),
+        });
+    }
+    Ok(out)
 }
 
 fn read_slots(raw: &Raw, svd: &Svd) -> Result<Vec<SampleSlot>> {

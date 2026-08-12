@@ -120,6 +120,30 @@ fn read_u32(bytes: &[u8], at: usize) -> Result<u32> {
     Ok(u32::from_le_bytes(slice.try_into().unwrap()))
 }
 
+/// Rewrite a tone record's user-sample references through `remap` (old slot -> new slot).
+///
+/// Used when repackaging carries a tone's samples along and renumbers them densely.
+pub fn remap_sample_slots(record: &mut [u8], remap: &std::collections::BTreeMap<u16, u16>) {
+    for partial in 0..PARTIAL_COUNT {
+        let base = partial * PARTIAL_STRIDE;
+        let (Some(&group), Some(number)) = (
+            record.get(WAVE_GROUP_OFFSET + base),
+            record
+                .get(WAVE_NUMBER_OFFSET + base..WAVE_NUMBER_OFFSET + base + 2)
+                .map(|b| u16::from_le_bytes([b[0], b[1]])),
+        ) else {
+            break;
+        };
+        if group != WAVE_GROUP_SAMPLE {
+            continue;
+        }
+        if let Some(&new) = remap.get(&number) {
+            record[WAVE_NUMBER_OFFSET + base..WAVE_NUMBER_OFFSET + base + 2]
+                .copy_from_slice(&new.to_le_bytes());
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

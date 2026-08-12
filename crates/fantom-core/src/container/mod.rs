@@ -13,11 +13,11 @@ mod sample;
 mod svd;
 mod zone;
 
-pub use pat::{PatArea, Tone};
+pub use pat::{remap_sample_slots, sample_slots, PatArea, Tone};
 pub use raw::Raw;
 pub use records::RecordTable;
 pub use sample::{Multisample, SampleBank, SampleData, SampleSlot};
-pub use svd::{Area, Svd};
+pub use svd::{Area, Kind, Svd, PREAMBLE_LEN};
 pub use zone::{RawZone, ZoneSettings};
 pub(crate) use svd::ascii_trim;
 
