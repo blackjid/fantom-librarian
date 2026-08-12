@@ -42,6 +42,23 @@ enum Command {
         file: PathBuf,
     },
 
+    /// Compare two SVD files, reporting each difference as AREA[record]+offset.
+    ///
+    /// The counterpart to `inspect`: export two files that differ by one deliberate change and
+    /// this shows exactly which bytes carry it. Record the result in `docs/FORMAT.md`.
+    Diff {
+        /// Baseline file.
+        left: PathBuf,
+        /// File to compare against the baseline.
+        right: PathBuf,
+        /// Only report this area (e.g. `DCWa`); repeatable.
+        #[arg(long, value_name = "TAG")]
+        area: Vec<String>,
+        /// Unchanged bytes to show on either side of each run.
+        #[arg(long, default_value_t = 0)]
+        context: usize,
+    },
+
     /// Report bundled ACB, V-Piano, and Model dependency areas.
     Dependencies {
         /// Path to a `.svd` file.
@@ -67,6 +84,12 @@ enum Command {
 
     /// List every named user tone bundled in an SVD.
     Tones {
+        /// Path to a `.svd` file.
+        file: PathBuf,
+    },
+
+    /// List the user samples and multisamples a file carries.
+    Samples {
         /// Path to a `.svd` file.
         file: PathBuf,
     },
@@ -136,10 +159,17 @@ fn main() -> ExitCode {
     let result = match Cli::parse().command {
         Command::Inspect { file, len, offset } => run_inspect(&file, offset, len),
         Command::Areas { file } => run_areas(&file),
+        Command::Diff {
+            left,
+            right,
+            area,
+            context,
+        } => run_diff(&left, &right, &area, context),
         Command::Dependencies { file } => run_dependencies(&file),
         Command::Scenes { file } => run_scenes(&file),
         Command::Show { file, scene, all } => run_show(&file, scene, all),
         Command::Tones { file } => run_tones(&file),
+        Command::Samples { file } => run_samples(&file),
         Command::Rename {
             file,
             scene,
@@ -235,6 +265,169 @@ fn run_areas(file: &PathBuf) -> fantom_core::Result<String> {
         );
     }
     Ok(out)
+}
+
+fn run_diff(
+    left: &PathBuf,
+    right: &PathBuf,
+    areas: &[String],
+    context: usize,
+) -> fantom_core::Result<String> {
+    use fantom_core::diff::Finding;
+
+    let left_raw = Raw::open(left)?;
+    let right_raw = Raw::open(right)?;
+    let findings = fantom_core::diff::compare(&left_raw, &right_raw)?;
+
+    let mut out = String::new();
+    let _ = writeln!(out, "left:  {} ({} bytes)", left.display(), left_raw.len());
+    let _ = writeln!(out, "right: {} ({} bytes)", right.display(), right_raw.len());
+    let _ = writeln!(out);
+
+    let selected: Vec<&Finding> = findings
+        .iter()
+        .filter(|f| areas.is_empty() || areas.iter().any(|a| a == f.tag()))
+        .collect();
+
+    if selected.is_empty() {
+        let _ = writeln!(out, "no differences");
+        return Ok(out);
+    }
+
+    let mut changed = 0;
+    for finding in &selected {
+        changed += finding.changed_bytes();
+        match finding {
+            Finding::AreaOnlyIn {
+                tag,
+                side,
+                size,
+                records,
+            } => {
+                let _ = writeln!(
+                    out,
+                    "{tag}  present in {} only ({size} bytes, {records} records)",
+                    side.label()
+                );
+            }
+            Finding::RecordSizeDiffers { tag, left, right } => {
+                let _ = writeln!(
+                    out,
+                    "{tag}  record size differs: {left} vs {right} — records not comparable"
+                );
+            }
+            Finding::RecordCountDiffers { tag, left, right } => {
+                let _ = writeln!(out, "{tag}  record count differs: {left} vs {right}");
+            }
+            Finding::RecordOnlyIn {
+                tag,
+                side,
+                record,
+                name,
+            } => {
+                let _ = writeln!(
+                    out,
+                    "{tag}[{record}]  present in {} only  {name:?}",
+                    side.label()
+                );
+            }
+            Finding::AreaHeader { tag, runs } => {
+                for run in runs {
+                    let _ = writeln!(
+                        out,
+                        "{}",
+                        render_run(&format!("{tag}.header"), run, &left_raw, &right_raw, context)
+                    );
+                }
+            }
+            Finding::Record { tag, record, runs } => {
+                for run in runs {
+                    let _ = writeln!(
+                        out,
+                        "{}",
+                        render_run(
+                            &format!("{tag}[{record}]"),
+                            run,
+                            &left_raw,
+                            &right_raw,
+                            context
+                        )
+                    );
+                }
+            }
+        }
+    }
+
+    let _ = writeln!(out);
+    let _ = writeln!(
+        out,
+        "{} finding{}, {changed} changed byte{}",
+        selected.len(),
+        if selected.len() == 1 { "" } else { "s" },
+        if changed == 1 { "" } else { "s" }
+    );
+    Ok(out)
+}
+
+/// Render one differing run as `TAG[record]+0xoffset  @file-offset  old -> new`.
+fn render_run(
+    where_: &str,
+    run: &fantom_core::diff::ByteRun,
+    left: &Raw,
+    right: &Raw,
+    context: usize,
+) -> String {
+    let (left_bytes, right_bytes, offset) = if context == 0 {
+        (run.left.clone(), run.right.clone(), run.offset)
+    } else {
+        let before = context.min(run.left_at).min(run.right_at);
+        let after = context;
+        (
+            window(left, run.left_at - before, before + run.left.len() + after),
+            window(
+                right,
+                run.right_at - before,
+                before + run.right.len() + after,
+            ),
+            run.offset - before,
+        )
+    };
+    format!(
+        "{where_}+0x{offset:04x}  @0x{:06x}  {} -> {}  |{}| -> |{}|",
+        run.left_at,
+        hex(&left_bytes),
+        hex(&right_bytes),
+        ascii(&left_bytes),
+        ascii(&right_bytes),
+    )
+}
+
+fn window(raw: &Raw, at: usize, len: usize) -> Vec<u8> {
+    raw.bytes()
+        .get(at..(at + len).min(raw.len()))
+        .unwrap_or_default()
+        .to_vec()
+}
+
+fn hex(bytes: &[u8]) -> String {
+    bytes
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn ascii(bytes: &[u8]) -> String {
+    bytes
+        .iter()
+        .map(|&b| {
+            if b.is_ascii_graphic() || b == b' ' {
+                b as char
+            } else {
+                '.'
+            }
+        })
+        .collect()
 }
 
 fn run_dependencies(file: &PathBuf) -> fantom_core::Result<String> {
@@ -372,6 +565,50 @@ fn run_tones(file: &PathBuf) -> fantom_core::Result<String> {
     Ok(out)
 }
 
+fn run_samples(file: &PathBuf) -> fantom_core::Result<String> {
+    let raw = Raw::open(file)?;
+    let svd = fantom_core::container::Svd::parse(&raw)?;
+    let bank = fantom_core::container::read_samples(&raw, &svd)?;
+
+    let mut out = String::new();
+    if bank.is_empty() {
+        let _ = writeln!(out, "no user samples in this file");
+        return Ok(out);
+    }
+
+    let _ = writeln!(out, "{} user samples:", bank.slots.len());
+    let _ = writeln!(
+        out,
+        "{:>5}  {:<18} {:>10} {:>8}  {:>4}  NAME (waveform)",
+        "SLOT", "NAME", "FRAMES", "SECONDS", "KEY"
+    );
+    for slot in &bank.slots {
+        let data = bank.data.iter().find(|d| d.slot as usize == slot.index);
+        let _ = writeln!(
+            out,
+            "{:>5}  {:<18} {:>10} {:>8.2}  {:>4}  {}",
+            slot.index,
+            slot.name,
+            slot.end,
+            data.map(|d| d.seconds()).unwrap_or_default(),
+            note_name(slot.original_key),
+            data.map(|d| d.name.as_str()).unwrap_or("<no waveform>"),
+        );
+    }
+
+    if !bank.multisamples.is_empty() {
+        let _ = writeln!(out, "\n{} multisamples:", bank.multisamples.len());
+        for ms in &bank.multisamples {
+            let _ = writeln!(out, "{:>5}  {}", ms.index, ms.name);
+        }
+    }
+
+    for orphan in bank.orphans() {
+        let _ = writeln!(out, "warning: {orphan}");
+    }
+    Ok(out)
+}
+
 /// Apply an in-place edit to a file, then either write it (with `--output`) or report a dry run.
 fn run_edit(
     file: &PathBuf,
@@ -395,12 +632,66 @@ fn run_edit(
     Ok(out)
 }
 
+/// Name the user samples an output bank needs but cannot carry.
+///
+/// A tone references a sample by *slot number*, so the audio never travels with it — the
+/// instrument's own scene exports work the same way. The output is therefore complete only if the
+/// destination already holds these samples in these slots, which is worth spelling out precisely:
+/// a bank that sounds right on the machine it came from can be silent everywhere else.
+fn sample_warning(output: &Raw, source: &Raw) -> String {
+    let (Ok(out_svd), Ok(src_svd)) = (
+        fantom_core::container::Svd::parse(output),
+        fantom_core::container::Svd::parse(source),
+    ) else {
+        return String::new();
+    };
+
+    let Ok(tones) = fantom_core::container::PatArea::from_svd(output, &out_svd) else {
+        return String::new();
+    };
+    let mut needed: Vec<(u16, String)> = Vec::new();
+    for tone in tones.tones() {
+        for &slot in &tone.samples {
+            if !needed.iter().any(|(s, _)| *s == slot) {
+                needed.push((slot, tone.name.clone()));
+            }
+        }
+    }
+    if needed.is_empty() {
+        return String::new();
+    }
+    needed.sort_by_key(|(slot, _)| *slot);
+
+    // Name the slots from the source, which is where the audio still lives.
+    let names = fantom_core::container::read_samples(source, &src_svd)
+        .map(|bank| bank.slots)
+        .unwrap_or_default();
+
+    let mut out = format!(
+        "warning: the extracted tones play {} user sample{}, which no scene export carries —\n\
+         \x20        a tone references a sample *slot*, so the audio stays on the instrument.\n\
+         \x20        The destination needs these samples in these slots:\n",
+        needed.len(),
+        if needed.len() == 1 { "" } else { "s" },
+    );
+    for (slot, tone) in &needed {
+        let name = names
+            .iter()
+            .find(|s| s.index + 1 == *slot as usize)
+            .map(|s| s.name.as_str())
+            .unwrap_or("<not in this file>");
+        let _ = writeln!(out, "           slot {slot:>3}  {name:<20} (played by {tone:?})");
+    }
+    out
+}
+
 fn run_extract(file: &PathBuf, scenes: &[usize], output: &PathBuf) -> fantom_core::Result<String> {
     let raw = Raw::open(file)?;
     let extracted = fantom_core::repackage::extract_scenes(&raw, scenes)?;
     extracted.save(output)?;
     Ok(format!(
-        "extracted {} scene{} to {}\n",
+        "{}extracted {} scene{} to {}\n",
+        sample_warning(&extracted, &raw),
         scenes.len(),
         if scenes.len() == 1 { "" } else { "s" },
         output.display()
@@ -412,7 +703,8 @@ fn run_canary(file: &PathBuf, scene: usize, output: &PathBuf) -> fantom_core::Re
     let canary = fantom_core::repackage::canary_scene(&raw, scene)?;
     canary.save(output)?;
     Ok(format!(
-        "wrote scene {scene} canary with marked dependencies to {}\n",
+        "{}wrote scene {scene} canary with marked dependencies to {}\n",
+        sample_warning(&canary, &raw),
         output.display()
     ))
 }
@@ -424,7 +716,8 @@ fn run_merge(target: &PathBuf, source: &PathBuf, output: &PathBuf) -> fantom_cor
     let merged = fantom_core::repackage::merge_scenes(&target_raw, &source_raw)?;
     merged.save(output)?;
     Ok(format!(
-        "appended {source_count} scene{} from {} to {}\n",
+        "{}appended {source_count} scene{} from {} to {}\n",
+        sample_warning(&merged, &source_raw),
         if source_count == 1 { "" } else { "s" },
         source.display(),
         output.display()
