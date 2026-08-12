@@ -16,6 +16,9 @@ pub struct Tone {
     pub name: String,
     /// Tone category byte (e.g. `0x23` = brass); meaning of most values still TBD.
     pub category: u8,
+    /// User sample slots this tone plays, 1-based as stored. Empty for the vast majority of
+    /// tones, which play ROM waves. See [`sample_slots`].
+    pub samples: Vec<u16>,
 }
 
 const HEADER_LEN: usize = 0x10;
@@ -23,6 +26,44 @@ const COUNT_OFFSET: usize = 0x00;
 const RECORD_SIZE_OFFSET: usize = 0x04;
 const NAME_LEN: usize = 16;
 const CATEGORY_OFFSET: usize = 0x10;
+
+/// A ZEN-Core tone has four partials laid out at this stride within its record.
+const PARTIAL_STRIDE: usize = 124;
+const PARTIAL_COUNT: usize = 4;
+/// Selects where a partial's wave comes from: 0 = internal ROM wave, 2 = user sample.
+const WAVE_GROUP_OFFSET: usize = 0xdf;
+const WAVE_NUMBER_OFFSET: usize = 0xe2;
+/// The wave-group value meaning "this partial plays a user sample".
+const WAVE_GROUP_SAMPLE: u8 = 2;
+
+/// The user sample slots a `PATa` tone record plays, 1-based, in partial order.
+///
+/// Each of the four partials selects a wave group and a wave number. Group 2 means the number is
+/// an `SMPa` slot rather than a ROM wave. Confirmed on a FANTOM-6 backup: all 93 group-2 partials
+/// across its 2048 tones resolve to a populated slot in 1..50, with names matching
+/// (`IML Whoa 1` → slot 3 `3 IML Whoa 1`, `Relax Bass` → slots 7 and 8, and so on).
+///
+/// This is what makes user samples a *dependency*: the reference is a slot number, so a tone
+/// carries no audio with it. The instrument's own scene exports behave the same way — NARF holds
+/// 68 such references and no sample areas at all — so samples must be transferred separately.
+pub fn sample_slots(record: &[u8]) -> Vec<u16> {
+    let mut slots = Vec::new();
+    for partial in 0..PARTIAL_COUNT {
+        let base = partial * PARTIAL_STRIDE;
+        let (Some(&group), Some(number)) = (
+            record.get(WAVE_GROUP_OFFSET + base),
+            record
+                .get(WAVE_NUMBER_OFFSET + base..WAVE_NUMBER_OFFSET + base + 2)
+                .map(|b| u16::from_le_bytes([b[0], b[1]])),
+        ) else {
+            break;
+        };
+        if group == WAVE_GROUP_SAMPLE && number != 0 && !slots.contains(&number) {
+            slots.push(number);
+        }
+    }
+    slots
+}
 
 impl PatArea {
     /// Parse the tone list from a `PATa` area's bytes.
@@ -42,6 +83,7 @@ impl PatArea {
             tones.push(Tone {
                 name: ascii_trim(&record[..NAME_LEN]),
                 category: record[CATEGORY_OFFSET],
+                samples: sample_slots(record),
             });
         }
         Ok(Self { tones })
@@ -106,5 +148,31 @@ mod tests {
         assert_eq!(pat.get(0).unwrap().category, 0x23);
         assert_eq!(pat.get(1).unwrap().name, "Africa Kalimba");
         assert!(pat.get(2).is_none());
+    }
+
+    /// Build a tone record whose partials use the given `(group, wave number)` pairs.
+    fn tone_with_partials(partials: &[(u8, u16)]) -> Vec<u8> {
+        let mut record = vec![0u8; PARTIAL_COUNT * PARTIAL_STRIDE + WAVE_NUMBER_OFFSET + 2];
+        for (partial, &(group, number)) in partials.iter().enumerate() {
+            let base = partial * PARTIAL_STRIDE;
+            record[WAVE_GROUP_OFFSET + base] = group;
+            record[WAVE_NUMBER_OFFSET + base..WAVE_NUMBER_OFFSET + base + 2]
+                .copy_from_slice(&number.to_le_bytes());
+        }
+        record
+    }
+
+    #[test]
+    fn reads_the_user_samples_a_tone_plays() {
+        // "Relax Bass": partials 1 and 2 play user samples 7 and 8, the rest are ROM waves.
+        let record = tone_with_partials(&[(2, 7), (2, 8), (0, 383), (0, 0)]);
+        assert_eq!(sample_slots(&record), [7, 8]);
+
+        // A wave number only means a sample when its group says so.
+        assert_eq!(sample_slots(&tone_with_partials(&[(0, 7)])), Vec::<u16>::new());
+        // Repeats collapse: four partials layering one sample is still one dependency.
+        assert_eq!(sample_slots(&tone_with_partials(&[(2, 5), (2, 5)])), [5]);
+        // A record too short to hold the partials yields nothing rather than panicking.
+        assert!(sample_slots(&[0u8; 32]).is_empty());
     }
 }

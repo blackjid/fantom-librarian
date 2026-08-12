@@ -9,12 +9,17 @@
 mod pat;
 mod raw;
 mod records;
+mod sample;
 mod svd;
 mod zone;
 
 pub use pat::{PatArea, Tone};
 pub use raw::Raw;
 pub use records::RecordTable;
+pub use sample::{Multisample, SampleBank, SampleData, SampleSlot};
 pub use svd::{Area, Svd};
 pub use zone::{RawZone, ZoneSettings};
 pub(crate) use svd::ascii_trim;
+
+/// Read the user sample bank (`SMPa` / `USDa` / `MLSa`) of a file.
+pub use sample::read as read_samples;
