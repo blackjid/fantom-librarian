@@ -7,6 +7,7 @@
 //! - [`container`] — SVD/SVZ *framing* (size prefix, memory-area table, zone/tone tables).
 //!   Knows about the file envelope, not the musical meaning of its contents.
 //! - [`model`] — the domain: [`model::Scene`], [`model::Zone`], [`model::ToneRef`], metadata.
+//! - [`address`] — the one table saying which area a tone address indexes, and at which record.
 //! - [`codec`] — maps container bytes onto [`model`] types (read now, write later).
 //! - [`presets`] — factory ZEN-Core preset tone name lookup (bundled sound list).
 //! - [`diff`] — compares two files by area and record; the tool that finds new offsets.
@@ -16,6 +17,7 @@
 //! [`container::Raw`] plus the CLI `inspect` command are the microscope used to learn the parts
 //! still unknown.
 
+pub mod address;
 pub mod codec;
 pub mod container;
 pub mod diff;
