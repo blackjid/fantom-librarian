@@ -11,13 +11,17 @@ GUI or WASM web UI later.
 ```
 crates/
   fantom-core/   # pure library: bytes -> typed model (no I/O policy)
-    container/   # SVD/SVZ framing (size prefix, area table, zone/tone tables)
+    container/   # SVD/SVZ framing (area table, record tables, zone/tone/sample areas)
     model/       # domain types: Scene, Zone, ToneRef, metadata
-    codec/       # maps container bytes onto the model (read now, write later)
+    address.rs   # the one table: which area a tone address indexes, and at which record
+    codec/       # maps container bytes onto the model
+    repackage.rs # extract / canary / merge — rebundling and renumbering dependencies
+    diff.rs      # compares two files by area and record; how new offsets get found
     presets.rs   # factory ZEN-Core preset tone name lookup (bundled sound list)
+    tests/       # tests against real files; each skips when its fixture is absent
   fantom-cli/    # the `fantom` binary — first consumer of the library
 docs/FORMAT.md   # reverse-engineering notebook for the on-disk layout
-fixtures/        # sample files (gitignored by default) + golden snapshots
+fixtures/        # real Fantom files and hardware captures (gitignored)
 ```
 
 ## Status
@@ -32,21 +36,35 @@ names are not serialized remain visible by engine, bank, and program number.
 > different, cheaper product line despite the similar name) or FANTOM-6/7/8 EX.
 
 **Factory preset** ZEN-Core tones are named from a bundled copy of Roland's FANTOM Sound List
-(`crates/fantom-core/src/preset_tones.tsv`, ~3.7k tones). **User** names resolve directly for
-**scene exports** (`SOUND/…`); unresolved types/banks are shown as their raw `MSB`, `LSB`, and `PC`
-instead of being mislabeled. See [`docs/FORMAT.md`](docs/FORMAT.md).
+(`crates/fantom-core/src/preset_tones.tsv`, ~3.7k tones). **User** tones resolve by direct index in
+**scene exports and full backups alike** — both address their user banks the same way. Unresolved
+types/banks are shown as their raw `MSB`, `LSB`, and `PC` instead of being mislabeled. See
+[`docs/FORMAT.md`](docs/FORMAT.md).
 
 **Write path:** `rename` and `comment` overwrite only the scene's name/comment field and nothing
-else (verified by byte diff and confirmed on a FANTOM-6). `extract` and `merge` rebuild scene-export
-banks with exact per-engine dependency mappings. They rebundle `PATa`, paired `RHYa`/`INSa`,
-`VTWa`, `SNAa`, `ZAPa`, and `ZEPa` records and rewrite their zone references. Full backups remain
-unsupported because their ZEN-Core mapping cannot be derived safely.
+else (verified by byte diff and confirmed on a FANTOM-6). `extract`, `canary`, and `merge` rebuild
+scene-export banks with exact per-engine dependency mappings, rebundling `PATa`, paired
+`RHYa`/`INSa`, `VTWa`, `SNAa`, `ZAPa`, `ZEPa`, `DCWa`, `MDLa`, and `ACBa` records and rewriting
+their zone references.
+
+**Full backups work as a source**, hardware-confirmed on a FANTOM-6: four canary banks extracted
+from full backups all imported with their `CNY` tone names visible, covering ZEN-Core, drum kits
+(with their paired instrument sets), SN-A, SN-AP, SN-EP, VTW, and V-Piano USER. One was then
+re-imported after overwriting every USER slot it referenced — and its scene slot — with INIT data:
+all its tones were recreated correctly, proving the instrument wrote them from the rebuilt bundle
+rather than resolving sounds it already had. Extracting scene
+385 from a 35 MB backup produces a 7.9 KB self-contained bank. Also verified by extracting all 149
+scenes shared between the export/backup fixture pairs from both sources and asserting the results
+decode identically. *Writing* a full backup is a separate problem and is not supported.
 
 Extraction and merging were hardware-confirmed on a FANTOM-6 using NARF and a cross-bank
 NARF/PRISMA canary: zones, keyboard groups, tones, and samples continued to work, including the
 PRISMA scene's SN-A and SN-EP dependencies. V-Piano, MODEL/ABM, and ACB USER records are also
-rebundled and rebased, with their multi-record indexing confirmed on hardware. Copying external
-sample waveform files remains open; references to installed factory/model/expansion banks are
+rebundled and rebased, with their multi-record indexing confirmed on hardware.
+
+**User samples do not travel yet.** `SMPa` slots, `MLSa` multisamples, and the `USDa` waveform
+payload are decoded and listed by `fantom samples`, but nothing decoded links a *tone* to a sample,
+so repackaging drops them and says so. References to installed factory/model/expansion banks are
 preserved but require the same content on the destination.
 
 ## Usage
@@ -58,6 +76,10 @@ cargo run -p fantom-cli -- inspect path/to/FANTOM.SVD --len 512
 # List the memory areas in an SVD container.
 cargo run -p fantom-cli -- areas path/to/FANTOM.SVD
 
+# Compare two files, reporting each difference as AREA[record]+offset.
+# Export two files differing by one deliberate change and this finds the bytes that carry it.
+cargo run -p fantom-cli -- diff before.SVD after.SVD --area DCWa --context 4
+
 # List the scene names in an SVD backup.
 cargo run -p fantom-cli -- scenes path/to/FANTOM.SVD
 
@@ -67,6 +89,9 @@ cargo run -p fantom-cli -- show path/to/FANTOM.SVD 385
 
 # List the tones bundled in a file.
 cargo run -p fantom-cli -- tones path/to/FANTOM.SVD
+
+# List the user samples and multisamples a file carries.
+cargo run -p fantom-cli -- samples path/to/FANTOM.SVD
 
 # Edit scene metadata (dry run without -o; pass -o to write a copy).
 cargo run -p fantom-cli -- rename  path/to/FANTOM.SVD 44 "My Scene"   -o out.svd
