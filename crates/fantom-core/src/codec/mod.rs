@@ -203,22 +203,10 @@ fn record_names(raw: &Raw, svd: &Svd, spec: &AreaSpec) -> Option<Vec<String>> {
             .records()
             .filter_map(|record| {
                 let bytes = record.get(spec.name_offset..spec.name_offset + NAME_LEN)?;
-                Some(decode_name(bytes, spec.word_swapped))
+                Some(spec.decode_name(bytes))
             })
             .collect(),
     )
-}
-
-/// Decode a 16-byte name field, un-swapping `ACBa`'s byte-reversed 4-byte words.
-fn decode_name(bytes: &[u8], word_swapped: bool) -> String {
-    if !word_swapped {
-        return ascii_trim(bytes);
-    }
-    let mut decoded = [0u8; NAME_LEN];
-    for (source, target) in bytes.chunks_exact(4).zip(decoded.chunks_exact_mut(4)) {
-        target.copy_from_slice(&[source[3], source[2], source[1], source[0]]);
-    }
-    ascii_trim(&decoded)
 }
 
 /// Read a zone's raw MSB plus LSB/PC pair, if the record is long enough.
