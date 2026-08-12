@@ -1,82 +1,37 @@
-//! Extract and merge scenes from FANTOM scene-export SVD files.
+//! Extract and merge scenes from FANTOM SVD files.
 //!
-//! Self-contained scene exports bundle the user sounds referenced by their scenes in engine areas
-//! such as `PATa`, `RHYa`, and `ZEPa`. Repackaging rebuilds those bundles and rewrites their indexes
-//! while leaving factory preset references untouched. Full backups are deliberately rejected.
+//! A scene's user sounds live in engine areas alongside it — `PATa` for ZEN-Core tones, `RHYa`
+//! plus `INSa` for drum kits, `ACBa`/`DCWa`/`MDLa` for the modelled engines, and so on. Repackaging
+//! copies the records the chosen scenes actually reference, de-duplicates them, renumbers them
+//! densely, and rewrites each zone's address to match. Factory ROM references are left untouched:
+//! they name sounds inside the instrument, so they travel by themselves.
+//!
+//! Both input shapes work. A **scene export** bundles just its own tones; a **full backup** carries
+//! the entire USER bank, of which the selected scenes reference a handful. Because both index their
+//! areas the same way (see [`crate::address`]), the only difference is how much gets left behind.
+//! The output is always a self-contained scene-export bank.
 
 use std::collections::{BTreeSet, HashMap};
 
-use crate::container::{ascii_trim, Raw, RawZone, Svd, ZoneSettings};
+use crate::address;
+use crate::container::{Raw, RawZone, Svd, ZoneSettings};
 use crate::{Error, Result};
 
 const HEADER_LEN: usize = 0x10;
 const COUNT_OFFSET: usize = 0;
 const RECORD_SIZE_OFFSET: usize = 4;
-const NAME_LEN: usize = 16;
-const PC_VALUES_PER_BANK: usize = 128;
+const NAME_LEN: usize = address::NAME_LEN;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-enum FamilyKind {
-    Pat,
-    Rhy,
-    Sna,
-    Vtw,
-    Zap,
-    Zep,
-}
+/// Areas carried into the output unchanged.
+const PRESERVED: [&[u8; 4]; 2] = [b"SYSa", b"DIFa"];
 
-impl FamilyKind {
-    const ALL: [Self; 6] = [
-        Self::Pat,
-        Self::Rhy,
-        Self::Vtw,
-        Self::Sna,
-        Self::Zap,
-        Self::Zep,
-    ];
-
-    fn tags(self) -> &'static [&'static [u8; 4]] {
-        match self {
-            Self::Pat => &[b"PATa"],
-            Self::Rhy => &[b"RHYa", b"INSa"],
-            Self::Sna => &[b"SNAa"],
-            Self::Vtw => &[b"VTWa"],
-            Self::Zap => &[b"ZAPa"],
-            Self::Zep => &[b"ZEPa"],
-        }
-    }
-
-    fn reference(msb: u8, lsb: u8, pc: u8) -> Option<(Self, usize)> {
-        let (kind, first_lsb) = match (msb, lsb) {
-            (87, 0..=63) => (Self::Pat, 0),
-            (86, 0) => (Self::Rhy, 0),
-            (89, 0) => (Self::Sna, 0),
-            (91, 0) => (Self::Vtw, 0),
-            (105, 0) => (Self::Zap, 0),
-            (105, 1) => (Self::Zep, 1),
-            _ => return None,
-        };
-        (pc < 128).then_some((
-            kind,
-            (lsb - first_lsb) as usize * PC_VALUES_PER_BANK + pc as usize,
-        ))
-    }
-
-    fn encode(self, index: usize) -> Result<(u8, u8)> {
-        let first_lsb = if self == Self::Zep { 1 } else { 0 };
-        let pages = if self == Self::Pat { 64 } else { 1 };
-        if index >= pages * PC_VALUES_PER_BANK {
-            return Err(Error::Unrecognized(format!(
-                "too many {} records to encode",
-                String::from_utf8_lossy(self.tags()[0])
-            )));
-        }
-        Ok((
-            first_lsb + (index / PC_VALUES_PER_BANK) as u8,
-            (index % PC_VALUES_PER_BANK) as u8,
-        ))
-    }
-}
+/// Areas we recognise but deliberately leave behind.
+///
+/// These hold the user sample bank: `SMPa` the slot directory, `MLSa` multisamples, `USDa` the
+/// waveform payload (23 MB in a full backup). How a tone references a sample is **not decoded**, so
+/// there is no way to carry the right subset or renumber what remains. Copying them wholesale would
+/// bloat every export with a bank's worth of audio while still pointing at the wrong slots.
+const DROPPED: [&[u8; 4]; 3] = [b"SMPa", b"MLSa", b"USDa"];
 
 struct RecordArea {
     header: [u8; HEADER_LEN],
@@ -85,12 +40,17 @@ struct RecordArea {
     records: Vec<Vec<u8>>,
 }
 
-struct Family {
+/// One engine's user bank as loaded from a file.
+///
+/// `entries[i]` is record `i` across every area indexed in lockstep — a drum kit is `RHYa[i]`
+/// *and* `INSa[i]`, so they can only be copied, de-duplicated, and renumbered as a unit.
+struct Bundle {
     areas: Vec<RecordArea>,
     entries: Vec<Vec<Vec<u8>>>,
 }
 
-struct OutputFamily {
+/// The same bank being rebuilt for the output, de-duplicated as records are added.
+struct OutputBundle {
     headers: Vec<[u8; HEADER_LEN]>,
     formats: Vec<[u8; 4]>,
     record_sizes: Vec<usize>,
@@ -98,79 +58,29 @@ struct OutputFamily {
     indexes: HashMap<Vec<Vec<u8>>, usize>,
 }
 
-struct OpaqueFamily {
-    area: RecordArea,
-}
-
-struct OutputOpaque {
-    header: [u8; HEADER_LEN],
-    format: [u8; 4],
-    record_size: usize,
-    entries: Vec<Vec<u8>>,
-    indexes: HashMap<Vec<u8>, usize>,
-}
-
-impl OutputOpaque {
-    fn from_family(family: &OpaqueFamily) -> Self {
+impl OutputBundle {
+    fn new(bundle: &Bundle) -> Self {
         Self {
-            header: family.area.header,
-            format: family.area.format,
-            record_size: family.area.record_size,
+            headers: bundle.areas.iter().map(|area| area.header).collect(),
+            formats: bundle.areas.iter().map(|area| area.format).collect(),
+            record_sizes: bundle.areas.iter().map(|area| area.record_size).collect(),
             entries: Vec::new(),
             indexes: HashMap::new(),
         }
     }
 
-    fn add(&mut self, family: &OpaqueFamily, index: usize, tag: &str) -> Result<usize> {
-        if self.format != family.area.format || self.record_size != family.area.record_size {
-            return Err(Error::Unrecognized(
-                "opaque dependency record formats differ".into(),
-            ));
-        }
-        let record =
-            family.area.records.get(index).ok_or_else(|| {
-                Error::Unrecognized(format!("{tag} record {index} is out of range"))
-            })?;
-        if let Some(index) = self.indexes.get(record) {
-            return Ok(*index);
-        }
-        let output_index = self.entries.len();
-        let owned = record.clone();
-        self.entries.push(owned.clone());
-        self.indexes.insert(owned, output_index);
-        Ok(output_index)
-    }
-}
-
-fn opaque_tag(msb: u8, lsb: u8) -> Option<[u8; 4]> {
-    match (msb, lsb) {
-        (107, 0) => Some(*b"ACBa"),
-        (90, 0) => Some(*b"DCWa"),
-        (97, 0) => Some(*b"MDLa"),
-        _ => None,
-    }
-}
-
-impl OutputFamily {
-    fn from_family(family: &Family) -> Self {
-        Self {
-            headers: family.areas.iter().map(|area| area.header).collect(),
-            formats: family.areas.iter().map(|area| area.format).collect(),
-            record_sizes: family.areas.iter().map(|area| area.record_size).collect(),
-            entries: Vec::new(),
-            indexes: HashMap::new(),
-        }
-    }
-
-    fn add(&mut self, family: &Family, entry: &[Vec<u8>]) -> Result<usize> {
+    /// Add `entry`, returning its index in the output — the existing one if an identical record is
+    /// already there. Byte equality is the only safe identity test for records whose internals we
+    /// do not fully decode.
+    fn add(&mut self, bundle: &Bundle, entry: &[Vec<u8>]) -> Result<usize> {
         let compatible = self
             .formats
             .iter()
-            .eq(family.areas.iter().map(|area| &area.format))
+            .eq(bundle.areas.iter().map(|area| &area.format))
             && self
                 .record_sizes
                 .iter()
-                .eq(family.areas.iter().map(|area| &area.record_size));
+                .eq(bundle.areas.iter().map(|area| &area.record_size));
         if !compatible {
             return Err(Error::Unrecognized(
                 "dependency area formats or record sizes differ".into(),
@@ -265,8 +175,7 @@ pub fn merge_scenes(target: &Raw, source: &Raw) -> Result<Raw> {
 
 struct ExportBank {
     scenes: Vec<Vec<u8>>,
-    families: HashMap<FamilyKind, Family>,
-    opaque: HashMap<[u8; 4], OpaqueFamily>,
+    bundles: HashMap<[u8; 4], Bundle>,
     scene_header: [u8; HEADER_LEN],
     scene_format: [u8; 4],
     scene_record_size: usize,
@@ -281,25 +190,26 @@ impl ExportBank {
         let (scene_header, scene_record_size, scenes) =
             parse_records(svd.area_bytes(raw, prfa)?, "PRFa", true)?;
         let references = dependency_references(&scenes);
-        let mut families = HashMap::new();
-        for kind in FamilyKind::ALL {
-            let expected = references.get(&kind).cloned().unwrap_or_default();
-            let Some(first) = svd.area(kind.tags()[0]) else {
+
+        let mut bundles = HashMap::new();
+        for spec in &address::AREAS {
+            let expected = references.get(&spec.tag).cloned().unwrap_or_default();
+            if svd.area(&spec.tag).is_none() {
                 if expected.is_empty() {
                     continue;
                 }
                 return Err(Error::Unrecognized(format!(
                     "scene references missing {} area",
-                    String::from_utf8_lossy(kind.tags()[0])
+                    spec.tag_str()
                 )));
-            };
+            }
 
             let mut areas = Vec::new();
-            for tag in kind.tags() {
+            for tag in spec.paired {
                 let area = svd.area(tag).ok_or_else(|| {
                     Error::Unrecognized(format!(
                         "{} requires paired {} area",
-                        String::from_utf8_lossy(kind.tags()[0]),
+                        spec.tag_str(),
                         String::from_utf8_lossy(*tag)
                     ))
                 })?;
@@ -316,17 +226,20 @@ impl ExportBank {
             if areas.iter().any(|area| area.records.len() != count) {
                 return Err(Error::Unrecognized(format!(
                     "{} paired area counts differ",
-                    first.tag_str()
+                    spec.tag_str()
                 )));
             }
-            let complete: BTreeSet<_> = (0..count).collect();
-            if expected != complete {
-                return Err(Error::Unrecognized(format!(
-                    "not a self-contained scene export: {} references {:?}, area has 0..{}",
-                    first.tag_str(),
-                    expected,
-                    count.saturating_sub(1)
-                )));
+            // Unreferenced records are normal — a full backup is mostly unreferenced — but a
+            // reference past the end of the area means we have misread the file.
+            if let Some(&highest) = expected.iter().next_back() {
+                if highest >= count {
+                    return Err(Error::Unrecognized(format!(
+                        "scene references {} record {}, but the area holds 0..{}",
+                        spec.tag_str(),
+                        highest,
+                        count.saturating_sub(1)
+                    )));
+                }
             }
             let entries = (0..count)
                 .map(|index| {
@@ -336,38 +249,12 @@ impl ExportBank {
                         .collect()
                 })
                 .collect();
-            families.insert(kind, Family { areas, entries });
-        }
-
-        let mut opaque = HashMap::new();
-        for tag in [*b"ACBa", *b"DCWa", *b"MDLa"] {
-            if let Some(area) = svd.area(&tag) {
-                let (header, record_size, records) =
-                    parse_records(svd.area_bytes(raw, area)?, &area.tag_str(), false)?;
-                if tag == *b"MDLa" && records.len() > 128 {
-                    return Err(Error::Unrecognized(
-                        "full backups cannot be repackaged: their user-tone mapping is unresolved"
-                            .into(),
-                    ));
-                }
-                opaque.insert(
-                    tag,
-                    OpaqueFamily {
-                        area: RecordArea {
-                            header,
-                            format: area.format,
-                            record_size,
-                            records,
-                        },
-                    },
-                );
-            }
+            bundles.insert(spec.tag, Bundle { areas, entries });
         }
 
         Ok(Self {
             scenes,
-            families,
-            opaque,
+            bundles,
             scene_header,
             scene_format: prfa.format,
             scene_record_size,
@@ -419,8 +306,7 @@ fn rebuild<'a>(
     header_bank: &ExportBank,
     records: Vec<(&'a ExportBank, &'a Vec<u8>)>,
 ) -> Result<Raw> {
-    let mut outputs: HashMap<FamilyKind, OutputFamily> = HashMap::new();
-    let mut opaque_outputs: HashMap<[u8; 4], OutputOpaque> = HashMap::new();
+    let mut outputs: HashMap<[u8; 4], OutputBundle> = HashMap::new();
     let mut scenes = Vec::with_capacity(records.len());
 
     for (bank, original) in records {
@@ -428,48 +314,28 @@ fn rebuild<'a>(
         let slots: Vec<_> = valid_zone_slots(&scene).collect();
         for slot in slots {
             let at = tone_bank_offset(slot);
-            if let Some(tag) = opaque_tag(scene[at], scene[at + 1]) {
-                let family = bank.opaque.get(&tag).ok_or_else(|| {
-                    Error::Unrecognized(format!(
-                        "scene references missing {} dependency",
-                        String::from_utf8_lossy(&tag)
-                    ))
-                })?;
-                let output = opaque_outputs
-                    .entry(tag)
-                    .or_insert_with(|| OutputOpaque::from_family(family));
-                let new_index = output.add(
-                    family,
-                    scene[at + 2] as usize,
-                    &String::from_utf8_lossy(&tag),
-                )?;
-                scene[at + 2] = u8::try_from(new_index)
-                    .map_err(|_| Error::Unrecognized("too many ACBa records to encode".into()))?;
-                continue;
-            }
-            let Some((kind, old_index)) =
-                FamilyKind::reference(scene[at], scene[at + 1], scene[at + 2])
+            // Factory ROM and engines we cannot place keep their address untouched.
+            let Some((spec, old_index)) = address::resolve(scene[at], scene[at + 1], scene[at + 2])
             else {
                 continue;
             };
-            let family = bank.families.get(&kind).ok_or_else(|| {
+            let bundle = bank.bundles.get(&spec.tag).ok_or_else(|| {
                 Error::Unrecognized(format!(
                     "scene references missing {} dependency",
-                    String::from_utf8_lossy(kind.tags()[0])
+                    spec.tag_str()
                 ))
             })?;
-            let entry = family.entries.get(old_index).ok_or_else(|| {
+            let entry = bundle.entries.get(old_index).ok_or_else(|| {
                 Error::Unrecognized(format!(
-                    "{} record {} is out of range",
-                    String::from_utf8_lossy(kind.tags()[0]),
-                    old_index
+                    "{} record {old_index} is out of range",
+                    spec.tag_str()
                 ))
             })?;
             let output = outputs
-                .entry(kind)
-                .or_insert_with(|| OutputFamily::from_family(family));
-            let new_index = output.add(family, entry)?;
-            let (lsb, pc) = kind.encode(new_index)?;
+                .entry(spec.tag)
+                .or_insert_with(|| OutputBundle::new(bundle));
+            let new_index = output.add(bundle, entry)?;
+            let (lsb, pc) = spec.encode(new_index)?;
             scene[at + 1] = lsb;
             scene[at + 2] = pc;
         }
@@ -483,11 +349,11 @@ fn rebuild<'a>(
     )?;
     let mut replacements = HashMap::new();
     replacements.insert(*b"PRFa", (header_bank.scene_format, prfa));
-    for kind in FamilyKind::ALL {
-        let Some(output) = outputs.remove(&kind) else {
+    for spec in &address::AREAS {
+        let Some(output) = outputs.remove(&spec.tag) else {
             continue;
         };
-        for (area_index, tag) in kind.tags().iter().enumerate() {
+        for (area_index, tag) in spec.paired.iter().enumerate() {
             let records: Vec<_> = output
                 .entries
                 .iter()
@@ -500,10 +366,6 @@ fn rebuild<'a>(
             )?;
             replacements.insert(**tag, (output.formats[area_index], body));
         }
-    }
-    for (tag, output) in opaque_outputs {
-        let body = build_area(output.header, output.record_size, &output.entries)?;
-        replacements.insert(tag, (output.format, body));
     }
     rebuild_container(base, replacements)
 }
@@ -531,41 +393,43 @@ fn build_area(
     Ok(area)
 }
 
+/// Prefix every bundled record's name with `CNY01`, `CNY02`, … leaving the sound itself untouched.
+///
+/// Seeing those names on the instrument proves it read the rebuilt bundle rather than resolving a
+/// tone it already had, which is the only way to tell a correct repackage from a lucky one.
 fn mark_bundled_tone_names(raw: &mut Raw) -> Result<()> {
     let svd = Svd::parse(raw)?;
     let mut names = Vec::new();
-    for kind in FamilyKind::ALL {
-        for tag in kind.tags() {
+    for spec in &address::AREAS {
+        for tag in spec.paired {
             let Some(area_info) = svd.area(tag) else {
                 continue;
             };
             let area = svd.area_bytes(raw, area_info)?;
             let count = read_u32(area, COUNT_OFFSET, &area_info.tag_str())? as usize;
             let record_size = read_u32(area, RECORD_SIZE_OFFSET, &area_info.tag_str())? as usize;
-            if record_size < NAME_LEN {
+            if record_size < spec.name_offset + NAME_LEN {
                 return Err(Error::Unrecognized(format!(
                     "{} record is shorter than its name field",
                     area_info.tag_str()
                 )));
             }
             for index in 0..count {
-                let start = HEADER_LEN + index * record_size;
-                let name = area.get(start..start + NAME_LEN).ok_or_else(|| {
+                let start = HEADER_LEN + index * record_size + spec.name_offset;
+                let field = area.get(start..start + NAME_LEN).ok_or_else(|| {
                     Error::Unrecognized(format!(
                         "{} record {} is truncated",
                         area_info.tag_str(),
                         index + 1
                     ))
                 })?;
-                names.push((
-                    area_info.offset as usize + start,
-                    format!("CNY{:02} {}", index + 1, ascii_trim(name)),
-                ));
+                let marked = format!("CNY{:02} {}", index + 1, spec.decode_name(field));
+                names.push((area_info.offset as usize + start, spec.encode_name(&marked)));
             }
         }
     }
     for (offset, name) in names {
-        raw.patch_ascii(offset, NAME_LEN, &name);
+        raw.patch_bytes(offset, &name);
     }
     Ok(())
 }
@@ -575,12 +439,14 @@ fn rebuild_container(
     mut replacements: HashMap<[u8; 4], ([u8; 4], Vec<u8>)>,
 ) -> Result<Raw> {
     let svd = Svd::parse(raw)?;
-    const ORDER: [&[u8; 4]; 13] = [
-        b"PRFa", b"PATa", b"RHYa", b"INSa", b"VTWa", b"SNAa", b"ZAPa", b"ZEPa", b"ACBa", b"DCWa",
-        b"MDLa", b"SYSa", b"DIFa",
-    ];
+    // Output order matches what the instrument writes: scenes, then each engine's user bank in
+    // area order, then the system and checksum areas.
+    let order: Vec<[u8; 4]> = std::iter::once(*b"PRFa")
+        .chain(address::dependency_tags())
+        .chain(PRESERVED.into_iter().copied())
+        .collect();
     for area in &svd.areas {
-        if !ORDER.contains(&&area.tag) {
+        if !order.contains(&area.tag) && !DROPPED.contains(&&area.tag) {
             return Err(Error::Unrecognized(format!(
                 "cannot preserve unknown area {} while rebuilding the area table",
                 area.tag_str()
@@ -588,16 +454,15 @@ fn rebuild_container(
         }
     }
 
-    let dependency_tags: BTreeSet<[u8; 4]> = FamilyKind::ALL
-        .into_iter()
-        .flat_map(|kind| kind.tags().iter().map(|tag| **tag))
-        .collect();
+    let dependency_tags: BTreeSet<[u8; 4]> = address::dependency_tags().collect();
     let mut areas = Vec::new();
-    for tag in ORDER {
-        if let Some((format, body)) = replacements.remove(tag) {
-            areas.push((*tag, format, body));
-        } else if !dependency_tags.contains(tag) && tag != b"PRFa" {
-            if let Some(area) = svd.area(tag) {
+    for tag in order {
+        if let Some((format, body)) = replacements.remove(&tag) {
+            areas.push((tag, format, body));
+        } else if !dependency_tags.contains(&tag) && &tag != b"PRFa" {
+            // A dependency area with nothing referencing it is left out; everything else that
+            // survived the check above is copied verbatim.
+            if let Some(area) = svd.area(&tag) {
                 areas.push((area.tag, area.format, svd.area_bytes(raw, area)?.to_vec()));
             }
         }
@@ -634,15 +499,15 @@ fn valid_zone_slots(record: &[u8]) -> impl Iterator<Item = usize> + '_ {
     })
 }
 
-fn dependency_references(scenes: &[Vec<u8>]) -> HashMap<FamilyKind, BTreeSet<usize>> {
-    let mut references: HashMap<FamilyKind, BTreeSet<usize>> = HashMap::new();
+/// Which record of which engine area every scene zone points at.
+fn dependency_references(scenes: &[Vec<u8>]) -> HashMap<[u8; 4], BTreeSet<usize>> {
+    let mut references: HashMap<[u8; 4], BTreeSet<usize>> = HashMap::new();
     for record in scenes {
         for slot in valid_zone_slots(record) {
             let at = tone_bank_offset(slot);
-            if let Some((kind, index)) =
-                FamilyKind::reference(record[at], record[at + 1], record[at + 2])
+            if let Some((spec, index)) = address::resolve(record[at], record[at + 1], record[at + 2])
             {
-                references.entry(kind).or_default().insert(index);
+                references.entry(spec.tag).or_default().insert(index);
             }
         }
     }
@@ -668,6 +533,7 @@ mod tests {
 
     const SCENE_SIZE: usize = 3572;
     const TONE_SIZE: usize = 32;
+    const PC_VALUES_PER_BANK: usize = address::PC_PER_PAGE;
 
     fn scene(name: &str, tone_ids: &[usize]) -> Vec<u8> {
         let banks: Vec<_> = tone_ids
@@ -855,14 +721,76 @@ mod tests {
     }
 
     #[test]
-    fn rejects_files_whose_user_tones_cannot_be_resolved() {
+    fn rejects_a_reference_past_the_end_of_its_area() {
         let raw = bank(
             vec![scene("Broken", &[0, 1])],
             vec![tone("Only one", 0x11)],
             b"",
         );
         let error = extract_scenes(&raw, &[1]).unwrap_err().to_string();
-        assert!(error.contains("not a self-contained scene export"));
+        assert!(
+            error.contains("PATa record 1") && error.contains("0..0"),
+            "unexpected error: {error}"
+        );
+    }
+
+    /// A full backup carries the whole USER bank, so almost every record is unreferenced. That is
+    /// the normal case for a backup source, not a malformed file — only the referenced records are
+    /// carried into the output.
+    #[test]
+    fn extracts_from_a_bank_whose_tones_are_mostly_unreferenced() {
+        let tones: Vec<_> = (0..200)
+            .map(|index| tone(&format!("Tone {index}"), index as u8))
+            .collect();
+        let raw = bank(
+            vec![scene("First", &[0]), scene("Second", &[7, 150])],
+            tones,
+            b"system",
+        );
+
+        let extracted = extract_scenes(&raw, &[2]).unwrap();
+        let scenes = read_scenes(&extracted).unwrap();
+        assert_eq!(scenes.len(), 1);
+        assert_eq!(scenes[0].zones[0].tone.name(), Some("Tone 7"));
+        assert_eq!(scenes[0].zones[1].tone.name(), Some("Tone 150"));
+
+        // Only the two referenced tones travel, renumbered densely from zero.
+        let pat = crate::container::PatArea::from_svd(&extracted, &Svd::parse(&extracted).unwrap())
+            .unwrap();
+        assert_eq!(pat.tones().len(), 2);
+        assert_eq!(scenes[0].zones[0].tone.address.pc, 0);
+        assert_eq!(scenes[0].zones[1].tone.address.pc, 1);
+    }
+
+    /// The modelled engines used to be renumbered by rewriting PC alone, which capped them at 128
+    /// records and made a backup's 1024-record `MDLa` unrepresentable.
+    #[test]
+    fn opaque_engine_references_are_rebased_across_lsb_pages() {
+        let tones: Vec<_> = (0..200)
+            .map(|index| tone(&format!("Model {index}"), index as u8))
+            .collect();
+        let raw = build_svd(&[
+            (
+                b"PRFa",
+                record_area(
+                    &[scene_with_banks("Modelled", &[(97, 1, 22), (97, 0, 5)])],
+                    SCENE_SIZE,
+                ),
+            ),
+            (b"MDLa", record_area(&tones, TONE_SIZE)),
+        ]);
+
+        // lsb 1 / pc 22 addresses MDLa[150]; lsb 0 / pc 5 addresses MDLa[5].
+        let extracted = extract_scenes(&raw, &[1]).unwrap();
+        assert_eq!(read_u32(&area_bytes(&extracted, b"MDLa"), 0, "MDLa").unwrap(), 2);
+        let prfa = area_bytes(&extracted, b"PRFa");
+        let banks: Vec<_> = (0..2)
+            .map(|slot| {
+                let at = HEADER_LEN + tone_bank_offset(slot);
+                prfa[at..at + 3].to_vec()
+            })
+            .collect();
+        assert_eq!(banks, [vec![97, 0, 0], vec![97, 0, 1]]);
     }
 
     #[test]

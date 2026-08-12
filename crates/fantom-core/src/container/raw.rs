@@ -44,6 +44,18 @@ impl Raw {
         field[n..].fill(b' ');
     }
 
+    /// Overwrite `[at, at + bytes.len())` verbatim, clamped to the file.
+    ///
+    /// The unpadded counterpart to [`Self::patch_ascii`], for fields whose encoding is not plain
+    /// ASCII — `ACBa` stores its names as byte-reversed 4-byte words.
+    pub fn patch_bytes(&mut self, at: usize, bytes: &[u8]) {
+        let end = (at + bytes.len()).min(self.bytes.len());
+        if at >= end {
+            return;
+        }
+        self.bytes[at..end].copy_from_slice(&bytes[..end - at]);
+    }
+
     /// Write the (possibly edited) bytes back to a file, creating parent directories as needed.
     pub fn save(&self, path: impl AsRef<Path>) -> Result<()> {
         let path = path.as_ref();
