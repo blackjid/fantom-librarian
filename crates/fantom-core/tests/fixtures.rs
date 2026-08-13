@@ -316,10 +316,11 @@ fn the_sample_bank_agrees_with_its_waveform_directory() {
 }
 
 /// SVZ tone banks, which use a different envelope and carry their samples.
-const TONE_BANKS: [&str; 3] = [
+const TONE_BANKS: [&str; 4] = [
     "Z-Core_20260623.svz",              // 274 ZEN-Core tones, 2 samples
     "DRUM_20260623.svz",                // 38 drum kits with paired INSa instrument sets
     "backup/ROLAND/SOUND/EXPORT_Z-Core.svz", // 10 tones, older revision
+    "EXPORT_Z-Core2.svz",              // one tone exported *with* its user sample
 ];
 
 /// Every tone of a bank must survive a round trip through extraction unchanged.
@@ -338,6 +339,53 @@ fn extracting_every_tone_of_an_svz_reproduces_it() {
         let after = fantom_core::codec::read_bundled_tones(&extracted).unwrap();
         assert_eq!(after, before, "{path}: re-extracting every tone changed them");
     }
+}
+
+/// Rebuilding an instrument-written tone-plus-sample export must reproduce it **byte for byte**.
+///
+/// `EXPORT_Z-Core2.svz` is a FANTOM-6 export of one ZEN-Core tone together with the user sample it
+/// plays — the smallest complete example of the thing this module exists to build. Selecting its
+/// only tone asks the repackager to lay out the same file from parts, so every layout decision has
+/// to match Roland's: the preamble and its stamp, area order and offsets, each area's `info_length`
+/// and per-record CRC-32, the `USPa` slot record, and the `USDa` directory — including the
+/// per-section word that is carried rather than computed. Decoding equal is a weaker claim than
+/// this; a wrong `info_length` or a recomputed word can still decode fine.
+#[test]
+fn rebuilding_an_instrument_written_sampled_export_is_byte_identical() {
+    let Some(raw) = open("EXPORT_Z-Core2.svz") else {
+        return;
+    };
+    let rebuilt = fantom_core::tonebank::extract_tones(&raw, &[0]).unwrap();
+    assert_eq!(
+        rebuilt.bytes(),
+        raw.bytes(),
+        "rebuilding the instrument's own export did not reproduce it"
+    );
+}
+
+/// The instrument numbers an exported sample reference densely, exactly as extraction does.
+///
+/// The one tone of `EXPORT_Z-Core2.svz` plays user sample slot **1** and the file carries exactly
+/// one `USPa` record — but on the panel, that same tone's wave reads group `SAMP`, sample `0029`.
+/// The FANTOM renumbered 29 to 1 on export, so an SVZ addresses samples by position within its own
+/// `USPa`. That is the renumbering [`fantom_core::tonebank::extract_tones`] applies, which means a
+/// bank this tool builds and one the FANTOM builds address their samples the same way.
+#[test]
+fn an_instrument_export_numbers_its_sample_reference_from_one() {
+    let Some(raw) = open("EXPORT_Z-Core2.svz") else {
+        return;
+    };
+    let svd = fantom_core::container::Svd::parse(&raw).unwrap();
+    let bank = fantom_core::container::read_samples(&raw, &svd).unwrap();
+    assert_eq!(bank.slots.len(), 1);
+    assert_eq!(bank.slots[0].index, 0, "the single slot is numbered 0");
+
+    let tones = fantom_core::container::PatArea::from_svd(&raw, &svd).unwrap();
+    assert_eq!(
+        tones.tones()[0].samples,
+        [1],
+        "the tone must reference the first slot, 1-based"
+    );
 }
 
 /// A sampled tone taken out of a bank keeps its audio, which is what an SVZ is for.
