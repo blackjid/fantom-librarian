@@ -361,9 +361,12 @@ fn building_a_sample_svz_from_a_backup_reproduces_a_shipped_one() {
 /// The whole sampled-scene workflow, on a real scene that really plays a user sample.
 ///
 /// Scene 401 of the NARFSOUNDS backup is `Beat It`, whose `Beat It Gong` tone plays panel sample
-/// slot 1. Extracting it gives a bank that is silent anywhere slot 1 holds something else. The two
-/// pieces together fix that: a companion `.svz` holding just that one sample — 1 MB, not the
-/// backup's 23 — and the bank repointed at wherever the companion is imported.
+/// slot 1 on the left and slot 22 on the right. Extracting it gives a bank that is silent anywhere
+/// those slots hold something else. The two pieces together fix that: a companion `.svz` holding
+/// just those samples — 2 MB, not the backup's 23 — and the bank repointed at wherever it lands.
+///
+/// The stereo split is the point of this fixture. Following only the left wave number would build
+/// a companion missing `doh duh 2` and a bank still pointing at slot 22 on the destination.
 #[test]
 fn a_sampled_scene_travels_as_a_bank_plus_a_companion_sample_file() {
     let Some(backup) = open("backup/ROLAND/FANTOM/BACKUP/Black NARFSOUNDS/FANTOM.SVD") else {
@@ -371,26 +374,27 @@ fn a_sampled_scene_travels_as_a_bank_plus_a_companion_sample_file() {
     };
     let extracted = fantom_core::repackage::extract_scenes(&backup, &[401]).unwrap();
     let slots = fantom_core::repackage::referenced_sample_slots(&extracted).unwrap();
-    assert_eq!(slots, [1], "this scene plays panel sample slot 1");
+    assert_eq!(slots, [1, 22], "a slot per channel, both dependencies");
 
     // The companion carries only what the scene needs, numbered densely from 0.
     let indexes: Vec<usize> = slots.iter().map(|&s| s as usize - 1).collect();
     let companion = fantom_core::samplebank::export_samples(&backup, &indexes).unwrap();
     let svd = fantom_core::container::Svd::parse(&companion).unwrap();
     let carried = fantom_core::container::read_samples(&companion, &svd).unwrap();
-    assert_eq!(carried.slots.len(), 1);
-    assert_eq!(carried.slots[0].name, "1 Beat It - C2");
+    let names: Vec<&str> = carried.slots.iter().map(|s| s.name.as_str()).collect();
+    assert_eq!(names, ["1 Beat It - C2", "doh duh 2"]);
     assert!(
         companion.bytes().len() < backup.bytes().len() / 10,
-        "the companion must carry one sample, not the whole bank"
+        "the companion must carry two samples, not the whole bank"
     );
 
-    // With the companion landing at slot 101, the bank has to say 101.
+    // With the companion landing at slot 101, the bank has to say 101 and 102 — in that order,
+    // because that is the order the instrument will lay the companion's samples down.
     let remap = fantom_core::repackage::contiguous_remap(&slots, 101);
     let rebased = fantom_core::repackage::rebase_sample_slots(&extracted, &remap).unwrap();
     assert_eq!(
         fantom_core::repackage::referenced_sample_slots(&rebased).unwrap(),
-        [101]
+        [101, 102]
     );
     assert!(fantom_core::verify::check(&rebased).unwrap().is_ok());
     assert!(fantom_core::verify::check(&companion).unwrap().is_ok());
@@ -482,6 +486,12 @@ fn an_instrument_export_numbers_its_sample_reference_from_one() {
 }
 
 /// A sampled tone taken out of a bank keeps its audio, which is what an SVZ is for.
+///
+/// This bank has exactly **one** sampled tone and the instrument put **two** samples in it — which
+/// is the whole argument that a partial's second wave number is a live reference. `MyPolySyn1`
+/// names slot 2 on the left and slot 1 on the right, and since an export carries only what its
+/// tones reference (`EXPORT_Z-Core2.svz` carries one sample for one tone, not the machine's whole
+/// bank), both slots are dependencies. Extracting that tone must therefore reproduce both.
 #[test]
 fn extracting_a_sampled_tone_carries_its_waveform() {
     let Some(raw) = open("Z-Core_20260623.svz") else {
@@ -497,22 +507,58 @@ fn extracting_a_sampled_tone_carries_its_waveform() {
         .iter()
         .position(|t| t.name == "MyPolySyn1")
         .expect("sampled tone present");
+    let pat = fantom_core::container::PatArea::from_svd(&raw, &svd).unwrap();
+    assert_eq!(
+        pat.get(index).unwrap().samples,
+        [2, 1],
+        "the tone names a slot per channel: left 2, right 1"
+    );
 
     let extracted = fantom_core::tonebank::extract_tones(&raw, &[index]).unwrap();
     let svd = fantom_core::container::Svd::parse(&extracted).unwrap();
     let carried = fantom_core::container::read_samples(&extracted, &svd).unwrap();
 
-    assert_eq!(carried.slots.len(), 1, "only the sample it plays travels");
-    assert_eq!(carried.slots[0].name, "Sample005;G#3-G#");
+    let names: Vec<&str> = carried.slots.iter().map(|s| s.name.as_str()).collect();
+    assert_eq!(
+        names,
+        ["Sample003;F#3-F#", "Sample005;G#3-G#"],
+        "both channels' samples travel"
+    );
     assert!(carried.orphans().is_empty(), "{:?}", carried.orphans());
-    // Same audio, not a re-encode: frames and rate must match the source exactly.
-    let original = source
-        .data
+
+    // The invariant that matters is not the order but that renumbering preserved *meaning*: each
+    // channel must still resolve to the sample it named before. This tone plays a higher slot on
+    // the left than the right, so a renumbering that assigned new numbers in mention order rather
+    // than emission order would swap its channels while leaving both samples present.
+    let resolve = |bank: &fantom_core::container::SampleBank, slot: u16| -> String {
+        bank.slots
+            .iter()
+            .find(|s| s.index + 1 == slot as usize)
+            .map(|s| s.name.clone())
+            .unwrap_or_else(|| format!("<no slot {slot}>"))
+    };
+    let out_pat = fantom_core::container::PatArea::from_svd(&extracted, &svd).unwrap();
+    let before: Vec<String> = pat
+        .get(index)
+        .unwrap()
+        .samples
         .iter()
-        .find(|d| d.name == "Sample005;G#3-G#")
-        .unwrap();
-    assert_eq!(carried.data[0].words, original.words);
-    assert_eq!(carried.data[0].sample_rate, original.sample_rate);
+        .map(|&s| resolve(&source, s))
+        .collect();
+    let after: Vec<String> = out_pat
+        .get(0)
+        .unwrap()
+        .samples
+        .iter()
+        .map(|&s| resolve(&carried, s))
+        .collect();
+    assert_eq!(before, after, "a channel now points at a different sample");
+    // Same audio, not a re-encode: frames and rate must match the source exactly.
+    for slot in &carried.data {
+        let original = source.data.iter().find(|d| d.name == slot.name).unwrap();
+        assert_eq!(slot.words, original.words);
+        assert_eq!(slot.sample_rate, original.sample_rate);
+    }
 }
 
 /// A drum kit is `RHYa` plus its 88 instruments in `INSa`; the two must stay index-locked.

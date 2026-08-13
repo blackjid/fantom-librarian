@@ -19,7 +19,7 @@
 //! selecting none would silently strip a sampled kit's audio, and renumbering would break
 //! references there is no way to find and rewrite.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::address::{self, AreaSpec};
 use crate::checksum::crc32;
@@ -336,16 +336,23 @@ pub fn merge_tones(target: &Raw, source: &Raw) -> Result<Raw> {
 
 /// Emit a bank containing `keep` from `bank`.
 fn rebuild(bank: &ToneBank, keep: &[usize]) -> Result<Raw> {
-    // Which sample slots the chosen tones need, in first-seen order. Stays empty for an engine
-    // whose sample references are not decoded, which is why `carry_all` exists rather than this
-    // being read as "the selection plays no samples".
-    let mut slot_map: BTreeMap<u16, u16> = BTreeMap::new();
-    for &index in keep {
-        for slot in bank.samples_of(index) {
-            let next = slot_map.len() as u16 + 1;
-            slot_map.entry(slot).or_insert(next);
-        }
-    }
+    // Which sample slots the chosen tones need. Stays empty for an engine whose sample references
+    // are not decoded, which is why `carry_all` exists rather than this being read as "the
+    // selection plays no samples".
+    //
+    // The new numbers must be assigned in the order the slots are *emitted* below — ascending —
+    // not in the order the tones happened to mention them. A tone that names a higher slot first
+    // (`MyPolySyn1` plays slot 2 on the left and slot 1 on the right) would otherwise be renumbered
+    // onto positions the output does not put those samples in, silently swapping its channels.
+    let needed: BTreeSet<u16> = keep
+        .iter()
+        .flat_map(|&index| bank.samples_of(index))
+        .collect();
+    let slot_map: BTreeMap<u16, u16> = needed
+        .iter()
+        .enumerate()
+        .map(|(position, &slot)| (slot, position as u16 + 1))
+        .collect();
     let carry_all = bank.must_carry_all_samples();
 
     let mut areas: Vec<([u8; 4], [u8; 4], Vec<u8>)> = Vec::new();

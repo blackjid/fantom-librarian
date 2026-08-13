@@ -37,18 +37,36 @@ const CATEGORY_OFFSET: usize = 0x10;
 /// A ZEN-Core tone has four partials laid out at this stride within its record.
 const PARTIAL_STRIDE: usize = 124;
 const PARTIAL_COUNT: usize = 4;
-/// Selects where a partial's wave comes from: 0 = internal ROM wave, 2 = user sample.
-const WAVE_GROUP_OFFSET: usize = 0xdf;
-const WAVE_NUMBER_OFFSET: usize = 0xe2;
-/// The wave-group value meaning "this partial plays a user sample".
-const WAVE_GROUP_SAMPLE: u8 = 2;
+
+/// A partial's wave-select block, at `0xde + 124 * partial` within the record.
+///
+/// Roland's own editor schema calls this a `WMT`, and it is the same 28-byte block a drum kit's
+/// `INSa` instrument uses (there, four of them at `+0x1c`). Its shape explains what a byte-level
+/// survey could only guess at: a switch, a **group type**, a group id, and **two** wave numbers —
+/// left and right, because a wave can be a stereo pair.
+mod wmt {
+    /// Start of partial 0's block within a `PATa` record.
+    pub const BASE: usize = 0xde;
+    pub const GROUP_TYPE: usize = 0x01;
+    pub const NUMBER_L: usize = 0x04;
+    pub const NUMBER_R: usize = 0x06;
+    /// The group-type value meaning "these numbers are user sample slots, not ROM waves".
+    pub const GROUP_SAMPLE: u8 = 2;
+}
 
 /// The user sample slots a `PATa` tone record plays, 1-based, in partial order.
 ///
-/// Each of the four partials selects a wave group and a wave number. Group 2 means the number is
-/// an `SMPa` slot rather than a ROM wave. Confirmed on a FANTOM-6 backup: all 93 group-2 partials
-/// across its 2048 tones resolve to a populated slot in 1..50, with names matching
+/// Each of the four partials selects a wave group and up to two wave numbers. Group 2 means those
+/// numbers are `SMPa` slots rather than ROM waves. Confirmed on a FANTOM-6 backup: all 93 group-2
+/// partials across its 2048 tones resolve to a populated slot in 1..50, with names matching
 /// (`IML Whoa 1` → slot 3 `3 IML Whoa 1`, `Relax Bass` → slots 7 and 8, and so on).
+///
+/// **Both numbers count.** A partial can name a different slot per channel — `Beat It Gong` plays
+/// slot 1 `1 Beat It - C2` on the left and slot 22 `doh duh 2` on the right — and 25 of that
+/// backup's 93 sampled partials have a right slot. Reading only the left one silently halves a
+/// stereo-split sound: `Z-Core_20260623.svz` has exactly one sampled tone, whose two numbers are 2
+/// and 1, and the instrument carried **two** samples into that export. It carries only what its
+/// tones reference, so the right number is a live dependency, not a leftover. A zero means "none".
 ///
 /// This is what makes user samples a *dependency*: the reference is a slot number, so a tone
 /// carries no audio with it. The instrument's own scene exports behave the same way — NARF holds
@@ -56,20 +74,29 @@ const WAVE_GROUP_SAMPLE: u8 = 2;
 pub fn sample_slots(record: &[u8]) -> Vec<u16> {
     let mut slots = Vec::new();
     for partial in 0..PARTIAL_COUNT {
-        let base = partial * PARTIAL_STRIDE;
-        let (Some(&group), Some(number)) = (
-            record.get(WAVE_GROUP_OFFSET + base),
-            record
-                .get(WAVE_NUMBER_OFFSET + base..WAVE_NUMBER_OFFSET + base + 2)
-                .map(|b| u16::from_le_bytes([b[0], b[1]])),
-        ) else {
+        let base = wmt::BASE + partial * PARTIAL_STRIDE;
+        let Some(&group) = record.get(base + wmt::GROUP_TYPE) else {
             break;
         };
-        if group == WAVE_GROUP_SAMPLE && number != 0 && !slots.contains(&number) {
-            slots.push(number);
+        if group != wmt::GROUP_SAMPLE {
+            continue;
+        }
+        for at in [wmt::NUMBER_L, wmt::NUMBER_R] {
+            let Some(number) = read_u16(record, base + at) else {
+                break;
+            };
+            if number != 0 && !slots.contains(&number) {
+                slots.push(number);
+            }
         }
     }
     slots
+}
+
+fn read_u16(bytes: &[u8], at: usize) -> Option<u16> {
+    bytes
+        .get(at..at + 2)
+        .map(|b| u16::from_le_bytes([b[0], b[1]]))
 }
 
 impl PatArea {
@@ -138,24 +165,26 @@ fn read_u32(bytes: &[u8], at: usize) -> Result<u32> {
 
 /// Rewrite a tone record's user-sample references through `remap` (old slot -> new slot).
 ///
-/// Used when repackaging carries a tone's samples along and renumbers them densely.
+/// Used when repackaging carries a tone's samples along and renumbers them densely, and when
+/// repointing a scene bank at the slots its samples will be imported to. Both wave numbers are
+/// rewritten, for the reason [`sample_slots`] reads both: a partial can name a slot per channel,
+/// and moving only the left one leaves the right pointing at whatever now occupies the old slot.
 pub fn remap_sample_slots(record: &mut [u8], remap: &std::collections::BTreeMap<u16, u16>) {
     for partial in 0..PARTIAL_COUNT {
-        let base = partial * PARTIAL_STRIDE;
-        let (Some(&group), Some(number)) = (
-            record.get(WAVE_GROUP_OFFSET + base),
-            record
-                .get(WAVE_NUMBER_OFFSET + base..WAVE_NUMBER_OFFSET + base + 2)
-                .map(|b| u16::from_le_bytes([b[0], b[1]])),
-        ) else {
+        let base = wmt::BASE + partial * PARTIAL_STRIDE;
+        let Some(&group) = record.get(base + wmt::GROUP_TYPE) else {
             break;
         };
-        if group != WAVE_GROUP_SAMPLE {
+        if group != wmt::GROUP_SAMPLE {
             continue;
         }
-        if let Some(&new) = remap.get(&number) {
-            record[WAVE_NUMBER_OFFSET + base..WAVE_NUMBER_OFFSET + base + 2]
-                .copy_from_slice(&new.to_le_bytes());
+        for at in [wmt::NUMBER_L, wmt::NUMBER_R] {
+            let Some(number) = read_u16(record, base + at) else {
+                break;
+            };
+            if let Some(&new) = remap.get(&number) {
+                record[base + at..base + at + 2].copy_from_slice(&new.to_le_bytes());
+            }
         }
     }
 }
@@ -226,14 +255,17 @@ mod tests {
         assert_eq!(PatArea::parse(&area).unwrap().get(0).unwrap().name, "Africa Brass");
     }
 
-    /// Build a tone record whose partials use the given `(group, wave number)` pairs.
-    fn tone_with_partials(partials: &[(u8, u16)]) -> Vec<u8> {
-        let mut record = vec![0u8; PARTIAL_COUNT * PARTIAL_STRIDE + WAVE_NUMBER_OFFSET + 2];
-        for (partial, &(group, number)) in partials.iter().enumerate() {
-            let base = partial * PARTIAL_STRIDE;
-            record[WAVE_GROUP_OFFSET + base] = group;
-            record[WAVE_NUMBER_OFFSET + base..WAVE_NUMBER_OFFSET + base + 2]
-                .copy_from_slice(&number.to_le_bytes());
+    /// Build a tone record whose partials use the given `(group, left, right)` triples.
+    fn tone_with_partials(partials: &[(u8, u16, u16)]) -> Vec<u8> {
+        let mut record =
+            vec![0u8; wmt::BASE + PARTIAL_COUNT * PARTIAL_STRIDE + wmt::NUMBER_R + 2];
+        for (partial, &(group, left, right)) in partials.iter().enumerate() {
+            let base = wmt::BASE + partial * PARTIAL_STRIDE;
+            record[base + wmt::GROUP_TYPE] = group;
+            record[base + wmt::NUMBER_L..base + wmt::NUMBER_L + 2]
+                .copy_from_slice(&left.to_le_bytes());
+            record[base + wmt::NUMBER_R..base + wmt::NUMBER_R + 2]
+                .copy_from_slice(&right.to_le_bytes());
         }
         record
     }
@@ -241,14 +273,41 @@ mod tests {
     #[test]
     fn reads_the_user_samples_a_tone_plays() {
         // "Relax Bass": partials 1 and 2 play user samples 7 and 8, the rest are ROM waves.
-        let record = tone_with_partials(&[(2, 7), (2, 8), (0, 383), (0, 0)]);
+        let record = tone_with_partials(&[(2, 7, 0), (2, 8, 0), (0, 383, 0), (0, 0, 0)]);
         assert_eq!(sample_slots(&record), [7, 8]);
 
         // A wave number only means a sample when its group says so.
-        assert_eq!(sample_slots(&tone_with_partials(&[(0, 7)])), Vec::<u16>::new());
+        assert_eq!(
+            sample_slots(&tone_with_partials(&[(0, 7, 0)])),
+            Vec::<u16>::new()
+        );
         // Repeats collapse: four partials layering one sample is still one dependency.
-        assert_eq!(sample_slots(&tone_with_partials(&[(2, 5), (2, 5)])), [5]);
+        assert_eq!(sample_slots(&tone_with_partials(&[(2, 5, 0), (2, 5, 0)])), [5]);
         // A record too short to hold the partials yields nothing rather than panicking.
         assert!(sample_slots(&[0u8; 32]).is_empty());
+    }
+
+    /// A partial names a slot per channel. `Beat It Gong` really does play slot 1 on the left and
+    /// slot 22 on the right, and reading only the left half loses the sound's other half.
+    #[test]
+    fn a_partial_can_name_a_different_sample_per_channel() {
+        assert_eq!(sample_slots(&tone_with_partials(&[(2, 1, 22)])), [1, 22]);
+        // Zero is "no wave", not slot zero.
+        assert_eq!(sample_slots(&tone_with_partials(&[(2, 1, 0)])), [1]);
+        // The same slot on both channels is still one dependency.
+        assert_eq!(sample_slots(&tone_with_partials(&[(2, 4, 4)])), [4]);
+    }
+
+    #[test]
+    fn remapping_moves_both_channels() {
+        let mut record = tone_with_partials(&[(2, 1, 22), (0, 383, 384)]);
+        let remap = std::collections::BTreeMap::from([(1, 101), (22, 102)]);
+        remap_sample_slots(&mut record, &remap);
+
+        assert_eq!(sample_slots(&record), [101, 102]);
+        // A ROM partial's stereo pair is not a sample reference and must not move.
+        let base = wmt::BASE + PARTIAL_STRIDE;
+        assert_eq!(read_u16(&record, base + wmt::NUMBER_L), Some(383));
+        assert_eq!(read_u16(&record, base + wmt::NUMBER_R), Some(384));
     }
 }
