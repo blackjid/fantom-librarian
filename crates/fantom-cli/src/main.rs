@@ -911,28 +911,34 @@ fn carry_scene_samples(
         );
     }
 
-    let last = base as usize + slots.len() - 1;
+    // IMPORT SAMPLE asks for a destination *per sample*, confirmed on a FANTOM-6 — it does not
+    // fill a run from one starting slot. So a range is not an instruction: name each sample and
+    // the slot it has to go to, in the order the dialog lists them, because the bank has already
+    // been rewritten to expect exactly that.
+    let names = fantom_core::container::Svd::parse(source)
+        .and_then(|svd| fantom_core::container::read_samples(source, &svd))
+        .map(|bank| bank.slots)
+        .unwrap_or_default();
+
     let _ = writeln!(
         out,
-        "import {} to slot{} {}{} — the bank now refers to them there (was {})",
-        if companion.is_some() {
-            "that file's samples"
-        } else {
-            "the samples"
-        },
-        if slots.len() == 1 { "" } else { "s" },
-        base,
-        if slots.len() == 1 {
-            String::new()
-        } else {
-            format!("–{last}")
-        },
-        slots
-            .iter()
-            .map(u16::to_string)
-            .collect::<Vec<_>>()
-            .join(", ")
+        "the instrument asks where each sample goes — assign them exactly like this, or the\n\
+         bank will not find them:\n"
     );
+    for (position, &was) in slots.iter().enumerate() {
+        let name = names
+            .iter()
+            .find(|s| s.index + 1 == was as usize)
+            .map(|s| s.name.as_str())
+            .unwrap_or("<not in this file>");
+        let now = base as usize + position;
+        let _ = writeln!(
+            out,
+            "    {:>2}. {name:<20} → slot {now:<5} (was {was})",
+            position + 1
+        );
+    }
+    let _ = writeln!(out);
 
     // A drum kit can play user samples too, and nothing decoded says which — so those references
     // cannot be moved with the rest, and a silent partial rebase would be worse than saying so.
