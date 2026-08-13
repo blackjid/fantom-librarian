@@ -302,6 +302,27 @@ all*. Computing the closure from `T8_MSMP_TONE.svz`'s two tones yields slots 1�
 the five the instrument put in the file: two named by `Beat It Gong` and three reachable only
 through `T8_MSAMP`.
 
+### A multisample installs on import, and the reference is repointed — HARDWARE-CONFIRMED
+
+Importing that tone export on a FANTOM-6 with **[x] with sample**:
+
+- the import list labels each tone by what it depends on — `Beat it gong (US)` for user samples,
+  `T8_MSAMP (MS)` for a multisample;
+- a **new multisample is created** in the first free slot. The instrument already held
+  `01 T8_MSAMP`, and after import the list reads `02 T8_MSAMP`;
+- the imported tone's reference is **repointed at the new slot**: tone 565 reads wave
+  `02.T8_MSAMP`, while the original tone 955 still reads `01.T8_MSAMP`;
+- it plays correctly, key ranges intact.
+
+So a multisample is not merely written into an export, it is read back out of one — and its number
+behaves exactly as a sample slot does, dense in the file and repointed to a panel slot on import.
+
+> **The repackager is byte-identical to Roland's exporter for this case.** Exporting that
+> re-imported tone gives `T9_BACK.svz`; extracting the same tone from `T8_MSMP_TONE.svz` with this
+> tool gives **the same 5,824,680 bytes** — tone record, renumbered multisample reference, `MSPa`
+> with remapped key ranges, `USPa`, all audio, every CRC-32. Pinned by
+> `extracting_a_multisampled_tone_matches_the_instrument_byte_for_byte`.
+
 ### How a tone references a sample — CONFIRMED
 
 A ZEN-Core `PATa` record holds **four partials at stride 124 (`0x7c`), the first at `0xc8`**. Its

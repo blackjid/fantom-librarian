@@ -602,6 +602,43 @@ fn extracting_a_multisampled_tone_carries_and_renumbers_the_whole_chain() {
     assert!(fantom_core::verify::check(&out).unwrap().is_ok());
 }
 
+/// Our extraction of a multisampled tone equals the instrument's own export of it, byte for byte.
+///
+/// `T9_BACK.svz` is `T8_MSAMP` after a full loop through a FANTOM-6: imported from
+/// `T8_MSMP_TONE.svz` — which created a new multisample and repointed the tone at it — and then
+/// exported back out. Extracting the same tone from the same source with this tool produces
+/// **the identical file**: preamble, tone record, the renumbered multisample reference, the `MSPa`
+/// with its remapped key ranges, the `USPa`, every waveform, every CRC-32.
+///
+/// Decoding a format well enough to read it is one thing. This is the claim that the writer is
+/// indistinguishable from Roland's for the hardest case the format has — a tone whose audio is
+/// reached only through a second table.
+#[test]
+fn extracting_a_multisampled_tone_matches_the_instrument_byte_for_byte() {
+    let (Some(source), Some(theirs)) = (
+        open("hwtest_back/T8_MSMP_TONE.svz"),
+        open("hwtest_back/T9_BACK.svz"),
+    ) else {
+        return;
+    };
+    let tones = fantom_core::codec::read_bundled_tones(&source).unwrap();
+    let index = tones
+        .iter()
+        .position(|t| t.name == "T8_MSAMP")
+        .expect("the multisampled tone is present");
+
+    let ours = fantom_core::tonebank::extract_tones(&source, &[index]).unwrap();
+    assert_eq!(
+        ours.bytes().len(),
+        theirs.bytes().len(),
+        "size differs from the instrument's export"
+    );
+    assert!(
+        ours.bytes() == theirs.bytes(),
+        "our extraction differs from the instrument's own export of the same tone"
+    );
+}
+
 /// The captured multisample's key map, read from the backup that holds it.
 #[test]
 fn a_multisample_maps_key_ranges_onto_panel_sample_slots() {
