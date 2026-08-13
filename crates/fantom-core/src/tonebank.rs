@@ -11,13 +11,13 @@
 //! in an SVZ brings its waveform along. When tones are selected here, the samples they reference
 //! are carried and renumbered with them.
 //!
-//! That selection needs a decoded tone→sample link, and only `PATa` has one
-//! ([`AreaSpec::sample_refs_decoded`]). A drum kit stores its waves in the paired `INSa`, whose
-//! wave blocks are located but whose group field has never been observed set — no fixture has a
-//! kit that plays a user sample, so the value meaning "user sample" is unconfirmed. For those
-//! engines this module carries **every** sample the source holds, at its original slot number:
-//! selecting none would silently strip a sampled kit's audio, and renumbering would break
-//! references there is no way to find and rewrite.
+//! That selection needs a decoded link, and two engines have one: a `PATa` tone keeps its wave
+//! fields inline, and a drum kit keeps them in the paired `INSa` — 88 instruments of four wave
+//! blocks, marked with the same group value `2` (see [`crate::container::sample_slots_of`]).
+//!
+//! Any other engine's references are still unreadable. For those this module carries **every**
+//! sample the source holds, at its original slot number: selecting none would silently strip the
+//! audio out, and renumbering would break references there is no way to find and rewrite.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -226,20 +226,26 @@ impl ToneBank {
         })
     }
 
-    /// The 1-based sample slots a tone record plays.
+    /// The 1-based sample slots the record at `index` plays, across every area of its family.
     ///
-    /// Empty for every engine but `PATa` — not because those tones play no samples, but because
-    /// nothing decoded says which. Callers must treat an empty result from an engine with
-    /// `sample_refs_decoded == false` as "unknown", never as "none": see [`ToneBank::carries_samples`].
+    /// A drum kit's references live in its paired `INSa` rather than in the `RHYa` record itself,
+    /// so this asks each area of the family in turn rather than assuming the first one holds them.
     fn samples_of(&self, index: usize) -> Vec<u16> {
         if !self.spec.sample_refs_decoded {
             return Vec::new();
         }
-        self.family[0]
-            .records
-            .get(index)
-            .map(|record| crate::container::sample_slots(record))
-            .unwrap_or_default()
+        let mut slots = Vec::new();
+        for area in &self.family {
+            let Some(record) = area.records.get(index) else {
+                continue;
+            };
+            for slot in crate::container::sample_slots_of(&area.tag, record) {
+                if !slots.contains(&slot) {
+                    slots.push(slot);
+                }
+            }
+        }
+        slots
     }
 
     /// Whether this bank holds user samples at all, whichever engine it is for.
@@ -356,7 +362,7 @@ fn rebuild(bank: &ToneBank, keep: &[usize]) -> Result<Raw> {
     let carry_all = bank.must_carry_all_samples();
 
     let mut areas: Vec<([u8; 4], [u8; 4], Vec<u8>)> = Vec::new();
-    for (position, area) in bank.family.iter().enumerate() {
+    for area in &bank.family {
         // Rewrite each tone's sample references *before* the body is laid out, so the checksum
         // written alongside it covers the record we actually emit.
         let mut records = Vec::with_capacity(keep.len());
@@ -366,8 +372,8 @@ fn rebuild(bank: &ToneBank, keep: &[usize]) -> Result<Raw> {
                 .get(index)
                 .cloned()
                 .ok_or_else(|| out_of_range(area, index))?;
-            if position == 0 && !slot_map.is_empty() {
-                crate::container::remap_sample_slots(&mut record, &slot_map);
+            if !slot_map.is_empty() {
+                crate::container::remap_sample_slots_of(&area.tag, &mut record, &slot_map);
             }
             records.push(record);
         }
@@ -479,7 +485,11 @@ fn merge(a: &ToneBank, b: &ToneBank) -> Result<Raw> {
             }
             let mut entry = entry;
             if !remap.is_empty() {
-                crate::container::remap_sample_slots(&mut entry[0], &remap);
+                // Whichever area of the family holds the references — `PATa` itself for a tone,
+                // the paired `INSa` for a drum kit.
+                for (area, record) in bank.family.iter().zip(entry.iter_mut()) {
+                    crate::container::remap_sample_slots_of(&area.tag, record, &remap);
+                }
             }
             records.push(entry);
             info.push(
@@ -764,16 +774,28 @@ mod tests {
 
     /// A drum bank: `RHYa` kits with their paired `INSa` instrument sets, carrying `samples` that
     /// nothing decoded links to any particular kit.
-    fn drum_bank(samples: &[&str]) -> Raw {
+    /// An `INSa` record whose first instrument plays user sample `slot`, at the confirmed offsets:
+    /// wave block 1 of instrument 0, group byte `+0x01`, wave number `+0x04`.
+    fn instruments(name: &str, slot: Option<u16>) -> Vec<u8> {
+        let mut record = named(name, INSTRUMENTS_LEN);
+        if let Some(slot) = slot {
+            record[0x1c + 0x01] = 2;
+            record[0x1c + 0x04..0x1c + 0x06].copy_from_slice(&slot.to_le_bytes());
+        }
+        record
+    }
+
+    /// A drum bank carrying `samples`, where `plays` gives the slot each kit's `INSa` references.
+    fn drum_bank_playing(samples: &[&str], plays: [Option<u16>; 2]) -> Raw {
         let kits = vec![named("Kit A", KIT_LEN), named("Kit B", KIT_LEN)];
-        let instruments = vec![
-            named("Instruments A", INSTRUMENTS_LEN),
-            named("Instruments B", INSTRUMENTS_LEN),
+        let sets = vec![
+            instruments("Instruments A", plays[0]),
+            instruments("Instruments B", plays[1]),
         ];
         let mut areas = vec![
             (*b"DIFa", area_body(&[vec![7u8; 32]], 32, 4)),
             (*b"RHYa", area_body(&kits, KIT_LEN, 4)),
-            (*b"INSa", area_body(&instruments, INSTRUMENTS_LEN, 4)),
+            (*b"INSa", area_body(&sets, INSTRUMENTS_LEN, 4)),
         ];
         if !samples.is_empty() {
             let slots: Vec<Vec<u8>> = samples.iter().map(|name| named(name, 64)).collect();
@@ -781,6 +803,35 @@ mod tests {
                 .iter()
                 .map(|name| format!("SMPd-{name}").into_bytes())
                 .collect();
+            areas.push((*b"USPa", area_body(&slots, 64, 4)));
+            areas.push((*b"USDa", waveform_body(&audio)));
+        }
+        svz(&areas)
+    }
+
+    /// A drum bank whose kits play no user samples at all.
+    fn drum_bank(samples: &[&str]) -> Raw {
+        drum_bank_playing(samples, [None, None])
+    }
+
+    /// A bank of an engine whose sample references are still undecoded, carrying `samples`.
+    ///
+    /// `VTWa` stands in for every engine that is not `PATa` or `RHYa`: its records are copied but
+    /// never interpreted, so a sample it plays cannot be identified and all of them must travel.
+    fn undecoded_bank(samples: &[&str]) -> Raw {
+        let slots: Vec<Vec<u8>> = samples.iter().map(|name| named(name, 64)).collect();
+        let audio: Vec<Vec<u8>> = samples
+            .iter()
+            .map(|name| format!("SMPd-{name}").into_bytes())
+            .collect();
+        let mut areas = vec![
+            (*b"DIFa", area_body(&[vec![7u8; 32]], 32, 4)),
+            (
+                *b"VTWa",
+                area_body(&[named("Wheel A", 256), named("Wheel B", 256)], 256, 4),
+            ),
+        ];
+        if !samples.is_empty() {
             areas.push((*b"USPa", area_body(&slots, 64, 4)));
             areas.push((*b"USDa", waveform_body(&audio)));
         }
@@ -967,51 +1018,77 @@ mod tests {
         assert_eq!(table.record_info(0).unwrap(), original.as_slice());
     }
 
-    /// A drum kit's tone→sample link is not decoded, so no sample can be shown to be unreferenced.
-    /// Selecting none — which is what asking `samples_of` for a `RHYa` record used to produce —
-    /// silently stripped the audio out of a sampled kit. Carry every sample instead.
+    /// A drum kit's sample references live in its paired `INSa`, and are now decoded — so a kit
+    /// carries the sample it plays and leaves the rest, exactly as a tone does.
     #[test]
-    fn an_undecoded_engine_carries_every_sample_it_has() {
-        let extracted = extract_tones(&drum_bank(&["one", "two"]), &[1]).unwrap();
+    fn a_drum_kit_carries_the_sample_it_plays() {
+        let bank = drum_bank_playing(&["one", "two"], [Some(1), Some(2)]);
+        let extracted = extract_tones(&bank, &[1]).unwrap();
 
         assert_eq!(tone_names(&extracted), ["Kit B"]);
-        assert_eq!(slot_count(&extracted), 2, "both slots must travel");
-        assert!(contains(&extracted, b"SMPd-one"));
+        assert_eq!(slot_count(&extracted), 1, "only the kit's own sample travels");
         assert!(contains(&extracted, b"SMPd-two"));
+        assert!(!contains(&extracted, b"SMPd-one"));
     }
 
-    /// Carrying them is only safe if their numbers do not move: an undecoded record's reference to
-    /// slot 2 can never be rewritten, so slot 2 has to still be slot 2.
+    /// And its reference is renumbered to match, in the paired area rather than the kit record.
     #[test]
-    fn carried_samples_keep_their_original_slot_numbers() {
-        let extracted = extract_tones(&drum_bank(&["one", "two", "three"]), &[0]).unwrap();
-        assert_eq!(waveform_slots(&extracted), [0, 1, 2]);
+    fn a_carried_drum_sample_is_renumbered_in_the_paired_area() {
+        let bank = drum_bank_playing(&["one", "two"], [Some(1), Some(2)]);
+        let extracted = extract_tones(&bank, &[1]).unwrap();
+
+        let svd = Svd::parse(&extracted).unwrap();
+        let table = RecordTable::from_svd(&extracted, &svd, b"INSa")
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            crate::container::sample_slots_of(b"INSa", table.record(0).unwrap()),
+            [1],
+            "slot 2 was the only one kept, so it becomes slot 1"
+        );
     }
 
     #[test]
-    fn an_undecoded_engine_without_samples_gains_no_sample_areas() {
-        let extracted = extract_tones(&drum_bank(&[]), &[0]).unwrap();
+    fn a_drum_bank_whose_kits_play_nothing_carries_no_samples() {
+        let extracted = extract_tones(&drum_bank(&["one", "two"]), &[0]).unwrap();
         let svd = Svd::parse(&extracted).unwrap();
         assert!(svd.area(b"USPa").is_none());
         assert!(svd.area(b"USDa").is_none());
     }
 
+    /// An engine whose references are *not* decoded still carries everything, at unchanged slot
+    /// numbers — the conservative path, which selecting for drum kits did not retire.
+    #[test]
+    fn an_undecoded_engine_carries_every_sample_it_has() {
+        let extracted = extract_tones(&undecoded_bank(&["one", "two"]), &[1]).unwrap();
+
+        assert_eq!(slot_count(&extracted), 2, "both slots must travel");
+        assert!(contains(&extracted, b"SMPd-one"));
+        assert!(contains(&extracted, b"SMPd-two"));
+    }
+
+    #[test]
+    fn carried_samples_keep_their_original_slot_numbers() {
+        let extracted = extract_tones(&undecoded_bank(&["one", "two", "three"]), &[0]).unwrap();
+        assert_eq!(waveform_slots(&extracted), [0, 1, 2]);
+    }
+
     #[test]
     fn merging_undecoded_banks_carries_the_samples_through() {
-        let bank = drum_bank(&["one", "two"]);
+        let bank = undecoded_bank(&["one", "two"]);
         let a = extract_tones(&bank, &[0]).unwrap();
         let b = extract_tones(&bank, &[1]).unwrap();
 
         let merged = merge_tones(&a, &b).unwrap();
-        assert_eq!(tone_names(&merged), ["Kit A", "Kit B"]);
+        assert_eq!(tone_names(&merged), ["Wheel A", "Wheel B"]);
         assert_eq!(slot_count(&merged), 2);
         assert_eq!(waveform_slots(&merged), [0, 1]);
     }
 
     #[test]
     fn merging_an_undecoded_bank_that_has_samples_into_one_that_does_not() {
-        let a = extract_tones(&drum_bank(&[]), &[0]).unwrap();
-        let b = extract_tones(&drum_bank(&["one"]), &[1]).unwrap();
+        let a = extract_tones(&undecoded_bank(&[]), &[0]).unwrap();
+        let b = extract_tones(&undecoded_bank(&["one"]), &[1]).unwrap();
 
         let merged = merge_tones(&a, &b).unwrap();
         assert_eq!(slot_count(&merged), 1);
@@ -1023,8 +1100,8 @@ mod tests {
     /// whose kits play the wrong audio.
     #[test]
     fn merging_undecoded_banks_with_different_samples_is_refused() {
-        let a = extract_tones(&drum_bank(&["one"]), &[0]).unwrap();
-        let b = extract_tones(&drum_bank(&["other"]), &[1]).unwrap();
+        let a = extract_tones(&undecoded_bank(&["one"]), &[0]).unwrap();
+        let b = extract_tones(&undecoded_bank(&["other"]), &[1]).unwrap();
 
         let error = merge_tones(&a, &b).unwrap_err().to_string();
         assert!(error.contains("different user samples"), "{error}");

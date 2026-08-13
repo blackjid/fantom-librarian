@@ -456,10 +456,27 @@ stereo halves. `High Q` selects `(963, 0)` and leaves blocks 1–3 switched off,
 blocks are all zero. The `+0x00` field takes no value but 0 and 1 in any fixture, which is what
 fixes the block base and stride; at any other alignment it takes dozens.
 
-**The group field is `+0x01`, but no fixture has a drum kit that uses it.** The byte is `0` in all
-45056 blocks across four files — every instrument plays a ROM wave — so while the *position* is now
-known, the value meaning "user sample" has never been observed here. It is presumably `2`, as it is
-for a tone, since this is the same structure; that inference is not a confirmation:
+**The group field is `+0x01` and the value is `2` — CONFIRMED by capture.** A FANTOM-6 drum kit was
+exported, one key's instrument pointed at a user sample, and the kit exported again. The entire
+difference is five bytes:
+
+```
+fantom diff DRUM_BEFORE.svz DRUM_AFTER.svz --area INSa
+  INSa[0]+0x0cc5   00 08 00 4c 02 -> 02 14 27 01 00
+```
+
+That offset is instrument 15's first wave block: **group type `0` → `2`**, group id `8` → `10004`,
+wave number `588` → `1`. The group value is the same `2` a tone uses. `DRUM_AFTER.svz` also gained
+`USPa` and `USDa` holding `doh duh 2`, which settles a question that had been open in the other
+direction too: **a drum kit can play a user sample, and the instrument carries it into a tone
+export.**
+
+So `crate::tonebank` now selects a drum bank's samples instead of carrying all of them, reading the
+references out of the paired `INSa` and renumbering them there. Extracting the captured kit produces
+a bank with exactly one sample, its reference rewritten to slot 1.
+
+For the record, this is what the fixtures looked like before the capture — the reason the value had
+to be guessed at rather than read:
 
 | File | instruments | wave blocks | blocks with a user sample |
 |------|-------------|-------------|---------------------------|

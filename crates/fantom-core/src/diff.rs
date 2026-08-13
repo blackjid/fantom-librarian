@@ -155,7 +155,20 @@ pub fn compare(left: &Raw, right: &Raw) -> Result<Vec<Finding>> {
             });
             continue;
         };
-        let right_table = RecordTable::parse(right_area, right_svd.area_bytes(right, right_area)?)?;
+        let right_bytes = right_svd.area_bytes(right, right_area)?;
+        let Ok(right_table) = RecordTable::parse(right_area, right_bytes) else {
+            // Parsed on the left but not the right: compare the bytes rather than give up.
+            let runs = runs_between(
+                left_bytes,
+                right_bytes,
+                area.offset as usize,
+                right_area.offset as usize,
+            );
+            if !runs.is_empty() || left_bytes.len() != right_bytes.len() {
+                findings.push(Finding::AreaBytes { tag, runs });
+            }
+            continue;
+        };
 
         if left_table.record_size != right_table.record_size {
             findings.push(Finding::RecordSizeDiffers {
@@ -226,12 +239,18 @@ pub fn compare(left: &Raw, right: &Raw) -> Result<Vec<Finding>> {
         if seen.contains(&area.tag) {
             continue;
         }
-        let table = RecordTable::parse(area, right_svd.area_bytes(right, area)?)?;
+        // An area present only on the right may be one that is not a record table at all — a
+        // `USDa` declares `record_size = 0`, which is exactly what appears when a drum kit gains a
+        // user sample. Report it as a whole area rather than failing the entire comparison, which
+        // is the one thing a diff must never do when the files genuinely differ.
+        let records = RecordTable::parse(area, right_svd.area_bytes(right, area)?)
+            .map(|table| table.len())
+            .unwrap_or(0);
         findings.push(Finding::AreaOnlyIn {
             tag: area.tag_str(),
             side: Side::Right,
             size: area.size,
-            records: table.len(),
+            records,
         });
     }
 

@@ -52,12 +52,11 @@ pub struct AreaSpec {
     pub opaque: bool,
     /// Whether we can tell which user samples a record of this engine plays.
     ///
-    /// Only `PATa` qualifies: its four partials carry a confirmed wave group and slot number (see
-    /// [`crate::container::sample_slots`]). Every other engine stores its waves somewhere we have
-    /// not decoded — a drum kit's are in its paired `INSa`, whose wave blocks are located but whose
-    /// group field has never been seen set, because no fixture has a drum kit that plays a user
-    /// sample. Repackaging must therefore not *select* samples for these engines; see
-    /// [`crate::tonebank`], which carries all of them instead.
+    /// Two engines qualify. A `PATa` tone carries a confirmed wave group and slot number on each of
+    /// its four partials; a drum kit carries the same fields in its paired `INSa`, four wave blocks
+    /// per instrument, both marked by group value `2` (see [`crate::container::sample_slots_of`]).
+    /// Every other engine stores its waves somewhere still undecoded, so repackaging must not
+    /// *select* samples for them — see [`crate::tonebank`], which carries all of them instead.
     pub sample_refs_decoded: bool,
 }
 
@@ -154,6 +153,8 @@ pub const AREAS: [AreaSpec; 9] = [
         paired: &[b"RHYa", b"INSa"],
         tone_type: ToneType::Drum,
         msb: 86,
+        // The references live in the paired INSa, not in the kit record itself.
+        sample_refs_decoded: true,
         ..DEFAULT
     },
     AreaSpec {
