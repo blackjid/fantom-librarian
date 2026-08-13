@@ -358,10 +358,9 @@ SuperSAW but plays a *factory* tone whose bytes are in ROM rather than any file,
 `SuperSawPluckEMA` is a USER tone whose `OSC_TYPE 3` partial is self-evidencing. Across one backup
 the split is 7348 / 640 / 5 / 136 / 62.
 
-Worth noting what that makes `MyPolySyn1` partial 3: a **SuperSAW** partial carrying `group 2` wave
-numbers it cannot play. The instrument exported both of those samples anyway — the clearest evidence
-yet that Roland's dependency scan reads the wave fields without consulting `OSC_TYPE`, and the reason
-this tool does the same.
+`MyPolySyn1` partial 3 is SuperSAW carrying `group 2` wave numbers it cannot play — a tone left
+half-edited. The instrument exported those samples anyway, so its dependency scan does not consult
+`OSC_TYPE`, and neither does this tool.
 
 **A PCM-Sync partial names its wave somewhere else.** `Human Pad 1` reads on the panel as partial 1
 = PCM Sync wave **32**, partial 2 = Int bank a wave **324**. In the bytes, partial 2 is
@@ -376,10 +375,7 @@ display.
 
 **None of this changes what a sample dependency is, so far.** Every group-2 partial in the corpus is
 `OSC_TYPE 0` — 93 of 93 in `Black NARFSOUNDS`, 68 of 68 in the FFC bank — so no VA or Noise partial
-is contributing a phantom sample reference to any list this tool prints. The one exception is
-`MyPolySyn1` partial 3, which is `OSC_TYPE 3` with `group 2`; the instrument carried both its samples
-anyway, which suggests Roland's own dependency scan reads the wave fields without consulting
-`OSC_TYPE` — exactly what this tool does.
+is contributing a phantom sample reference to any list this tool prints. The one exception is `MyPolySyn1`, noted above.
 
 **A sync wave can never be a user sample — CONFIRMED at the panel.** The obvious worry was that a
 PCM-Sync partial might point `SYNC_WAV_NUM` at a user sample, in which case this tool would miss the

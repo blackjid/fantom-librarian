@@ -781,11 +781,9 @@ fn an_instrument_export_numbers_its_sample_reference_from_one() {
 
 /// A sampled tone taken out of a bank keeps its audio, which is what an SVZ is for.
 ///
-/// This bank has exactly **one** sampled tone and the instrument put **two** samples in it — which
-/// is the whole argument that a partial's second wave number is a live reference. `MyPolySyn1`
-/// names slot 2 on the left and slot 1 on the right, and since an export carries only what its
-/// tones reference (`EXPORT_Z-Core2.svz` carries one sample for one tone, not the machine's whole
-/// bank), both slots are dependencies. Extracting that tone must therefore reproduce both.
+/// `MyPolySyn1` names slots 2 and 1, and the instrument put both samples in the file, so extraction
+/// must reproduce both. Its partial is SuperSAW and plays neither — the instrument copies what the
+/// wave fields name regardless, and so does this.
 #[test]
 fn extracting_a_sampled_tone_carries_its_waveform() {
     let Some(raw) = open("Z-Core_20260623.svz") else {

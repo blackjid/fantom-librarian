@@ -385,8 +385,8 @@ fn rebuild(bank: &ToneBank, keep: &[usize]) -> Result<Raw> {
     //
     // The new numbers must be assigned in the order the slots are *emitted* below — ascending —
     // not in the order the tones happened to mention them. A tone that names a higher slot first
-    // (`MyPolySyn1` plays slot 2 on the left and slot 1 on the right) would otherwise be renumbered
-    // onto positions the output does not put those samples in, silently swapping its channels.
+    // (`MyPolySyn1` names slot 2 on the left and slot 1 on the right) would otherwise be renumbered
+    // onto positions the output does not put those samples in, silently swapping which is which.
     let needed: BTreeSet<u16> = keep
         .iter()
         .flat_map(|&index| bank.samples_of(index))
