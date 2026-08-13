@@ -16,7 +16,8 @@ mod svd;
 mod zone;
 
 pub use pat::{
-    expansion_banks, multisample_slots, remap_sample_slots, sample_slots, PatArea, Tone,
+    expansion_banks, multisample_slots, remap_multisample_slots, remap_sample_slots, sample_slots,
+    PatArea, Tone,
 };
 
 /// The user sample slots one record of `tag` plays, 1-based.

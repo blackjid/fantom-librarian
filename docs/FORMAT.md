@@ -801,6 +801,8 @@ instrument does not fill from the first free one on its own.
 > whole reason a Roland-authored fixture is worth keeping around.
 
 **Repackaging** (`crate::tonebank`) selects tones by index, carries the paired `INSa` for drum kits,
+carries the `MSPa` record of any multisample a selected tone plays — renumbering both the tone'''s
+reference to it and its own per-key sample slots —
 and carries the `USPa` slots and `USDa` sections the selected tones play, renumbering the tone's
 references to match. Samples nothing references are left behind, and the CLI says so. Area order is
 preserved from the source.

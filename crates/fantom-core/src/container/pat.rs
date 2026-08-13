@@ -252,12 +252,29 @@ fn read_u32(bytes: &[u8], at: usize) -> Result<u32> {
 /// rewritten, for the reason [`sample_slots`] reads both: a partial can name a slot per channel,
 /// and moving only the left one leaves the right pointing at whatever now occupies the old slot.
 pub fn remap_sample_slots(record: &mut [u8], remap: &std::collections::BTreeMap<u16, u16>) {
+    remap_numbers_for_group(record, wave::GROUP_SAMPLE, remap)
+}
+
+/// Rewrite a tone's **multisample** references through `remap` (old number -> new number).
+///
+/// Needed for the same reason samples are renumbered: an export numbers its multisamples densely
+/// from 1, so a tone that named multisample 7 on the instrument must name 1 in a file carrying only
+/// that one.
+pub fn remap_multisample_slots(record: &mut [u8], remap: &std::collections::BTreeMap<u16, u16>) {
+    remap_numbers_for_group(record, wave::GROUP_MULTISAMPLE, remap)
+}
+
+fn remap_numbers_for_group(
+    record: &mut [u8],
+    group: u8,
+    remap: &std::collections::BTreeMap<u16, u16>,
+) {
     for partial in 0..PARTIAL_COUNT {
         let base = wave::BASE + partial * PARTIAL_STRIDE;
-        let Some(&group) = record.get(base + wave::GROUP_TYPE) else {
+        let Some(&kind) = record.get(base + wave::GROUP_TYPE) else {
             break;
         };
-        if group != wave::GROUP_SAMPLE {
+        if kind != group {
             continue;
         }
         for at in [wave::NUMBER_L, wave::NUMBER_R] {

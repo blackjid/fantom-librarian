@@ -556,6 +556,52 @@ fn a_multisamples_samples_are_reached_through_it() {
     );
 }
 
+/// Extracting a multisampled tone carries the whole chain, renumbered end to end.
+///
+/// `T8_MSMP_TONE.svz` holds two tones and five samples. Taking only `T8_MSAMP` must leave behind
+/// the two that belong to the other tone and carry the three its multisample maps — none of which
+/// the tone names directly. Everything then has to agree in the output's own numbering: the tone
+/// points at multisample 1, that record's key ranges point at slots 1, 2 and 3, and those are the
+/// three samples present.
+#[test]
+fn extracting_a_multisampled_tone_carries_and_renumbers_the_whole_chain() {
+    let Some(raw) = open("hwtest_back/T8_MSMP_TONE.svz") else {
+        return;
+    };
+    let tones = fantom_core::codec::read_bundled_tones(&raw).unwrap();
+    let index = tones
+        .iter()
+        .position(|t| t.name == "T8_MSAMP")
+        .expect("the multisampled tone is present");
+
+    let out = fantom_core::tonebank::extract_tones(&raw, &[index]).unwrap();
+    let svd = fantom_core::container::Svd::parse(&out).unwrap();
+
+    let bank = fantom_core::container::read_samples(&out, &svd).unwrap();
+    let names: Vec<&str> = bank.slots.iter().map(|s| s.name.as_str()).collect();
+    assert_eq!(names, ["A_Bass_95_Am", "A_RiffA_95_Am", "D_RiffB_95_Am"]);
+
+    let pat = fantom_core::container::PatArea::from_svd(&out, &svd).unwrap();
+    assert_eq!(
+        pat.get(0).unwrap().multisamples,
+        [1],
+        "renumbered to the only multisample carried"
+    );
+
+    let table = fantom_core::container::RecordTable::from_svd(&out, &svd, b"MSPa")
+        .unwrap()
+        .expect("the multisample record travels");
+    let record = table.record(0).unwrap();
+    assert_eq!(
+        fantom_core::container::sample_slots_of(b"MSPa", record),
+        [1, 2, 3],
+        "its per-key slots follow the samples into the new numbering"
+    );
+    let map = fantom_core::container::multisample_key_map(record);
+    assert_eq!((map[0].slot, map[46].slot, map[127].slot), (1, 2, 3));
+    assert!(fantom_core::verify::check(&out).unwrap().is_ok());
+}
+
 /// The captured multisample's key map, read from the backup that holds it.
 #[test]
 fn a_multisample_maps_key_ranges_onto_panel_sample_slots() {

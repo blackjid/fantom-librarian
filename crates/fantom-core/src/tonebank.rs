@@ -146,6 +146,8 @@ struct ToneBank {
     family: Vec<LoadedArea>,
     spec: &'static AreaSpec,
     slots: Option<LoadedArea>,
+    /// `MSPa` — the multisamples this bank carries, when any tone plays one.
+    multisamples: Option<LoadedArea>,
     waveforms: Vec<Waveform>,
     /// The `format` stamp of the source's `USDa`, so a rebuilt one keeps it.
     waveform_format: [u8; 4],
@@ -195,6 +197,10 @@ impl ToneBank {
             Some(area) => Some(LoadedArea::load(raw, &svd, area)?),
             None => None,
         };
+        let multisamples = match svd.area(b"MSPa") {
+            Some(area) => Some(LoadedArea::load(raw, &svd, area)?),
+            None => None,
+        };
         let waveforms = read_waveforms(raw, &svd)?;
         let waveform_format = svd
             .area(b"USDa")
@@ -205,7 +211,7 @@ impl ToneBank {
         let handled: Vec<[u8; 4]> = family
             .iter()
             .map(|a| a.tag)
-            .chain([*b"USPa", *b"USDa"])
+            .chain([*b"USPa", *b"USDa", *b"MSPa"])
             .collect();
         let mut other = Vec::new();
         for area in &svd.areas {
@@ -219,6 +225,7 @@ impl ToneBank {
             family,
             spec,
             slots,
+            multisamples,
             waveforms,
             waveform_format,
             other,
@@ -245,7 +252,37 @@ impl ToneBank {
                 }
             }
         }
+        // A multisample is reached by number and names samples of its own; those are needed just
+        // as directly, and nothing in the tone record mentions them.
+        for number in self.multisamples_of(index) {
+            for slot in self.multisample_samples(number) {
+                if !slots.contains(&slot) {
+                    slots.push(slot);
+                }
+            }
+        }
         slots
+    }
+
+    /// The 1-based multisample numbers the record at `index` plays.
+    fn multisamples_of(&self, index: usize) -> Vec<u16> {
+        if !self.spec.sample_refs_decoded {
+            return Vec::new();
+        }
+        self.family
+            .first()
+            .and_then(|area| area.records.get(index))
+            .map(|record| crate::container::multisample_slots(record))
+            .unwrap_or_default()
+    }
+
+    /// The sample slots multisample `number` maps across the keyboard.
+    fn multisample_samples(&self, number: u16) -> Vec<u16> {
+        self.multisamples
+            .as_ref()
+            .and_then(|area| area.records.get(number as usize - 1))
+            .map(|record| crate::container::sample_slots_of(b"MSPa", record))
+            .unwrap_or_default()
     }
 
     /// Whether this bank holds user samples at all, whichever engine it is for.
@@ -361,6 +398,17 @@ fn rebuild(bank: &ToneBank, keep: &[usize]) -> Result<Raw> {
         .collect();
     let carry_all = bank.must_carry_all_samples();
 
+    // Multisamples are renumbered densely too, on the same principle: emission order.
+    let wanted: BTreeSet<u16> = keep
+        .iter()
+        .flat_map(|&index| bank.multisamples_of(index))
+        .collect();
+    let msmp_map: BTreeMap<u16, u16> = wanted
+        .iter()
+        .enumerate()
+        .map(|(position, &number)| (number, position as u16 + 1))
+        .collect();
+
     let mut areas: Vec<([u8; 4], [u8; 4], Vec<u8>)> = Vec::new();
     for area in &bank.family {
         // Rewrite each tone's sample references *before* the body is laid out, so the checksum
@@ -375,6 +423,9 @@ fn rebuild(bank: &ToneBank, keep: &[usize]) -> Result<Raw> {
             if !slot_map.is_empty() {
                 crate::container::remap_sample_slots_of(&area.tag, &mut record, &slot_map);
             }
+            if !msmp_map.is_empty() && area.tag == *b"PATa" {
+                crate::container::remap_multisample_slots(&mut record, &msmp_map);
+            }
             records.push(record);
         }
         let info: Vec<&[u8]> = keep
@@ -383,6 +434,28 @@ fn rebuild(bank: &ToneBank, keep: &[usize]) -> Result<Raw> {
             .collect();
         let rows: Vec<&[u8]> = records.iter().map(Vec::as_slice).collect();
         areas.push((area.tag, area.format, area.assemble(&rows, &info)));
+    }
+
+    if !msmp_map.is_empty() {
+        let source = bank.multisamples.as_ref().ok_or_else(|| {
+            Error::Unrecognized("a tone plays a multisample but the bank has no MSPa area".into())
+        })?;
+        let mut records = Vec::with_capacity(wanted.len());
+        for &number in &wanted {
+            let mut record = source
+                .records
+                .get(number as usize - 1)
+                .cloned()
+                .ok_or_else(|| {
+                    Error::Unrecognized(format!("no MSPa record for multisample {number}"))
+                })?;
+            // Its per-key slots move with the samples they name.
+            crate::container::remap_sample_slots_of(b"MSPa", &mut record, &slot_map);
+            records.push(record);
+        }
+        let rows: Vec<&[u8]> = records.iter().map(Vec::as_slice).collect();
+        let info: Vec<&[u8]> = rows.iter().map(|_| [].as_slice()).collect();
+        areas.push((source.tag, source.format, source.assemble(&rows, &info)));
     }
 
     if carry_all {
