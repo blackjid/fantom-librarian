@@ -3,9 +3,14 @@ use crate::{Error, Result};
 
 /// The `PATa` (patch/tone) area: a header plus fixed-stride tone records.
 ///
-/// Same envelope as `PRFa`: a 16-byte header (`count`, `record_size`, `data_start`) then `count`
-/// records. Each record's first 16 bytes are the tone name; byte `+0x10` is the tone category.
-/// A scene's per-zone `tone_id` indexes this list for user tones (see `docs/FORMAT.md`).
+/// Same envelope as `PRFa`: a header of `count`, `record_size`, `data_start`, then `count` records.
+/// Each record's first 16 bytes are the tone name; byte `+0x10` is the tone category. A scene's
+/// per-zone `tone_id` indexes this list for user tones (see `docs/FORMAT.md`).
+///
+/// **Records start at the declared `data_start`, not at a fixed 16.** Every SVD5 area declares 16,
+/// which is why treating it as constant worked for years; an SVZ declares `16 + 4 × count`, because
+/// it stores a CRC-32 per record between the header and the records. Reading an SVZ's `PATa` at a
+/// fixed offset lands four bytes short per info word and scrambles every field.
 pub struct PatArea {
     tones: Vec<Tone>,
 }
@@ -24,6 +29,8 @@ pub struct Tone {
 const HEADER_LEN: usize = 0x10;
 const COUNT_OFFSET: usize = 0x00;
 const RECORD_SIZE_OFFSET: usize = 0x04;
+/// Where the records begin, measured from the area body.
+const DATA_START_OFFSET: usize = 0x08;
 const NAME_LEN: usize = 16;
 const CATEGORY_OFFSET: usize = 0x10;
 
@@ -74,9 +81,18 @@ impl PatArea {
             return Err(Error::Unrecognized("PATa record size is zero".into()));
         }
 
+        // Trust the declared start, but never let a bad value push records out of the area or
+        // overlap the header just read — the same rule [`crate::container::RecordTable`] applies.
+        let declared = read_u32(area, DATA_START_OFFSET)? as usize;
+        let data_start = if (HEADER_LEN..=area.len()).contains(&declared) {
+            declared
+        } else {
+            HEADER_LEN
+        };
+
         let mut tones = Vec::with_capacity(count);
         for i in 0..count {
-            let start = HEADER_LEN + i * record_size;
+            let start = data_start + i * record_size;
             let Some(record) = area.get(start..start + record_size) else {
                 break; // truncated area — keep what parsed
             };
@@ -172,6 +188,42 @@ mod tests {
         assert_eq!(pat.get(0).unwrap().category, 0x23);
         assert_eq!(pat.get(1).unwrap().name, "Africa Kalimba");
         assert!(pat.get(2).is_none());
+    }
+
+    /// An SVZ's `PATa` puts a CRC-32 per record between the header and the records, so its records
+    /// start at `16 + 4 × count`. Reading at a fixed 16 lands mid-header and scrambles every field —
+    /// which is what happened to the one tone of an instrument-written `.svz` export.
+    #[test]
+    fn records_start_at_the_declared_offset_not_a_fixed_sixteen() {
+        const RECORD_SIZE: usize = 64;
+        let names = [("Sledgehammer Sha", 0x11u8), ("Second Tone", 0x22)];
+        let data_start = HEADER_LEN + names.len() * 4;
+
+        let mut area = Vec::new();
+        area.extend_from_slice(&(names.len() as u32).to_le_bytes());
+        area.extend_from_slice(&(RECORD_SIZE as u32).to_le_bytes());
+        area.extend_from_slice(&(data_start as u32).to_le_bytes());
+        area.extend_from_slice(&[0u8; 4]);
+        area.extend_from_slice(&[0xAA; 8]); // the per-record info words
+        for (name, category) in names {
+            let mut record = vec![0u8; RECORD_SIZE];
+            record[..name.len()].copy_from_slice(name.as_bytes());
+            record[CATEGORY_OFFSET] = category;
+            area.extend_from_slice(&record);
+        }
+
+        let pat = PatArea::parse(&area).unwrap();
+        assert_eq!(pat.get(0).unwrap().name, "Sledgehammer Sha");
+        assert_eq!(pat.get(0).unwrap().category, 0x11);
+        assert_eq!(pat.get(1).unwrap().name, "Second Tone");
+    }
+
+    /// A declared start that cannot be right must not send the reader out of the area.
+    #[test]
+    fn an_impossible_data_start_falls_back_to_the_fixed_header() {
+        let mut area = area_with(&[("Africa Brass", 0x23)], 64);
+        area[8..12].copy_from_slice(&0x5555_5555u32.to_le_bytes());
+        assert_eq!(PatArea::parse(&area).unwrap().get(0).unwrap().name, "Africa Brass");
     }
 
     /// Build a tone record whose partials use the given `(group, wave number)` pairs.
