@@ -44,11 +44,6 @@ const ZONE_COUNT: usize = 16;
 
 /// One named user-tone record physically bundled in an SVD area.
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Serialize, serde::Deserialize),
-    serde(rename_all = "camelCase")
-)]
 pub struct BundledTone {
     /// Four-byte SVD area tag containing the record.
     pub area: [u8; 4],
