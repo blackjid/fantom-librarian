@@ -257,21 +257,19 @@ decoded**. Needs a capture with a real user multisample.
 
 ### How a tone references a sample — CONFIRMED
 
-A ZEN-Core `PATa` record holds **four partials at stride 124 (`0x7c`)**. Each partial carries a
-28-byte wave-select block at **`0xde + p*124`** — the structure Roland's own editor schema calls a
-`WMT`:
+A ZEN-Core `PATa` record holds **four partials at stride 124 (`0x7c`), the first at `0xc8`**. Its
+wave selection is four consecutive fields 23 bytes in:
 
-| Block offset | Size | Field |
-|--------------|------|-------|
-| `+0x00` | 1 | wave switch |
-| `+0x01` | 1 | wave **group type**: `0` = internal ROM wave, `2` = **user sample**, `1`/`3` also seen |
-| `+0x02` | 2 | wave group id |
-| `+0x04` | 2 | wave **number L**, LE — a ROM wave index, or a **1-based `SMPa` slot** when the group is 2 |
-| `+0x06` | 2 | wave **number R**, same encoding; `0` means none |
+| Partial offset | Absolute (p=0) | Size | Field |
+|----------------|----------------|------|-------|
+| `+23` | `0xdf` | 1 | wave **group type**: `0` = internal ROM wave, `2` = **user sample**, `1`/`3` also seen |
+| `+24` | `0xe0` | 2 | wave group id |
+| `+26` | `0xe2` | 2 | wave **number L**, LE — a ROM wave index, or a **1-based `SMPa` slot** when the group is 2 |
+| `+28` | `0xe4` | 2 | wave **number R**, same encoding; `0` means none |
 
-> Earlier revisions described this as "group at `0xdf`, number at `0xe2`". Those are the same bytes
-> — `0xde + 1` and `0xde + 4` — but the framing hid a field: **there are two wave numbers, one per
-> channel**, and only the left was being read.
+> Earlier revisions listed only the group at `0xdf` and the number at `0xe2`. Those offsets were
+> right, but stopping there hid a field: **there are two wave numbers, one per channel**, and only
+> the left was being read.
 
 **Both numbers are live references.** 25 of `Black NARFSOUNDS`'s 93 sampled partials name a right
 slot, and it is frequently a *different* sample: `Beat It Gong` plays slot 1 `1 Beat It - C2` on the
@@ -391,16 +389,36 @@ since selecting on an unobserved value would silently drop audio if the guess we
 
 The block base and stride here were found by byte-level survey (the switch field takes no value but
 0 and 1 at this alignment and dozens at any other). The **field names and the `+0x01` group type**
-came from [Roland-Zen-Decode-XML](https://github.com/DrKnackeratorStrikesAgain/Roland-Zen-Decode-XML),
-which extracts parameter maps from Roland's own editor XML for other ZEN-Core devices — Jupiter-X,
-Juno-X, MV-1. Its `PCMRInst` is **216 bytes** and its `PCMR` is **3328**, matching this file's `INSa`
-sub-record and `RHYa` record exactly, and its `INST_CMN.WMT[4] @ 0x1c` lands precisely where the
-survey put the blocks.
+came from two projects by the same author, which arrive at the structure from Roland's own editor
+data for other ZEN-Core devices — Jupiter-X, Juno-X, MV-1 — rather than from file bytes:
 
-That project is used here as a source of *hypotheses*, not of facts: every field above was checked
-against the fixtures in this repository before being written down, which is how the second wave
-number turned from a name in someone else's schema into a confirmed dependency with a test. Nothing
-from it is vendored, and it carries no license file.
+- [Roland-Zen-Decode-XML](https://github.com/DrKnackeratorStrikesAgain/Roland-Zen-Decode-XML)
+  (no license file) generates parameter maps from the editors' XML. Its `PCMRInst` is **216 bytes**
+  and `PCMR` **3328**, matching this format's `INSa` sub-record and `RHYa` record exactly, and its
+  `INST_CMN.WMT[4] @ 0x1c` lands precisely where the survey put the blocks.
+- [roland-structured-storage-pattern](https://github.com/DrKnackeratorStrikesAgain/roland-structured-storage-pattern)
+  (MIT) is an ImHex pattern for these containers. Its `PCMEX` is **1632** bytes with
+  `PCMT_PTL[4]` at stride 124, and inside that partial `WAV_GTYPE`, `WAV_GID`, `WAV_NUM_L` and
+  `WAV_NUM_R` fall at +23, +24, +26 and +28 — i.e. `0xdf`, `0xe0`, `0xe2`, `0xe4`, exactly the
+  offsets confirmed here. It also models an area header as `count / elementSize / dataStartOffset`
+  whose extra words are "CRC32 checksums, one per element — or offsets, if the elements are variable
+  length like in an SVZ user samples chunk", which is independently the two shapes documented above.
+
+Both are used as sources of *hypotheses*, not of facts: every field was checked against the fixtures
+in this repository before being written down, which is how the second wave number turned from a name
+in someone else's schema into a confirmed dependency with a test. Nothing from either is vendored.
+
+Two things they do **not** answer, for the avoidance of a second look: their `DIFa` is an empty
+struct, and their ZenCore sample data is an unmapped stub — `USPa` is explicitly an "unknown
+chapter" there. The `USPa`/`SMPa`/`SMPd` mapping in this document has no counterpart in them.
+
+> **The MC/MV XOR does not apply here.** That pattern documents MC/MV looper and pad sample data as
+> 16-bit PCM "encoded with an XOR algorithm" against a 20-byte key. ZenCore sample data is *not*
+> encoded: measured over 200 kB of a FANTOM-6 backup's `SMPd`, the raw bytes average 1897 in
+> absolute delta between consecutive 16-bit samples — smooth, like real audio — and XOR-decoding
+> leaves that unchanged, while a fresh export's silent lead-in is a constant `0xffff` raw and
+> becomes non-constant once decoded. Copying sections verbatim is right either way, but a future
+> WAV export would have needed to know.
 
 **Validation** — "Africa Main" (scene 385) decodes to exactly the panel's 4 zones:
 Z1 Brass 0–71 · Z2 Kalimba 73–127 · Z3 Kalimba 72–72 · Z4 JX-Cream 0–71 (levels 107/107/100/82).

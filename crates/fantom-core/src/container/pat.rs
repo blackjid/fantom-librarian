@@ -38,14 +38,18 @@ const CATEGORY_OFFSET: usize = 0x10;
 const PARTIAL_STRIDE: usize = 124;
 const PARTIAL_COUNT: usize = 4;
 
-/// A partial's wave-select block, at `0xde + 124 * partial` within the record.
+/// A partial's wave selection, within the 124-byte partial that starts at `0xc8 + 124 * partial`.
 ///
-/// Roland's own editor schema calls this a `WMT`, and it is the same 28-byte block a drum kit's
-/// `INSa` instrument uses (there, four of them at `+0x1c`). Its shape explains what a byte-level
-/// survey could only guess at: a switch, a **group type**, a group id, and **two** wave numbers —
-/// left and right, because a wave can be a stereo pair.
-mod wmt {
-    /// Start of partial 0's block within a `PATa` record.
+/// The four fields are consecutive members of the partial — `WAV_GTYPE`, `WAV_GID`, `WAV_NUM_L`,
+/// `WAV_NUM_R` in Roland's naming — sitting 23, 24, 26 and 28 bytes in. They are expressed here
+/// relative to `BASE = 0xde` because that keeps the arithmetic in one place; the absolute offsets
+/// for partial 0 are the familiar `0xdf` group and `0xe2` wave number, plus `0xe4` for the second.
+///
+/// What a byte-level survey could not show is that there are **two** wave numbers, one per channel.
+/// (A drum kit's `INSa` instrument stores the same four fields as a real 28-byte `WMT` array at
+/// `+0x1c`; a tone keeps them inline.)
+mod wave {
+    /// Where partial 0's wave fields begin, chosen so the offsets below are small.
     pub const BASE: usize = 0xde;
     pub const GROUP_TYPE: usize = 0x01;
     pub const NUMBER_L: usize = 0x04;
@@ -74,14 +78,14 @@ mod wmt {
 pub fn sample_slots(record: &[u8]) -> Vec<u16> {
     let mut slots = Vec::new();
     for partial in 0..PARTIAL_COUNT {
-        let base = wmt::BASE + partial * PARTIAL_STRIDE;
-        let Some(&group) = record.get(base + wmt::GROUP_TYPE) else {
+        let base = wave::BASE + partial * PARTIAL_STRIDE;
+        let Some(&group) = record.get(base + wave::GROUP_TYPE) else {
             break;
         };
-        if group != wmt::GROUP_SAMPLE {
+        if group != wave::GROUP_SAMPLE {
             continue;
         }
-        for at in [wmt::NUMBER_L, wmt::NUMBER_R] {
+        for at in [wave::NUMBER_L, wave::NUMBER_R] {
             let Some(number) = read_u16(record, base + at) else {
                 break;
             };
@@ -171,14 +175,14 @@ fn read_u32(bytes: &[u8], at: usize) -> Result<u32> {
 /// and moving only the left one leaves the right pointing at whatever now occupies the old slot.
 pub fn remap_sample_slots(record: &mut [u8], remap: &std::collections::BTreeMap<u16, u16>) {
     for partial in 0..PARTIAL_COUNT {
-        let base = wmt::BASE + partial * PARTIAL_STRIDE;
-        let Some(&group) = record.get(base + wmt::GROUP_TYPE) else {
+        let base = wave::BASE + partial * PARTIAL_STRIDE;
+        let Some(&group) = record.get(base + wave::GROUP_TYPE) else {
             break;
         };
-        if group != wmt::GROUP_SAMPLE {
+        if group != wave::GROUP_SAMPLE {
             continue;
         }
-        for at in [wmt::NUMBER_L, wmt::NUMBER_R] {
+        for at in [wave::NUMBER_L, wave::NUMBER_R] {
             let Some(number) = read_u16(record, base + at) else {
                 break;
             };
@@ -258,13 +262,13 @@ mod tests {
     /// Build a tone record whose partials use the given `(group, left, right)` triples.
     fn tone_with_partials(partials: &[(u8, u16, u16)]) -> Vec<u8> {
         let mut record =
-            vec![0u8; wmt::BASE + PARTIAL_COUNT * PARTIAL_STRIDE + wmt::NUMBER_R + 2];
+            vec![0u8; wave::BASE + PARTIAL_COUNT * PARTIAL_STRIDE + wave::NUMBER_R + 2];
         for (partial, &(group, left, right)) in partials.iter().enumerate() {
-            let base = wmt::BASE + partial * PARTIAL_STRIDE;
-            record[base + wmt::GROUP_TYPE] = group;
-            record[base + wmt::NUMBER_L..base + wmt::NUMBER_L + 2]
+            let base = wave::BASE + partial * PARTIAL_STRIDE;
+            record[base + wave::GROUP_TYPE] = group;
+            record[base + wave::NUMBER_L..base + wave::NUMBER_L + 2]
                 .copy_from_slice(&left.to_le_bytes());
-            record[base + wmt::NUMBER_R..base + wmt::NUMBER_R + 2]
+            record[base + wave::NUMBER_R..base + wave::NUMBER_R + 2]
                 .copy_from_slice(&right.to_le_bytes());
         }
         record
@@ -306,8 +310,8 @@ mod tests {
 
         assert_eq!(sample_slots(&record), [101, 102]);
         // A ROM partial's stereo pair is not a sample reference and must not move.
-        let base = wmt::BASE + PARTIAL_STRIDE;
-        assert_eq!(read_u16(&record, base + wmt::NUMBER_L), Some(383));
-        assert_eq!(read_u16(&record, base + wmt::NUMBER_R), Some(384));
+        let base = wave::BASE + PARTIAL_STRIDE;
+        assert_eq!(read_u16(&record, base + wave::NUMBER_L), Some(383));
+        assert_eq!(read_u16(&record, base + wave::NUMBER_R), Some(384));
     }
 }
