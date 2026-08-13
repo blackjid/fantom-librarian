@@ -1,11 +1,14 @@
 //! Talking to a Fantom over SysEx.
 //!
 //! Roland addresses every parameter the instrument holds, and the same map describes both the
-//! wire and the file: a tone record is the parameter blocks laid end to end, with multi-nibble
-//! wire fields packed into little-endian bytes and signed fields stored zero-centred. [`params`]
-//! is that correspondence; this module is the transport.
+//! wire and the file: a record is the parameter blocks laid end to end, with multi-nibble wire
+//! fields packed into little-endian bytes and signed fields stored zero-centred. That
+//! correspondence is [`fantom_core::params`], because it is as much a fact about the file as
+//! about the wire and the librarian reads it without a MIDI port in sight. This crate is only
+//! the transport, and re-exports the map for callers that want both.
 
-pub mod params;
+pub use fantom_core::params;
+pub use fantom_core::params::file_value;
 
 /// Model ID of the FANTOM-6/7/8, its EX revision, and the FANTOM-06/07/08.
 ///
@@ -74,16 +77,6 @@ pub fn offset_addr(base: [u8; 4], off: [u8; 3]) -> [u8; 4] {
         ((s >> 7) & 0x7F) as u8,
         (s & 0x7F) as u8,
     ]
-}
-
-/// Read a parameter's value out of a file record slice.
-pub fn file_value(rec: &[u8], p: &params::Param) -> u32 {
-    let at = p.byte_offset as usize;
-    let mut v = 0u32;
-    for i in (0..p.len_bytes as usize).rev() {
-        v = (v << 8) | rec[at + i] as u32;
-    }
-    v
 }
 
 /// Render a parameter's file value as the bytes the wire expects.

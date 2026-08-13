@@ -91,13 +91,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("zone {} receives on MIDI channel {}", zone + 1, channel + 1);
 
     let base = temp_tone(zone);
-    for inst in params::TONE {
+    for inst in params::tone::TONE {
         let frec = &rec[inst.byte_offset as usize..];
         let data = block_bytes(frec, inst.block);
         co.send(&dt1(offset_addr(base, inst.sysex_offset), &data))?;
         std::thread::sleep(Duration::from_millis(20)); // Roland's inter-packet interval
     }
-    println!("wrote {} blocks", params::TONE.len());
+    println!("wrote {} blocks", params::tone::TONE.len());
 
     // The panel caches the tone name and a temporary-memory write does not invalidate it, so the
     // screen keeps showing the old name until something makes it redraw. Selecting another zone
@@ -113,7 +113,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let (mut ok, mut bad, mut unread) = (0, 0, 0);
     let mut first: Option<String> = None;
-    for inst in params::TONE {
+    for inst in params::tone::TONE {
         co.send(&rq1(offset_addr(base, inst.sysex_offset), inst.block.sysex_len as u32))?;
         let Ok(r) = rx.recv_timeout(REPLY) else { unread += 1; continue };
         let wire = &r[12..r.len() - 2];

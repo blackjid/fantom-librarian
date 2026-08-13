@@ -9,6 +9,7 @@
 //! - [`model`] — the domain: [`model::Scene`], [`model::Zone`], [`model::ToneRef`], metadata.
 //! - [`address`] — the one table saying which area a tone address indexes, and at which record.
 //! - [`codec`] — maps container bytes onto [`model`] types (read now, write later).
+//! - [`params`] — Roland's parameter map, file bytes against SysEx addresses.
 //! - [`presets`] — factory ZEN-Core preset tone name lookup (bundled sound list).
 //! - [`diff`] — compares two files by area and record; the tool that finds new offsets.
 //! - [`tonebank`] — repackaging SVZ tone banks, which carry their samples.
@@ -26,6 +27,7 @@ pub mod codec;
 pub mod container;
 pub mod diff;
 pub mod model;
+pub mod params;
 pub mod presets;
 pub mod repackage;
 pub mod samplebank;

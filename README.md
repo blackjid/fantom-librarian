@@ -18,9 +18,10 @@ crates/
     repackage.rs # extract / canary / merge — rebundling and renumbering dependencies
     diff.rs      # compares two files by area and record; how new offsets get found
     presets.rs   # factory ZEN-Core preset tone name lookup (bundled sound list)
+    params/      # Roland's parameter map — file bytes against SysEx addresses
     tests/       # tests against real files; each skips when its fixture is absent
   fantom-cli/    # the `fantom` binary — first consumer of the library
-  fantom-midi/   # SysEx transport; params.rs maps file bytes onto Roland's parameter map
+  fantom-midi/   # SysEx transport; reads the parameter map from fantom-core
 tools/           # gen_params.py — regenerates the parameter table
 docs/FORMAT.md   # reverse-engineering notebook for the on-disk layout
 fixtures/        # real Fantom files and hardware captures (gitignored)

@@ -94,7 +94,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         matched += 1;
         eprint!("\r  {matched} tones…");
 
-        for inst in params::TONE {
+        for inst in params::tone::TONE {
             let addr = offset_addr(temp_tone(0), inst.sysex_offset);
             co.send(&rq1(addr, inst.block.sysex_len as u32))?;
             let Ok(r) = rx.recv_timeout(REPLY) else {
