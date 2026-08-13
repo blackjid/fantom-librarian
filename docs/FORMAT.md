@@ -676,6 +676,29 @@ So converting a backup's sample into SVZ form is a **header rewrite around an un
 payload**, not a re-encode. The remaining unknown is the flags word, which takes two values across
 the pack (`0x1002` and `0x11002`) and one in the backup.
 
+### A tool-built sample file imports — HARDWARE-CONFIRMED
+
+A sample-only SVZ built by [`crate::samplebank`] from a backup was imported on a **FANTOM-6** via
+`MENU → IMPORT SAMPLE`. The dialog listed exactly the two samples the file carries, numbered 1 and
+2; both were written to user-chosen slots and **play correctly there, under their own names**.
+
+That one import validates every construction rule at once — preamble revision `3` and the `KY019$`
+stamp, `USPa` records synthesized from `SMPa` by the `-0x2c` shift, the rewritten `SMPd` headers,
+the per-section word carried rather than computed, every record CRC-32, and the area geometry. Until
+then all of it was inference from a byte-identical reproduction of someone else's file.
+
+**The destination is chosen by the user, not assigned by the instrument.** The import runs in two
+steps: pick which samples, then pick where they go. Nothing in the file proposes a slot, and the
+instrument does not fill from the first free one on its own.
+
+> **Open: the import dialog's preview plays nothing.** Pressing preview on either sample in the
+> import list produced no sound, though both play correctly once imported. Since the audio is
+> demonstrably intact, this points at a header field the preview path reads and the import path does
+> not — the flags word and the undecoded `USPa` tail at `0x2c..0x3c` are the candidates. It is not
+> yet known whether Roland's own sample files preview either; importing `FFC SAMPLES 1-50.svz` and
+> pressing preview on it is the test that separates "our file is wrong" from "preview does not work
+> in this flow".
+
 **Repackaging** (`crate::tonebank`) selects tones by index, carries the paired `INSa` for drum kits,
 and carries the `USPa` slots and `USDa` sections the selected tones play, renumbering the tone's
 references to match. Samples nothing references are left behind, and the CLI says so. Area order is
