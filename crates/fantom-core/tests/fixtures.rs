@@ -315,6 +315,61 @@ fn the_sample_bank_agrees_with_its_waveform_directory() {
         .is_empty());
 }
 
+/// A commercial pack: a scene bank whose tones name sample slots 1..50, and the sample-only SVZ
+/// its instructions say to import into those slots. Its 50 samples are the same recordings as the
+/// `2023.4.8+topandprisma` backup's, which is what makes the two container shapes comparable.
+const FFC_SAMPLES: &str =
+    "Fantom & Fantom-0 FFC 3 Pack Bundle Open For Instructions/FFC SAMPLES 1-50.svz";
+const SAMPLED_BACKUP: &str = "backup/ROLAND/FANTOM/BACKUP/2023.4.8+topandprisma/FANTOM.SVD";
+
+/// Building a sample-only SVZ from a backup must reproduce the one Roland's own tooling shipped.
+///
+/// This is the strongest check available on the conversion, because the pack and the backup hold
+/// the *same 50 recordings* in the two different shapes. Every rule the builder applies is under
+/// test at once: the `USPa` record layout, the `SMPd` header rewrite, where the audio starts in
+/// each shape, how much of it a backup section really has, the per-section word that is carried
+/// rather than computed, the area geometry, and every CRC-32.
+///
+/// One byte is allowed to differ: the preamble's format revision. The pack was written by an older
+/// OS and says 2; a current FANTOM writes 3 for an SVZ carrying samples (`EXPORT_Z-Core2.svz`), and
+/// that is what this emits.
+#[test]
+fn building_a_sample_svz_from_a_backup_reproduces_a_shipped_one() {
+    let (Some(backup), Some(shipped)) = (open(SAMPLED_BACKUP), open(FFC_SAMPLES)) else {
+        return;
+    };
+    let slots: Vec<usize> = (0..50).collect();
+    let built = fantom_core::samplebank::export_samples(&backup, &slots).unwrap();
+
+    assert_eq!(built.bytes().len(), shipped.bytes().len(), "size differs");
+    const REVISION_BYTE: usize = 0x05;
+    let differing: Vec<usize> = built
+        .bytes()
+        .iter()
+        .zip(shipped.bytes())
+        .enumerate()
+        .filter(|(_, (a, b))| a != b)
+        .map(|(i, _)| i)
+        .collect();
+    assert_eq!(
+        differing,
+        [REVISION_BYTE],
+        "only the format revision may differ"
+    );
+}
+
+/// A file with no user samples cannot be a source, and must say so rather than emit an empty bank.
+#[test]
+fn a_scene_export_cannot_source_sample_audio() {
+    let Some(raw) = open("backup/ROLAND/SOUND/NARF/FANTOM.SVD") else {
+        return;
+    };
+    let error = fantom_core::samplebank::export_samples(&raw, &[0])
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("no SMPa area"), "{error}");
+}
+
 /// SVZ tone banks, which use a different envelope and carry their samples.
 const TONE_BANKS: [&str; 4] = [
     "Z-Core_20260623.svz",              // 274 ZEN-Core tones, 2 samples

@@ -378,7 +378,7 @@ fn rebuild(bank: &ToneBank, keep: &[usize]) -> Result<Raw> {
             areas.push((slots.tag, slots.format, slots.build(&bank.all_slots())?));
         }
         if !bank.waveforms.is_empty() {
-            let sections = bank.waveforms.iter().map(|w| (w.slot, w));
+            let sections = bank.waveforms.iter().map(|w| (w.slot, w.word, w.bytes.as_slice()));
             areas.push((
                 *b"USDa",
                 bank.waveform_format,
@@ -393,14 +393,14 @@ fn rebuild(bank: &ToneBank, keep: &[usize]) -> Result<Raw> {
         areas.push((slots.tag, slots.format, slots.build(&keep_slots)?));
 
         // The slots were renumbered densely above; the directory must say the same.
-        let sections: Vec<(u32, &Waveform)> = keep_slots
+        let sections: Vec<(u32, u32, &[u8])> = keep_slots
             .iter()
             .enumerate()
             .map(|(new, &slot)| {
                 bank.waveforms
                     .iter()
                     .find(|w| w.slot as usize == slot)
-                    .map(|w| (new as u32, w))
+                    .map(|w| (new as u32, w.word, w.bytes.as_slice()))
                     .ok_or_else(|| {
                         Error::Unrecognized(format!("no waveform data for sample slot {slot}"))
                     })
@@ -500,7 +500,8 @@ fn merge(a: &ToneBank, b: &ToneBank) -> Result<Raw> {
                 areas.push((slots.tag, slots.format, slots.build(&source.all_slots())?));
             }
             if !source.waveforms.is_empty() {
-                let sections = source.waveforms.iter().map(|w| (w.slot, w));
+                let sections =
+                    source.waveforms.iter().map(|w| (w.slot, w.word, w.bytes.as_slice()));
                 areas.push((
                     *b"USDa",
                     source.waveform_format,
@@ -517,7 +518,10 @@ fn merge(a: &ToneBank, b: &ToneBank) -> Result<Raw> {
         let rows: Vec<&[u8]> = slot_records.iter().map(Vec::as_slice).collect();
         let words: Vec<&[u8]> = slot_info.iter().map(Vec::as_slice).collect();
         areas.push((slots.tag, slots.format, slots.assemble(&rows, &words)));
-        let sections = waveforms.iter().enumerate().map(|(i, w)| (i as u32, w));
+        let sections = waveforms
+            .iter()
+            .enumerate()
+            .map(|(i, w)| (i as u32, w.word, w.bytes.as_slice()));
         areas.push((*b"USDa", a.waveform_format, build_waveform_area(sections)?));
     }
 
@@ -567,12 +571,13 @@ fn shared_sample_bank<'a>(a: &'a ToneBank, b: &'a ToneBank) -> Result<Option<&'a
 
 /// Lay out a `USDa`: header, one directory entry per section, then the sections back to back.
 ///
-/// Each section is passed with the slot its directory entry should name, so callers decide whether
-/// samples keep their original numbers or are renumbered densely.
-fn build_waveform_area<'a>(
-    sections: impl IntoIterator<Item = (u32, &'a Waveform)>,
+/// Each section is passed as `(slot, word, bytes)`, so callers decide whether samples keep their
+/// original numbers or are renumbered densely, and supply the per-section word — which is carried,
+/// never computed. [`crate::samplebank`] builds its sections from a backup and uses this too.
+pub(crate) fn build_waveform_area<'a>(
+    sections: impl IntoIterator<Item = (u32, u32, &'a [u8])>,
 ) -> Result<Vec<u8>> {
-    let sections: Vec<(u32, &Waveform)> = sections.into_iter().collect();
+    let sections: Vec<(u32, u32, &[u8])> = sections.into_iter().collect();
     let info_len = HEADER_LEN + sections.len() * DIRECTORY_ENTRY;
     let mut header = [0u8; HEADER_LEN];
     header[0..4].copy_from_slice(&(sections.len() as u32).to_le_bytes());
@@ -581,13 +586,13 @@ fn build_waveform_area<'a>(
     let mut directory = Vec::new();
     let mut bodies = Vec::new();
     let mut offset = info_len;
-    for (slot, waveform) in &sections {
+    for (slot, word, bytes) in &sections {
         directory.extend_from_slice(&slot.to_le_bytes());
         directory.extend_from_slice(&(offset as u32).to_le_bytes());
-        directory.extend_from_slice(&(waveform.bytes.len() as u32).to_le_bytes());
-        directory.extend_from_slice(&waveform.word.to_le_bytes());
-        offset += waveform.bytes.len();
-        bodies.extend_from_slice(&waveform.bytes);
+        directory.extend_from_slice(&(bytes.len() as u32).to_le_bytes());
+        directory.extend_from_slice(&word.to_le_bytes());
+        offset += bytes.len();
+        bodies.extend_from_slice(bytes);
     }
 
     let mut body = Vec::with_capacity(offset);
@@ -603,7 +608,7 @@ fn build_waveform_area<'a>(
 /// beside it, and every area's geometry must match its size. A file that fails is a bug here, and
 /// it is better to fail loudly than to hand the instrument something it will reject — or worse,
 /// accept.
-fn assemble(
+pub(crate) fn assemble(
     preamble: &[u8; PREAMBLE_LEN],
     order: &[[u8; 4]],
     mut areas: Vec<([u8; 4], [u8; 4], Vec<u8>)>,
@@ -702,7 +707,7 @@ mod tests {
                 bytes: bytes.clone(),
             })
             .collect();
-        build_waveform_area(refs.iter().map(|w| (w.slot, w))).unwrap()
+        build_waveform_area(refs.iter().map(|w| (w.slot, w.word, w.bytes.as_slice()))).unwrap()
     }
 
     fn svz(areas: &[([u8; 4], Vec<u8>)]) -> Raw {
