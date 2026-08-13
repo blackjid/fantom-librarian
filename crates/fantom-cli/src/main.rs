@@ -276,23 +276,21 @@ fn run_inspect(file: &PathBuf, offset: usize, len: usize) -> fantom_core::Result
 fn run_areas(file: &PathBuf) -> fantom_core::Result<String> {
     let raw = Raw::open(file)?;
     let svd = fantom_core::container::Svd::parse(&raw)?;
-    let mut out = String::new();
-    let _ = writeln!(
-        out,
-        "{:<6} {:<6} {:>10} {:>10}",
-        "TAG", "FORMAT", "OFFSET", "SIZE"
-    );
+    let mut table = Table::new(vec![
+        ("TAG", Align::Left),
+        ("FORMAT", Align::Left),
+        ("OFFSET", Align::Right),
+        ("SIZE", Align::Right),
+    ]);
     for area in &svd.areas {
-        let _ = writeln!(
-            out,
-            "{:<6} {:<6} {:>10} {:>10}",
+        table.row(vec![
             area.tag_str(),
             area.format_str(),
-            area.offset,
-            area.size,
-        );
+            area.offset.to_string(),
+            area.size.to_string(),
+        ]);
     }
-    Ok(out)
+    Ok(table.render())
 }
 
 fn run_diff(
@@ -459,35 +457,32 @@ fn run_dependencies(file: &PathBuf) -> fantom_core::Result<String> {
     let raw = Raw::open(file)?;
     let svd = fantom_core::container::Svd::parse(&raw)?;
     let tones = fantom_core::codec::read_bundled_tones(&raw)?;
-    let mut out = String::new();
-    let _ = writeln!(
-        out,
-        "{:<6} {:<6} {:>10} {:<24}",
-        "TAG", "FORMAT", "SIZE", "STATUS"
-    );
+    let mut table = Table::new(vec![
+        ("TAG", Align::Left),
+        ("FORMAT", Align::Left),
+        ("SIZE", Align::Right),
+        ("STATUS", Align::Left),
+    ]);
     for tag in [b"ACBa", b"DCWa", b"MDLa"] {
-        if let Some(area) = svd.area(tag) {
-            let count = tones.iter().filter(|tone| tone.area == *tag).count();
-            let _ = writeln!(
-                out,
-                "{:<6} {:<6} {:>10} {:<24}",
-                area.tag_str(),
-                String::from_utf8_lossy(&area.format),
-                area.size,
-                format!("{count} tones; names decoded")
-            );
-        } else {
-            let _ = writeln!(
-                out,
-                "{:<6} {:<6} {:>10} {:<24}",
+        match svd.area(tag) {
+            Some(area) => {
+                let count = tones.iter().filter(|tone| tone.area == *tag).count();
+                table.row(vec![
+                    area.tag_str(),
+                    area.format_str(),
+                    area.size.to_string(),
+                    format!("{count} tones; names decoded"),
+                ]);
+            }
+            None => table.row(vec![
                 render::area_tag(tag),
-                "-",
-                "-",
-                "absent"
-            );
+                "-".to_string(),
+                "-".to_string(),
+                "absent".to_string(),
+            ]),
         }
     }
-    Ok(out)
+    Ok(table.render())
 }
 
 fn run_scenes(file: &PathBuf) -> fantom_core::Result<String> {
@@ -495,7 +490,11 @@ fn run_scenes(file: &PathBuf) -> fantom_core::Result<String> {
     let scenes = fantom_core::codec::read_scenes(&raw)?;
     let mut out = String::new();
     let _ = writeln!(out, "{} scenes:", scenes.len());
-    let _ = writeln!(out, "{:<4} {:<20} REFERENCES", "NO.", "NAME");
+    let mut table = Table::new(vec![
+        ("NO.", Align::Right),
+        ("NAME", Align::Left),
+        ("REFERENCES", Align::Left),
+    ]);
     for (i, scene) in scenes.iter().enumerate() {
         let mut references = Vec::new();
         for zone in scene.zones.iter().filter(|zone| zone.enabled) {
@@ -519,8 +518,9 @@ fn run_scenes(file: &PathBuf) -> fantom_core::Result<String> {
         } else {
             references.join(", ")
         };
-        let _ = writeln!(out, "{:>4} {:<20} {}", i + 1, scene.name, summary);
+        table.row(vec![(i + 1).to_string(), scene.name.clone(), summary]);
     }
+    out.push_str(&table.render());
     Ok(out)
 }
 
@@ -607,17 +607,21 @@ fn run_tones(file: &PathBuf) -> fantom_core::Result<String> {
     let tones = fantom_core::codec::read_bundled_tones(&raw)?;
     let mut out = String::new();
     let _ = writeln!(out, "{} bundled tones:", tones.len());
-    let _ = writeln!(out, "{:<6} {:<9} {:>5}  NAME", "AREA", "TYPE", "INDEX");
+    let mut table = Table::new(vec![
+        ("AREA", Align::Left),
+        ("TYPE", Align::Left),
+        ("INDEX", Align::Right),
+        ("NAME", Align::Left),
+    ]);
     for tone in tones {
-        let _ = writeln!(
-            out,
-            "{:<6} {:<9} {:>5}  {}",
+        table.row(vec![
             render::area_tag(&tone.area),
-            tone.tone_type.label(),
-            tone.index,
-            tone.name
-        );
+            tone.tone_type.label().to_string(),
+            tone.index.to_string(),
+            tone.name,
+        ]);
     }
+    out.push_str(&table.render());
     Ok(out)
 }
 
@@ -633,30 +637,35 @@ fn run_samples(file: &PathBuf) -> fantom_core::Result<String> {
     }
 
     let _ = writeln!(out, "{} user samples:", bank.slots.len());
-    let _ = writeln!(
-        out,
-        "{:>5}  {:<18} {:>10} {:>8}  {:>4}  NAME (waveform)",
-        "SLOT", "NAME", "FRAMES", "SECONDS", "KEY"
-    );
+    let mut table = Table::new(vec![
+        ("SLOT", Align::Right),
+        ("NAME", Align::Left),
+        ("FRAMES", Align::Right),
+        ("SECONDS", Align::Right),
+        ("KEY", Align::Right),
+        ("WAVEFORM", Align::Left),
+    ]);
     for slot in &bank.slots {
         let data = bank.data.iter().find(|d| d.slot as usize == slot.index);
-        let _ = writeln!(
-            out,
-            "{:>5}  {:<18} {:>10} {:>8.2}  {:>4}  {}",
-            slot.index,
-            slot.name,
-            slot.end,
-            data.map(|d| d.seconds()).unwrap_or_default(),
+        table.row(vec![
+            slot.index.to_string(),
+            slot.name.clone(),
+            slot.end.to_string(),
+            format!("{:.2}", data.map(|d| d.seconds()).unwrap_or_default()),
             render::note(slot.original_key),
-            data.map(|d| d.name.as_str()).unwrap_or("<no waveform>"),
-        );
+            data.map(|d| d.name.clone())
+                .unwrap_or_else(|| "<no waveform>".to_string()),
+        ]);
     }
+    out.push_str(&table.render());
 
     if !bank.multisamples.is_empty() {
         let _ = writeln!(out, "\n{} multisamples:", bank.multisamples.len());
+        let mut table = Table::new(vec![("SLOT", Align::Right), ("NAME", Align::Left)]);
         for ms in &bank.multisamples {
-            let _ = writeln!(out, "{:>5}  {}", ms.index, ms.name);
+            table.row(vec![ms.index.to_string(), ms.name.clone()]);
         }
+        out.push_str(&table.render());
     }
 
     for orphan in bank.orphans() {
