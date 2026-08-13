@@ -703,13 +703,14 @@ then all of it was inference from a byte-identical reproduction of someone else'
 steps: pick which samples, then pick where they go. Nothing in the file proposes a slot, and the
 instrument does not fill from the first free one on its own.
 
-> **Open: the import dialog's preview plays nothing.** Pressing preview on either sample in the
-> import list produced no sound, though both play correctly once imported. Since the audio is
-> demonstrably intact, this points at a header field the preview path reads and the import path does
-> not — the flags word and the undecoded `USPa` tail at `0x2c..0x3c` are the candidates. It is not
-> yet known whether Roland's own sample files preview either; importing `FFC SAMPLES 1-50.svz` and
-> pressing preview on it is the test that separates "our file is wrong" from "preview does not work
-> in this flow".
+> **The import dialog's preview plays nothing — for any `.svz`, including Roland's own.** Pressing
+> preview on a sample in the import list produced no sound from a file this tool built, which looked
+> like a defect until the same was tried on commercial and instrument-written files: none of them
+> preview either. So preview does not work in this flow at all, and it says nothing about the file.
+>
+> Worth recording because the obvious reading was the wrong one. A single observation of "our output
+> behaves oddly" is not evidence until the same is asked of a file known to be good — which is the
+> whole reason a Roland-authored fixture is worth keeping around.
 
 **Repackaging** (`crate::tonebank`) selects tones by index, carries the paired `INSa` for drum kits,
 and carries the `USPa` slots and `USDa` sections the selected tones play, renumbering the tone's
