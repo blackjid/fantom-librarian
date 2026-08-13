@@ -257,13 +257,30 @@ decoded**. Needs a capture with a real user multisample.
 
 ### How a tone references a sample — CONFIRMED
 
-A ZEN-Core `PATa` record holds **four partials at stride 124 (`0x7c`)**. Each partial selects where
-its wave comes from:
+A ZEN-Core `PATa` record holds **four partials at stride 124 (`0x7c`)**. Each partial carries a
+28-byte wave-select block at **`0xde + p*124`** — the structure Roland's own editor schema calls a
+`WMT`:
 
-| Record offset | Size | Field |
-|---------------|------|-------|
-| `0xdf + p*124` | 1 | wave **group**: `0` = internal ROM wave, `2` = **user sample**, `1`/`3` also seen |
-| `0xe2 + p*124` | 2 | wave **number**, LE — a ROM wave index, or a **1-based `SMPa` slot** when the group is 2 |
+| Block offset | Size | Field |
+|--------------|------|-------|
+| `+0x00` | 1 | wave switch |
+| `+0x01` | 1 | wave **group type**: `0` = internal ROM wave, `2` = **user sample**, `1`/`3` also seen |
+| `+0x02` | 2 | wave group id |
+| `+0x04` | 2 | wave **number L**, LE — a ROM wave index, or a **1-based `SMPa` slot** when the group is 2 |
+| `+0x06` | 2 | wave **number R**, same encoding; `0` means none |
+
+> Earlier revisions described this as "group at `0xdf`, number at `0xe2`". Those are the same bytes
+> — `0xde + 1` and `0xde + 4` — but the framing hid a field: **there are two wave numbers, one per
+> channel**, and only the left was being read.
+
+**Both numbers are live references.** 25 of `Black NARFSOUNDS`'s 93 sampled partials name a right
+slot, and it is frequently a *different* sample: `Beat It Gong` plays slot 1 `1 Beat It - C2` on the
+left and slot 22 `doh duh 2` on the right. The decisive case is `Z-Core_20260623.svz`, which has
+exactly **one** sampled tone — `MyPolySyn1`, left 2 and right 1 — and which the instrument wrote
+with **two** samples in it. An export carries only what its tones reference (`EXPORT_Z-Core2.svz`
+carries one sample for one tone, not the machine's whole bank), so the right number is a dependency,
+not a leftover. Following only the left one halves a stereo-split sound and, when repackaging
+renumbers, leaves the other channel pointing at whatever now occupies the old slot.
 
 Evidence, from `Black NARFSOUNDS` (2048 tones × 4 partials = 8192 partials):
 
@@ -331,12 +348,14 @@ the pair, which is why the two areas must always be copied and renumbered togeth
 
 #### An instrument's four wave blocks — CONFIRMED shape, group field UNCONFIRMED
 
-Each 216-byte instrument carries **four wave blocks at stride 28 (`0x1c`), starting at `+0x1c`**:
+Each 216-byte instrument carries **four wave blocks at stride 28 (`0x1c`), starting at `+0x1c`** —
+the same `WMT` structure a `PATa` partial uses:
 
 | Block offset | Size | Field | Notes |
 |--------------|------|-------|-------|
-| `+0x00` | 2 | wave switch | **only ever 0 or 1** across 45056 blocks in four files |
-| `+0x02` | 2 | wave bank/type | 8 overwhelmingly; also 16, 2, 10, 11 |
+| `+0x00` | 1 | wave switch | **only ever 0 or 1** across 45056 blocks in four files |
+| `+0x01` | 1 | wave **group type** | `0` in every block of every fixture — see below |
+| `+0x02` | 2 | wave group id | 8 overwhelmingly; also 16, 2, 10, 11 |
 | `+0x04` | 2 | wave number L | 1..963, matching the ROM wave range |
 | `+0x06` | 2 | wave number R | 0..906; a stereo wave stores a consecutive pair here |
 
@@ -345,11 +364,10 @@ stereo halves. `High Q` selects `(963, 0)` and leaves blocks 1–3 switched off,
 blocks are all zero. The `+0x00` field takes no value but 0 and 1 in any fixture, which is what
 fixes the block base and stride; at any other alignment it takes dozens.
 
-**How a drum instrument selects a *user sample* is still unknown**, and deliberately not guessed at.
-A `PATa` partial marks one with a wave group byte at `+0x03` of its block (see above), but the byte
-in that position here is **0 in all 45056 blocks**, as is `+0x01`. Both readings — group at `+0x01`,
-or the `+0x02` field taking some other value — predict exactly that when nothing is sampled, so the
-fixtures cannot separate them:
+**The group field is `+0x01`, but no fixture has a drum kit that uses it.** The byte is `0` in all
+45056 blocks across four files — every instrument plays a ROM wave — so while the *position* is now
+known, the value meaning "user sample" has never been observed here. It is presumably `2`, as it is
+for a tone, since this is the same structure; that inference is not a confirmation:
 
 | File | instruments | wave blocks | blocks with a user sample |
 |------|-------------|-------------|---------------------------|
@@ -358,15 +376,31 @@ fixtures cannot separate them:
 | `Black NARFSOUNDS` | 11264 | 45056 | none |
 | `Fantom-0 TOP80` | 11264 | 45056 | none |
 
-Note also that `PATa`'s `+0x04` field is *not* the marker, tempting as it looks: its 93 group-2
-partials in `Black NARFSOUNDS` carry values 1010, 8, 1001 and 1007 there, and plenty of group-0
-partials carry 8 too. Only the group byte separates them.
+Note also that the wave *group id* is not the marker, tempting as it looks: `PATa`'s 93 group-2
+partials in `Black NARFSOUNDS` carry 1010, 8, 1001 and 1007 there, and plenty of group-0 partials
+carry 8 too. Only the group type byte separates them.
 
 **The capture that would settle it:** on the instrument, take one drum kit, point a single key's
 instrument at a user sample, and export the kit as `.svz` twice — once before the change, once
 after. `fantom diff before.svz after.svz --area INSa --context 4` then names the differing bytes
 directly, exactly as the `TONEMAP*` pairs did for the opaque engines. Until then, `crate::tonebank`
-treats a drum kit's samples as unselectable and carries all of them.
+treats a drum kit's samples as unselectable and carries all of them — the safe behaviour either way,
+since selecting on an unobserved value would silently drop audio if the guess were wrong.
+
+#### Where the `WMT` layout came from
+
+The block base and stride here were found by byte-level survey (the switch field takes no value but
+0 and 1 at this alignment and dozens at any other). The **field names and the `+0x01` group type**
+came from [Roland-Zen-Decode-XML](https://github.com/DrKnackeratorStrikesAgain/Roland-Zen-Decode-XML),
+which extracts parameter maps from Roland's own editor XML for other ZEN-Core devices — Jupiter-X,
+Juno-X, MV-1. Its `PCMRInst` is **216 bytes** and its `PCMR` is **3328**, matching this file's `INSa`
+sub-record and `RHYa` record exactly, and its `INST_CMN.WMT[4] @ 0x1c` lands precisely where the
+survey put the blocks.
+
+That project is used here as a source of *hypotheses*, not of facts: every field above was checked
+against the fixtures in this repository before being written down, which is how the second wave
+number turned from a name in someone else's schema into a confirmed dependency with a test. Nothing
+from it is vendored, and it carries no license file.
 
 **Validation** — "Africa Main" (scene 385) decodes to exactly the panel's 4 zones:
 Z1 Brass 0–71 · Z2 Kalimba 73–127 · Z3 Kalimba 72–72 · Z4 JX-Cream 0–71 (levels 107/107/100/82).
