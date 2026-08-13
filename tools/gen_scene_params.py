@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate the scene parameter table from Roland's FANTOM EX MIDI Implementation.
 
-    pdftotext -layout fixtures/FANTOM_EX_MIDI_Imple_eng01_W.pdf - \
+    pdftotext -layout fixtures-local/FANTOM_EX_MIDI_Imple_eng01_W.pdf - \
         | python3 tools/gen_scene_params.py > crates/fantom-core/src/params/scene.rs
 
 The tone table has a different source (`tools/gen_params.py`, from Roland's editor data for
@@ -296,6 +296,8 @@ def main():
         packed[rust] = (rows, file_len, sec["total"])
 
         ids = set()
+        # Kept one line per parameter: rustfmt would explode this into thousands.
+        out.append("#[rustfmt::skip]")
         out.append(f"static {rust}_PARAMS: &[Param] = &[")
         for off, width, a, n, d, bias, disp, unit in rows:
             reserved = str(d == "Reserved").lower()
@@ -323,6 +325,7 @@ def main():
     out.append("/// Instances are in file order. The 16-fold tables are the zone parameters:")
     out.append("/// `Scene Zone` carries the tone reference and mix, `Zone EQ` the three-band EQ,")
     out.append("/// and `Zone Control` the keyboard split, velocity range and transpose.")
+    out.append("#[rustfmt::skip]")
     out.append("pub static SCENE: &[Instance] = &[")
     at = 0
     for name, rust, sx, count, stride in SCENE_BLOCKS:

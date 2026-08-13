@@ -5,6 +5,7 @@
 
 use super::{Block, Display, Instance, Param};
 
+#[rustfmt::skip]
 static SCENE_COMMON_PARAMS: &[Param] = &[
     Param { id: "Scene_Name_1", byte_offset: 0, len_bytes: 1, sysex_offset: 0, len_sysex: 1, bias: 0, reserved: false, display: Display::Ascii, unit: "" },
     Param { id: "Scene_Name_2", byte_offset: 1, len_bytes: 1, sysex_offset: 1, len_sysex: 1, bias: 0, reserved: false, display: Display::Ascii, unit: "" },
@@ -156,6 +157,7 @@ pub static SCENE_COMMON: Block = Block {
     params: SCENE_COMMON_PARAMS,
 };
 
+#[rustfmt::skip]
 static CHORUS_PARAMS: &[Param] = &[
     Param { id: "Switch", byte_offset: 0, len_bytes: 1, sysex_offset: 0, len_sysex: 1, bias: 0, reserved: false, display: Display::Enum(&["OFF", "ON"]), unit: "" },
     Param { id: "Chorus_Type", byte_offset: 1, len_bytes: 1, sysex_offset: 1, len_sysex: 1, bias: 0, reserved: false, display: Display::Number, unit: "" },
@@ -190,6 +192,7 @@ pub static CHORUS: Block = Block {
     params: CHORUS_PARAMS,
 };
 
+#[rustfmt::skip]
 static REVERB_PARAMS: &[Param] = &[
     Param { id: "Switch", byte_offset: 0, len_bytes: 1, sysex_offset: 0, len_sysex: 1, bias: 0, reserved: false, display: Display::Enum(&["OFF", "ON"]), unit: "" },
     Param { id: "Reverb_Type", byte_offset: 1, len_bytes: 1, sysex_offset: 1, len_sysex: 1, bias: 0, reserved: false, display: Display::Number, unit: "" },
@@ -223,6 +226,7 @@ pub static REVERB: Block = Block {
     params: REVERB_PARAMS,
 };
 
+#[rustfmt::skip]
 static IFX_PARAMS: &[Param] = &[
     Param { id: "MFX_Type", byte_offset: 0, len_bytes: 1, sysex_offset: 0, len_sysex: 1, bias: 0, reserved: false, display: Display::Number, unit: "" },
     Param { id: "MFX_Switch", byte_offset: 1, len_bytes: 1, sysex_offset: 1, len_sysex: 1, bias: 0, reserved: false, display: Display::Enum(&["OFF", "ON"]), unit: "" },
@@ -281,6 +285,7 @@ pub static IFX: Block = Block {
     params: IFX_PARAMS,
 };
 
+#[rustfmt::skip]
 static SCENE_ZONE_PARAMS: &[Param] = &[
     Param { id: "Tone_Bank_Select_MSB", byte_offset: 0, len_bytes: 1, sysex_offset: 0, len_sysex: 1, bias: 0, reserved: false, display: Display::Number, unit: "" },
     Param { id: "Tone_Bank_Select_LSB", byte_offset: 1, len_bytes: 1, sysex_offset: 1, len_sysex: 1, bias: 0, reserved: false, display: Display::Number, unit: "" },
@@ -363,6 +368,7 @@ pub static SCENE_ZONE: Block = Block {
     params: SCENE_ZONE_PARAMS,
 };
 
+#[rustfmt::skip]
 static ZONE_EQ_PARAMS: &[Param] = &[
     Param { id: "EQ_Input_Gain", byte_offset: 0, len_bytes: 1, sysex_offset: 0, len_sysex: 1, bias: 64, reserved: false, display: Display::Number, unit: "dB" },
     Param { id: "EQ_Low_Gain", byte_offset: 1, len_bytes: 1, sysex_offset: 1, len_sysex: 1, bias: 64, reserved: false, display: Display::Number, unit: "dB" },
@@ -382,6 +388,7 @@ pub static ZONE_EQ: Block = Block {
     params: ZONE_EQ_PARAMS,
 };
 
+#[rustfmt::skip]
 static ZONE_CONTROL_PARAMS: &[Param] = &[
     Param { id: "Keyboard_Switch", byte_offset: 0, len_bytes: 1, sysex_offset: 0, len_sysex: 1, bias: 0, reserved: false, display: Display::Enum(&["OFF", "ON"]), unit: "" },
     Param { id: "Arpeggio_Switch", byte_offset: 1, len_bytes: 1, sysex_offset: 1, len_sysex: 1, bias: 0, reserved: false, display: Display::Enum(&["OFF", "ON"]), unit: "" },
@@ -488,6 +495,7 @@ pub static ZONE_CONTROL: Block = Block {
     params: ZONE_CONTROL_PARAMS,
 };
 
+#[rustfmt::skip]
 static SCENE_CONTROLLER_PARAMS: &[Param] = &[
     Param { id: "Reserved", byte_offset: 0, len_bytes: 1, sysex_offset: 0, len_sysex: 1, bias: 0, reserved: true, display: Display::Number, unit: "" },
     Param { id: "Function_Select", byte_offset: 1, len_bytes: 1, sysex_offset: 1, len_sysex: 1, bias: 0, reserved: false, display: Display::Enum(&["PAN/LEVEL", "ASSIGN1", "ASSIGN2", "DAW CTRL"]), unit: "" },
@@ -706,6 +714,7 @@ pub static SCENE_CONTROLLER: Block = Block {
     params: SCENE_CONTROLLER_PARAMS,
 };
 
+#[rustfmt::skip]
 static ANALOG_FILTER_PARAMS: &[Param] = &[
     Param { id: "Reserved", byte_offset: 0, len_bytes: 1, sysex_offset: 0, len_sysex: 1, bias: 0, reserved: true, display: Display::Number, unit: "" },
     Param { id: "Analog_Filter_Amp_Sw", byte_offset: 1, len_bytes: 1, sysex_offset: 1, len_sysex: 1, bias: 0, reserved: false, display: Display::Enum(&["OFF", "ON"]), unit: "" },
@@ -749,6 +758,7 @@ pub static ANALOG_FILTER: Block = Block {
 /// Instances are in file order. The 16-fold tables are the zone parameters:
 /// `Scene Zone` carries the tone reference and mix, `Zone EQ` the three-band EQ,
 /// and `Zone Control` the keyboard split, velocity range and transpose.
+#[rustfmt::skip]
 pub static SCENE: &[Instance] = &[
     Instance { block: &SCENE_COMMON, byte_offset: 0, sysex_offset: [0x00, 0x00, 0x00] },
     Instance { block: &CHORUS, byte_offset: 144, sysex_offset: [0x00, 0x02, 0x00] },
@@ -809,4 +819,3 @@ pub static SCENE: &[Instance] = &[
 
 /// On-disk length of one scene record in a `PRFa` area.
 pub const RECORD_LEN: usize = 3572;
-

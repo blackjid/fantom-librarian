@@ -48,6 +48,8 @@ def main():
     for name in used:
         b = blocks[name]
         sysex_len = FANTOM_SYSEX_LEN.get(name, b["sysexLength"])
+        # Kept one line per parameter: rustfmt would explode this into thousands.
+        out.append("#[rustfmt::skip]")
         out.append(f"static {name}_PARAMS: &[Param] = &[")
         for p in b["parameters"]:
             if p.get("isPadding") or p.get("sysexOffset") is None:
@@ -76,6 +78,7 @@ def main():
 
     total = sum(e["totalByteLength"] for e in group["blocks"])
     out.append(f"/// A ZEN-Core tone record ({total} bytes), block by block.")
+    out.append("#[rustfmt::skip]")
     out.append("pub static TONE: &[Instance] = &[")
     for e in group["blocks"]:
         for i, (bo, sx) in enumerate(zip(e["byteOffset"], e["sysexOffset"])):

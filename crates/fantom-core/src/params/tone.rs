@@ -5,6 +5,7 @@
 
 use super::{Block, Display, Instance, Param};
 
+#[rustfmt::skip]
 static MFX_PARAMS: &[Param] = &[
     Param { id: "mfxType", byte_offset: 0, len_bytes: 1, sysex_offset: 0, len_sysex: 1, bias: 0, reserved: false, display: Display::Number, unit: "" },
     Param { id: "mfxSwitch", byte_offset: 1, len_bytes: 1, sysex_offset: 1, len_sysex: 1, bias: 0, reserved: false, display: Display::Number, unit: "" },
@@ -63,6 +64,7 @@ pub static MFX: Block = Block {
     params: MFX_PARAMS,
 };
 
+#[rustfmt::skip]
 static PCMS_CMN_PARAMS: &[Param] = &[
     Param { id: "UNISON_SW", byte_offset: 0, len_bytes: 1, sysex_offset: 0, len_sysex: 1, bias: 0, reserved: false, display: Display::Number, unit: "" },
     Param { id: "UNISON_SIZE", byte_offset: 1, len_bytes: 1, sysex_offset: 1, len_sysex: 1, bias: 0, reserved: false, display: Display::Number, unit: "" },
@@ -81,6 +83,7 @@ pub static PCMS_CMN: Block = Block {
     params: PCMS_CMN_PARAMS,
 };
 
+#[rustfmt::skip]
 static PCMS_PMT_PARAMS: &[Param] = &[
     Param { id: "STRUCT12", byte_offset: 0, len_bytes: 1, sysex_offset: 0, len_sysex: 1, bias: 0, reserved: false, display: Display::Number, unit: "" },
     Param { id: "STRUCT34", byte_offset: 1, len_bytes: 1, sysex_offset: 1, len_sysex: 1, bias: 0, reserved: false, display: Display::Number, unit: "" },
@@ -108,6 +111,7 @@ pub static PCMS_PMT: Block = Block {
     params: PCMS_PMT_PARAMS,
 };
 
+#[rustfmt::skip]
 static PCMS_PTL_PARAMS: &[Param] = &[
     Param { id: "OSC_TYPE", byte_offset: 0, len_bytes: 1, sysex_offset: 0, len_sysex: 1, bias: 0, reserved: false, display: Display::Number, unit: "" },
     Param { id: "VA_FORM", byte_offset: 1, len_bytes: 1, sysex_offset: 1, len_sysex: 1, bias: 0, reserved: false, display: Display::Number, unit: "" },
@@ -140,6 +144,7 @@ pub static PCMS_PTL: Block = Block {
     params: PCMS_PTL_PARAMS,
 };
 
+#[rustfmt::skip]
 static PCMT_CMN_PARAMS: &[Param] = &[
     Param { id: "NAME_1", byte_offset: 0, len_bytes: 1, sysex_offset: 0, len_sysex: 1, bias: 0, reserved: false, display: Display::Number, unit: "" },
     Param { id: "NAME_2", byte_offset: 1, len_bytes: 1, sysex_offset: 1, len_sysex: 1, bias: 0, reserved: false, display: Display::Number, unit: "" },
@@ -194,6 +199,7 @@ pub static PCMT_CMN: Block = Block {
     params: PCMT_CMN_PARAMS,
 };
 
+#[rustfmt::skip]
 static PCMT_PMT_PARAMS: &[Param] = &[
     Param { id: "VEL_CTRL", byte_offset: 0, len_bytes: 1, sysex_offset: 0, len_sysex: 1, bias: 0, reserved: false, display: Display::Number, unit: "" },
     Param { id: "PMT_LEVEL_CRV", byte_offset: 1, len_bytes: 1, sysex_offset: 1, len_sysex: 1, bias: 0, reserved: false, display: Display::Number, unit: "" },
@@ -242,6 +248,7 @@ pub static PCMT_PMT: Block = Block {
     params: PCMT_PMT_PARAMS,
 };
 
+#[rustfmt::skip]
 static PCMT_PTL_PARAMS: &[Param] = &[
     Param { id: "LEVEL", byte_offset: 0, len_bytes: 1, sysex_offset: 0, len_sysex: 1, bias: 0, reserved: false, display: Display::Number, unit: "" },
     Param { id: "PIT_CRS", byte_offset: 2, len_bytes: 1, sysex_offset: 1, len_sysex: 1, bias: 64, reserved: false, display: Display::Number, unit: "" },
@@ -341,6 +348,7 @@ pub static PCMT_PTL: Block = Block {
     params: PCMT_PTL_PARAMS,
 };
 
+#[rustfmt::skip]
 static PTL_AENV_PARAMS: &[Param] = &[
     Param { id: "T1_VSENS", byte_offset: 0, len_bytes: 1, sysex_offset: 0, len_sysex: 2, bias: 128, reserved: false, display: Display::Number, unit: "" },
     Param { id: "T4_VSENS", byte_offset: 1, len_bytes: 1, sysex_offset: 2, len_sysex: 2, bias: 128, reserved: false, display: Display::Number, unit: "" },
@@ -360,6 +368,7 @@ pub static PTL_AENV: Block = Block {
     params: PTL_AENV_PARAMS,
 };
 
+#[rustfmt::skip]
 static PTL_EQ_PARAMS: &[Param] = &[
     Param { id: "LO_GAIN", byte_offset: 0, len_bytes: 2, sysex_offset: 0, len_sysex: 4, bias: 1024, reserved: false, display: Display::Number, unit: "" },
     Param { id: "MID_GAIN", byte_offset: 2, len_bytes: 2, sysex_offset: 4, len_sysex: 4, bias: 1024, reserved: false, display: Display::Number, unit: "" },
@@ -378,6 +387,7 @@ pub static PTL_EQ: Block = Block {
     params: PTL_EQ_PARAMS,
 };
 
+#[rustfmt::skip]
 static PTL_FENV_PARAMS: &[Param] = &[
     Param { id: "DEPTH", byte_offset: 0, len_bytes: 1, sysex_offset: 0, len_sysex: 1, bias: 64, reserved: false, display: Display::Number, unit: "" },
     Param { id: "VCRV", byte_offset: 1, len_bytes: 1, sysex_offset: 1, len_sysex: 1, bias: 0, reserved: false, display: Display::Number, unit: "" },
@@ -402,6 +412,7 @@ pub static PTL_FENV: Block = Block {
     params: PTL_FENV_PARAMS,
 };
 
+#[rustfmt::skip]
 static PTL_LFO_PARAMS: &[Param] = &[
     Param { id: "LFO_1_FORM", byte_offset: 0, len_bytes: 1, sysex_offset: 0, len_sysex: 1, bias: 0, reserved: false, display: Display::Number, unit: "" },
     Param { id: "LFO_1_RATE_SYNC", byte_offset: 1, len_bytes: 1, sysex_offset: 1, len_sysex: 1, bias: 0, reserved: false, display: Display::Number, unit: "" },
@@ -510,6 +521,7 @@ pub static PTL_LFO: Block = Block {
     params: PTL_LFO_PARAMS,
 };
 
+#[rustfmt::skip]
 static PTL_PENV_PARAMS: &[Param] = &[
     Param { id: "DEPTH", byte_offset: 0, len_bytes: 1, sysex_offset: 0, len_sysex: 2, bias: 128, reserved: false, display: Display::Number, unit: "" },
     Param { id: "VSENS", byte_offset: 1, len_bytes: 1, sysex_offset: 2, len_sysex: 2, bias: 128, reserved: false, display: Display::Number, unit: "" },
@@ -535,6 +547,7 @@ pub static PTL_PENV: Block = Block {
 };
 
 /// A ZEN-Core tone record (1632 bytes), block by block.
+#[rustfmt::skip]
 pub static TONE: &[Instance] = &[
     Instance { block: &PCMT_CMN, byte_offset: 0, sysex_offset: [0x00, 0x00, 0x00] },
     Instance { block: &MFX, byte_offset: 64, sysex_offset: [0x00, 0x01, 0x00] },
@@ -570,4 +583,3 @@ pub static TONE: &[Instance] = &[
     Instance { block: &PCMS_PTL, byte_offset: 1560, sysex_offset: [0x00, 0x40, 0x00] },
     Instance { block: &PCMS_PTL, byte_offset: 1596, sysex_offset: [0x00, 0x41, 0x00] },
 ];
-
