@@ -265,9 +265,42 @@ exceptions are trimmed samples). Slot names can differ from section names when a
 after import.
 
 **`MLSa`** — 128 multisamples × 1040 bytes: a 16-byte name followed by 128 eight-byte entries
-(16 + 128×8 = 1040), one per MIDI key. Every record in all three backups is still the factory
-default (`INITIAL MSMPL`, entries `00 00 7f 00 80 00 00 00`), so the entry fields are **not
-decoded**. Needs a capture with a real user multisample.
+(16 + 128×8 = 1040), one per MIDI key. **The entry is now decoded**, from a capture:
+
+| Off | Size | Field |
+|-----|------|-------|
+| `0x00` | 2 | user sample slot, 1-based; `0` = this key plays nothing |
+| `0x02` | 2 | level (`127` in every entry seen) |
+| `0x04` | 2 | pan (`128` = centre) |
+| `0x06` | 2 | unknown, `0` everywhere |
+
+A FANTOM-6 multisample built from three samples across three key ranges reads back exactly as its
+panel showed:
+
+```
+T8_MSAMP   keys   0..45  -> slot 2003
+           keys  46..76  -> slot 2005
+           keys  77..127 -> slot 2018
+```
+
+Which also explains the factory default that made this look undecodable for so long: `INITIAL
+MSMPL`'s `00 00 7f 00 80 00 00 00` is this same structure with **slot 0 — no sample** — at level 127
+and centre pan. It was never an opaque blob; it was an empty one.
+
+**`MSPa` — a multisample travels in a tone export.** The same capture exported the tone that plays
+it, and the file gained an `MSPa` area: one 1040-byte record, identical in layout to `MLSa`, holding
+the multisample with its slots renumbered densely (2003/2005/2018 → 3/4/5) beside a `USPa` and
+`USDa` carrying those three samples. So the whole chain travels for a tone:
+
+```
+tone --(wave group 3)--> multisample --(per key)--> sample slots --> USPa/USDa audio
+```
+
+**This is a transitive dependency, and missing it is invisible.** A tone that plays a multisample
+names no sample directly, so a reader that stops at the partials reports *no sample dependency at
+all*. Computing the closure from `T8_MSMP_TONE.svz`'s two tones yields slots 1–5, which is exactly
+the five the instrument put in the file: two named by `Beat It Gong` and three reachable only
+through `T8_MSAMP`.
 
 ### How a tone references a sample — CONFIRMED
 
@@ -305,16 +338,17 @@ reads **`MSAMP`**, which is the finding: group 3 is a multisample.
 The group id is *not* the displayed bank number — id 1005 shows as `EXZ005` but id 1008 shows as
 `EXZ006`, so the mapping is something else and is reported raw rather than guessed.
 
-> **A multisample is a dependency this tool cannot carry.** An `MLSa` record is undecoded, and a
-> multisample in turn references samples of its own, so neither the definition nor its audio can be
-> rebundled. Until then the CLI names them, which is the least that can be done: before this was
-> decoded, a scene playing a multisample reported *no dependency at all*.
+> **A multisample's samples are followed; the multisample itself cannot travel in a scene bank.**
+> The record is decoded (see `MLSa` above), so the samples it maps across the keyboard are found and
+> carried into a companion file with everything else. What a scene export has no room for is the
+> definition — there is no `MLSa` in one, and the instrument writes none — so the destination must
+> already hold the multisample, or rebuild it over the slots the companion lands on. A tone export
+> is different: it carries `MSPa` and the whole chain travels.
 >
-> The one such reference in any fixture is dangling. `Finesse Rise` partial 1 is switched on and
-> names multisample 1, but every `MLSa` record in that backup is still the factory `INITIAL MSMPL`
-> — the multisample it wants does not exist, which is presumably why the zone is switched off.
-> That is a property of the fixture, not of the format, and it means a populated `MLSa` capture is
-> still needed to decode the record itself.
+> One reference in the older fixtures is dangling. `Finesse Rise` partial 1 is switched on and names
+> multisample 1, but every `MLSa` record in that backup is still the factory default — the
+> multisample it wants does not exist, which is presumably why the zone is switched off. That is a
+> property of that fixture, not of the format.
 
 **Both numbers must be followed — though not for the reason first assumed.** 25 of
 `Black NARFSOUNDS`'s 93 sampled partials name a right slot, often a *different* sample:

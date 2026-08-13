@@ -516,6 +516,76 @@ fn a_drum_kit_that_plays_a_user_sample_is_read_from_the_capture() {
     assert!(fantom_core::verify::check(&extracted).unwrap().is_ok());
 }
 
+/// A multisample's samples are dependencies too, and the instrument agrees about which.
+///
+/// `T8_MSMP_TONE.svz` is a FANTOM-6 export of two tones: `Beat It Gong`, which names sample slots
+/// directly, and `T8_MSAMP`, which names a *multisample* that maps three samples across three key
+/// ranges. The instrument put five samples in the file. Computing the dependency set from the tones
+/// alone must arrive at the same five — two direct, three reachable only through the multisample —
+/// which is the whole test: a tool that stopped at the direct references would be short by three
+/// and would not know it.
+#[test]
+fn a_multisamples_samples_are_reached_through_it() {
+    let Some(raw) = open("hwtest_back/T8_MSMP_TONE.svz") else {
+        return;
+    };
+    assert_eq!(
+        fantom_core::repackage::referenced_multisamples(&raw).unwrap(),
+        [1],
+        "one multisample, densely numbered by the export"
+    );
+    assert_eq!(
+        fantom_core::repackage::referenced_sample_slots(&raw).unwrap(),
+        [1, 2, 3, 4, 5],
+        "two direct plus three through the multisample"
+    );
+
+    // And that set is exactly what the instrument chose to carry.
+    let svd = fantom_core::container::Svd::parse(&raw).unwrap();
+    let bank = fantom_core::container::read_samples(&raw, &svd).unwrap();
+    let names: Vec<&str> = bank.slots.iter().map(|s| s.name.as_str()).collect();
+    assert_eq!(
+        names,
+        [
+            "1 Beat It - C2",
+            "doh duh 2",
+            "A_Bass_95_Am",
+            "A_RiffA_95_Am",
+            "D_RiffB_95_Am"
+        ]
+    );
+}
+
+/// The captured multisample's key map, read from the backup that holds it.
+#[test]
+fn a_multisample_maps_key_ranges_onto_panel_sample_slots() {
+    let Some(raw) = open("hwtest_back/T8_MSMP_BACKUP/FANTOM.SVD") else {
+        return;
+    };
+    let svd = fantom_core::container::Svd::parse(&raw).unwrap();
+    let table = fantom_core::container::RecordTable::from_svd(&raw, &svd, b"MLSa")
+        .unwrap()
+        .unwrap();
+    let record = table.record(0).unwrap();
+
+    let map = fantom_core::container::multisample_key_map(record);
+    assert_eq!(map.len(), 128, "every key of this one plays something");
+    // Three ranges, at the panel slots the samples occupy on that instrument.
+    assert_eq!((map[0].key, map[0].slot), (0, 2003));
+    assert_eq!((map[45].key, map[45].slot), (45, 2003));
+    assert_eq!((map[46].key, map[46].slot), (46, 2005));
+    assert_eq!((map[76].key, map[76].slot), (76, 2005));
+    assert_eq!((map[77].key, map[77].slot), (77, 2018));
+    assert_eq!((map[127].key, map[127].slot), (127, 2018));
+    assert_eq!(map[0].level, 127);
+    assert_eq!(map[0].pan, 128, "centre");
+
+    assert_eq!(
+        fantom_core::container::sample_slots_of(b"MLSa", record),
+        [2003, 2005, 2018]
+    );
+}
+
 /// A file with no user samples cannot be a source, and must say so rather than emit an empty bank.
 #[test]
 fn a_scene_export_cannot_source_sample_audio() {

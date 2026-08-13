@@ -549,6 +549,9 @@ fn read_u32(bytes: &[u8], at: usize, tag: &str) -> Result<u32> {
 /// of the drum kits bundled beside them.
 const SAMPLE_REF_AREAS: &[&[u8; 4]] = &[b"PATa", b"INSa"];
 
+/// Where a multisample record lives: `MLSa` in a backup, `MSPa` in an SVZ export.
+const MULTISAMPLE_AREAS: &[&[u8; 4]] = &[b"MLSa", b"MSPa"];
+
 /// The user-sample slots this bank's bundled sounds play: 1-based, sorted, deduplicated.
 ///
 /// These are **panel slot numbers**, and they are what makes a sampled scene bank incomplete
@@ -564,7 +567,34 @@ pub fn referenced_sample_slots(raw: &Raw) -> Result<Vec<u16>> {
             slots.extend(crate::container::sample_slots_of(tag, record));
         }
     }
+    // A multisample is a dependency of its own that has dependencies of its own: a tone names it by
+    // number, and it names a sample per key. Those samples are needed just as directly as the ones
+    // a partial points at, and nothing else in the file says so.
+    for number in referenced_multisamples(raw)? {
+        for tag in MULTISAMPLE_AREAS {
+            let Some(table) = RecordTable::from_svd(raw, &svd, tag)? else {
+                continue;
+            };
+            let Some(record) = table.record(number as usize - 1) else {
+                continue;
+            };
+            slots.extend(crate::container::sample_slots_of(tag, record));
+        }
+    }
     Ok(slots.into_iter().collect())
+}
+
+/// The user multisample slots this bank's bundled tones play, 1-based, sorted.
+pub fn referenced_multisamples(raw: &Raw) -> Result<Vec<u16>> {
+    let svd = Svd::parse(raw)?;
+    let Some(table) = RecordTable::from_svd(raw, &svd, b"PATa")? else {
+        return Ok(Vec::new());
+    };
+    let mut numbers = BTreeSet::new();
+    for record in table.records() {
+        numbers.extend(crate::container::multisample_slots(record));
+    }
+    Ok(numbers.into_iter().collect())
 }
 
 /// Repoint every bundled tone's user-sample references through `remap` (old slot -> new slot).
@@ -589,7 +619,7 @@ pub fn rebase_sample_slots(raw: &Raw, remap: &BTreeMap<u16, u16>) -> Result<Raw>
     }
 
     let mut bytes = raw.bytes().to_vec();
-    for tag in SAMPLE_REF_AREAS {
+    for tag in SAMPLE_REF_AREAS.iter().chain(MULTISAMPLE_AREAS) {
         let Some(table) = RecordTable::from_svd(raw, &svd, tag)? else {
             continue;
         };

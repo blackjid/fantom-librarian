@@ -7,6 +7,7 @@
 //! exposes generic inspection helpers.
 
 mod ins;
+mod msmp;
 mod pat;
 mod raw;
 mod records;
@@ -29,6 +30,8 @@ pub fn sample_slots_of(tag: &[u8; 4], record: &[u8]) -> Vec<u16> {
     match tag {
         b"PATa" => pat::sample_slots(record),
         b"INSa" => ins::sample_slots(record),
+        // A multisample names samples per key — a tone reaches these only through it.
+        b"MLSa" | b"MSPa" => msmp::sample_slots(record),
         _ => Vec::new(),
     }
 }
@@ -42,11 +45,13 @@ pub fn remap_sample_slots_of(
     match tag {
         b"PATa" => pat::remap_sample_slots(record, remap),
         b"INSa" => ins::remap_sample_slots(record, remap),
+        b"MLSa" | b"MSPa" => msmp::remap_sample_slots(record, remap),
         _ => {}
     }
 }
 pub use raw::Raw;
 pub use records::RecordTable;
+pub use msmp::{key_map as multisample_key_map, KeyMap};
 pub use sample::{Multisample, SampleBank, SampleData, SampleSlot, PANEL_SLOTS};
 pub use svd::{Area, Kind, Svd, PREAMBLE_LEN};
 pub use zone::{RawZone, ZoneSettings};

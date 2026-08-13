@@ -757,9 +757,10 @@ fn other_dependencies(output: &Raw) -> String {
             if !multis.is_empty() {
                 let _ = writeln!(
                     out,
-                    "warning: the extracted tones also play {} user multisample{}, which this tool\n\
-                     \x20        cannot carry — an MLSa record is not decoded, and a multisample in\n\
-                     \x20        turn references samples of its own. The destination needs:",
+                    "warning: the extracted tones also play {} user multisample{}. The samples each\n\
+                     \x20        one maps across the keyboard are included in the list above, but the\n\
+                     \x20        multisample itself cannot travel in a scene bank — the destination\n\
+                     \x20        must hold it, or you must rebuild it over those slots:",
                     multis.len(),
                     if multis.len() == 1 { "" } else { "s" },
                 );
