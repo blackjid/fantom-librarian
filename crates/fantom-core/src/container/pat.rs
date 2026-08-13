@@ -93,11 +93,12 @@ mod wave {
 /// half a player chose (a sample slot already holds both channels); it is most likely left over
 /// from when the partial selected a ROM wave, where `L`/`R` are two waves.
 ///
-/// It still has to be followed. `Z-Core_20260623.svz` has exactly one sampled tone, whose numbers
-/// are 2 and 1, and the instrument carried **two** samples into that export — its dependency scan
-/// reads the right number even though its editor hides it. Reading only the left one drops a sample
-/// the FANTOM would have carried, and renumbering only the left one leaves the right pointing at
-/// whatever takes over the old slot. A zero means "none".
+/// It still has to be followed, and that is confirmed rather than inferred: a tone this tool rebased
+/// to `L=2001, R=2002` was imported to a FANTOM-6 and exported back by the instrument, which carried
+/// **both** samples and renumbered them to `L=1, R=2`. Roland's dependency scan reads the right
+/// number even though its editor hides it. Reading only the left one drops a sample the FANTOM
+/// carries, and renumbering only the left one leaves the right pointing at whatever takes over the
+/// old slot. A zero means "none".
 ///
 /// This is what makes user samples a *dependency*: the reference is a slot number, so a tone
 /// carries no audio with it. The instrument's own scene exports behave the same way — NARF holds

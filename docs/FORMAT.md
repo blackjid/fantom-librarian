@@ -328,14 +328,39 @@ The group id is *not* the displayed bank number — id 1005 shows as `EXZ005` bu
 > not a second channel; it is most likely left over from when the partial selected a ROM wave, where
 > `L`/`R` really are two waves and a stereo pair is consecutive (`481`/`482` in a drum kit).
 
-It is still a **transfer dependency**, which is why it must be read and renumbered.
-`Z-Core_20260623.svz` has exactly one sampled tone — `MyPolySyn1`, numbers 2 and 1 — and the
-instrument wrote **two** samples into that export. An export carries only what its tones reference
-(`EXPORT_Z-Core2.svz` carries one sample for one tone, not the machine's whole bank), so Roland's own
-dependency scan follows the right number even where its editor does not expose it. Following it too
-is what keeps this tool's output matching the instrument's; ignoring it drops a sample the FANTOM
-would have carried, and renumbering only the left one leaves the other pointing at whatever takes
-over the old slot.
+It is still a **transfer dependency**, which is why it must be read and renumbered — and that is now
+confirmed directly rather than inferred. A tone this tool had rebased to `L=2001, R=2002` was
+imported to a FANTOM-6 and then **exported back by the instrument**: the export carries **two**
+samples, `1 Beat It - C2` and `doh duh 2`, with the tone renumbered to `L=1, R=2`. Roland's own
+dependency scan reads the right number even though its editor never shows it.
+
+Following it is what keeps this tool's output matching the instrument's. Ignoring it would drop a
+sample the FANTOM carries, and renumbering only the left one would leave the right pointing at
+whatever takes over the old slot.
+
+### A rebuilt scene bank survives the instrument unchanged — HARDWARE-CONFIRMED
+
+The same round trip is the strongest statement available about the scene repackager. A bank this
+tool built was imported, and the scene exported straight back out. Comparing the two files:
+
+```
+fantom diff T3_BANK/FANTOM.SVD T6_BACK/FANTOM.SVD
+  SYSa[0]+0x00a6  07 -> 06
+  SYSa[0]+0x00af  03 00 -> 01 01
+  SYSa[0]+0x00fb  24 -> 25
+1 finding, 12 changed bytes
+```
+
+**Every other byte is identical** — same file length, and `PRFa` and `PATa` come back exactly as
+written, rebased sample references included. The only differences are twelve bytes of `SYSa`, where
+the instrument stamps its own system settings on the way out.
+
+> One of those bytes is worth noting: `SYSa[0]+0x00fb` goes `0x24` → `0x25`, and the SVZ preamble
+> stamp this instrument writes is `KY019%` (`0x25`) where every older fixture reads `KY019$`
+> (`0x24`). The last stamp byte appears to be an OS-era marker the instrument keeps in `SYSa` and
+> copies into what it writes. This tool writes `$`, and files carrying it import and play correctly,
+> so the difference is cosmetic — but it explains a discrepancy this document previously recorded as
+> unexplained.
 
 Evidence, from `Black NARFSOUNDS` (2048 tones × 4 partials = 8192 partials):
 
