@@ -68,6 +68,14 @@ sample its tones play**. `extract` and `merge` work on them with the same verbs,
 indexes `tones` prints, carrying each selected tone's samples and renumbering the references;
 samples nothing references are left behind, and the CLI says so.
 
+That per-tone selection needs a decoded tone→sample link, which exists for ZEN-Core tones only. A
+drum kit's waves live in its paired `INSa`, where the field marking one as a user sample has never
+been observed set — no fixture has a kit that plays one. So a drum bank **carries every sample it
+holds, at unchanged slot numbers**, rather than selecting: the alternative was dropping all of them
+silently. The CLI says which happened, and merging drum banks with conflicting samples is refused.
+`docs/FORMAT.md` records the `INSa` wave-block layout and names the two-file capture that would
+settle the group field.
+
 **In a scene bank, user samples do not travel** — and that is Roland's own behaviour, not a
 limitation here: the instrument's scene exports carry sample *slot references* and no audio. A tone
 references a sample by slot (wave group 2 on a partial, see `docs/FORMAT.md`), so `extract` names

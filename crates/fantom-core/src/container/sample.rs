@@ -14,9 +14,11 @@
 //! and exactly 50 `SMPd` sections, matching by name and position. A backup with no user samples has
 //! an 8-byte `USDa` holding only the terminator.
 //!
-//! **What is still unknown is the link in the other direction:** nothing here says which sample a
-//! *tone* plays. Until that is decoded, samples cannot be carried across when repackaging — see
-//! [`crate::repackage`].
+//! **The link in the other direction lives elsewhere and is only half known.** Nothing in these
+//! three areas says which sample a *tone* plays: a ZEN-Core tone's partials do, via the wave group
+//! and slot number [`crate::container::sample_slots`] reads, but a drum kit's per-key instruments in
+//! `INSa` do not — their wave blocks are located, their group field is not. So a `PATa` tone's
+//! samples can be selected when repackaging and a drum kit's cannot; see [`crate::tonebank`].
 
 use crate::container::{ascii_trim, Raw, RecordTable, Svd};
 use crate::Result;

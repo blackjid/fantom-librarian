@@ -753,6 +753,30 @@ fn sample_count(raw: &Raw) -> usize {
         .unwrap_or(0)
 }
 
+/// Explain a tone-bank rebuild that carried every sample instead of the referenced ones.
+///
+/// Only a `PATa` tone says which user samples it plays. A drum kit's waves live in its paired
+/// `INSa`, where the field that would mark one as a user sample has never been seen set — so the
+/// samples a kit plays cannot be told apart from the ones it does not, and all of them travel. The
+/// output is correct but larger than it needs to be, which is worth saying out loud.
+fn carried_all_samples_note(source: &Raw, output: &Raw) -> String {
+    let Ok(spec) = fantom_core::tonebank::engine(source) else {
+        return String::new();
+    };
+    if spec.sample_refs_decoded {
+        return String::new();
+    }
+    match sample_count(output) {
+        0 => String::new(),
+        n => format!(
+            "note: carried all {n} user sample{} — a {} record's sample references are not\n\
+             \x20     decoded, so the ones it plays cannot be told from the ones it does not.\n",
+            if n == 1 { "" } else { "s" },
+            spec.tag_str(),
+        ),
+    }
+}
+
 /// Whether a file is an SVZ tone bank rather than a scene bank.
 fn is_tone_bank(raw: &Raw) -> bool {
     fantom_core::container::Svd::parse(raw)
@@ -765,7 +789,7 @@ fn run_extract(file: &PathBuf, scenes: &[usize], output: &PathBuf) -> fantom_cor
     if is_tone_bank(&raw) {
         let extracted = fantom_core::tonebank::extract_tones(&raw, scenes)?;
         extracted.save(output)?;
-        let mut out = String::new();
+        let mut out = carried_all_samples_note(&raw, &extracted);
         // Samples travel with the tones that play them; anything unreferenced is left behind, so
         // say so rather than silently shrinking the file.
         let (before, after) = (sample_count(&raw), sample_count(&extracted));
@@ -821,7 +845,8 @@ fn run_merge(target: &PathBuf, source: &PathBuf, output: &PathBuf) -> fantom_cor
         let after = fantom_core::codec::read_bundled_tones(&merged)?.len();
         merged.save(output)?;
         return Ok(format!(
-            "merged to {} tones ({} new) in {}\n",
+            "{}merged to {} tones ({} new) in {}\n",
+            carried_all_samples_note(&target_raw, &merged),
             after,
             after - before,
             output.display()
