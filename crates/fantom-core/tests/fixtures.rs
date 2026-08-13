@@ -256,7 +256,11 @@ fn hardware_validated_banks_still_decode() {
     ] {
         let Some(raw) = private(path) else { continue };
         let scenes = fantom_core::codec::read_scenes(&raw).unwrap();
-        assert_eq!(scenes.len(), 3, "{path}: expected a three-scene merge result");
+        assert_eq!(
+            scenes.len(),
+            3,
+            "{path}: expected a three-scene merge result"
+        );
         assert_eq!(
             scenes[0].zones[0].tone.tone_type().label(),
             engine,
@@ -269,18 +273,26 @@ fn hardware_validated_banks_still_decode() {
 /// `SMPa` slots, the `USDa` waveform directory, and `MLSa` read consistently against each other.
 #[test]
 fn the_sample_bank_agrees_with_its_waveform_directory() {
-    let Some(backup) = private("backup/ROLAND/FANTOM/BACKUP/2023.4.8+topandprisma/FANTOM.SVD") else {
+    let Some(backup) = private("backup/ROLAND/FANTOM/BACKUP/2023.4.8+topandprisma/FANTOM.SVD")
+    else {
         return;
     };
     let svd = fantom_core::container::Svd::parse(&backup).unwrap();
     let bank = fantom_core::container::read_samples(&backup, &svd).unwrap();
 
     assert_eq!(bank.slots.len(), 50, "named SMPa slots");
-    assert_eq!(bank.data.len(), 50, "SMPd sections found via the USDa directory");
+    assert_eq!(
+        bank.data.len(),
+        50,
+        "SMPd sections found via the USDa directory"
+    );
     assert!(bank.orphans().is_empty(), "{:?}", bank.orphans());
 
     // Every multisample in every fixture is still the factory default.
-    assert!(bank.multisamples.is_empty(), "unexpected edited multisample");
+    assert!(
+        bank.multisamples.is_empty(),
+        "unexpected edited multisample"
+    );
 
     let first = &bank.slots[0];
     assert_eq!(first.name, "1 Beat It - C2");
@@ -693,10 +705,10 @@ fn a_scene_export_cannot_source_sample_audio() {
 
 /// SVZ tone banks, which use a different envelope and carry their samples.
 const TONE_BANKS: [&str; 4] = [
-    "Z-Core_20260623.svz",              // 274 ZEN-Core tones, 2 samples
-    "DRUM_20260623.svz",                // 38 drum kits with paired INSa instrument sets
+    "Z-Core_20260623.svz",                   // 274 ZEN-Core tones, 2 samples
+    "DRUM_20260623.svz",                     // 38 drum kits with paired INSa instrument sets
     "backup/ROLAND/SOUND/EXPORT_Z-Core.svz", // 10 tones, older revision
-    "EXPORT_Z-Core2.svz",              // one tone exported *with* its user sample
+    "EXPORT_Z-Core2.svz",                    // one tone exported *with* its user sample
 ];
 
 /// Every tone of a bank must survive a round trip through extraction unchanged.
@@ -713,7 +725,10 @@ fn extracting_every_tone_of_an_svz_reproduces_it() {
 
         let extracted = fantom_core::tonebank::extract_tones(&raw, &all).unwrap();
         let after = fantom_core::codec::read_bundled_tones(&extracted).unwrap();
-        assert_eq!(after, before, "{path}: re-extracting every tone changed them");
+        assert_eq!(
+            after, before,
+            "{path}: re-extracting every tone changed them"
+        );
     }
 }
 

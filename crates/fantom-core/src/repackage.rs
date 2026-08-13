@@ -525,7 +525,8 @@ fn dependency_references(scenes: &[Vec<u8>]) -> HashMap<[u8; 4], BTreeSet<usize>
     for record in scenes {
         for slot in valid_zone_slots(record) {
             let at = tone_bank_offset(slot);
-            if let Some((spec, index)) = address::resolve(record[at], record[at + 1], record[at + 2])
+            if let Some((spec, index)) =
+                address::resolve(record[at], record[at + 1], record[at + 2])
             {
                 references.entry(spec.tag).or_default().insert(index);
             }
@@ -828,8 +829,13 @@ mod tests {
 
         // Slot 7 was the first referenced, so it becomes the first of the run.
         let svd = Svd::parse(&rebased).unwrap();
-        let table = RecordTable::from_svd(&rebased, &svd, b"PATa").unwrap().unwrap();
-        assert_eq!(crate::container::sample_slots(table.record(1).unwrap()), [102, 101]);
+        let table = RecordTable::from_svd(&rebased, &svd, b"PATa")
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            crate::container::sample_slots(table.record(1).unwrap()),
+            [102, 101]
+        );
     }
 
     /// The run has to land on real panel slots. Slot 0 is the trap: a wave number of zero means
@@ -839,7 +845,9 @@ mod tests {
         let zero = contiguous_remap(&[7, 29], 0).unwrap_err().to_string();
         assert!(zero.contains("numbered from 1"), "{zero}");
 
-        let past = contiguous_remap(&[7, 29], PANEL_SLOTS).unwrap_err().to_string();
+        let past = contiguous_remap(&[7, 29], PANEL_SLOTS)
+            .unwrap_err()
+            .to_string();
         assert!(past.contains("past the panel's"), "{past}");
 
         // The last slot that still fits is fine, and so is a base with no samples to place.
@@ -907,7 +915,10 @@ mod tests {
             .unwrap();
         let names: Vec<_> = pat.tones().iter().map(|tone| tone.name.as_str()).collect();
         assert_eq!(names, ["Tone B", "Tone C"]);
-        assert_eq!(area_bytes(&extracted, b"SYSa"), system_area(b"opaque system bytes"));
+        assert_eq!(
+            area_bytes(&extracted, b"SYSa"),
+            system_area(b"opaque system bytes")
+        );
     }
 
     #[test]
@@ -980,7 +991,10 @@ mod tests {
                 &extracted_pat[start + NAME_LEN..start + TONE_SIZE]
             );
         }
-        assert_eq!(area_bytes(&canary, b"SYSa"), system_area(b"opaque system bytes"));
+        assert_eq!(
+            area_bytes(&canary, b"SYSa"),
+            system_area(b"opaque system bytes")
+        );
     }
 
     #[test]
@@ -1045,7 +1059,10 @@ mod tests {
 
         // lsb 1 / pc 22 addresses MDLa[150]; lsb 0 / pc 5 addresses MDLa[5].
         let extracted = extract_scenes(&raw, &[1]).unwrap();
-        assert_eq!(read_u32(&area_bytes(&extracted, b"MDLa"), 0, "MDLa").unwrap(), 2);
+        assert_eq!(
+            read_u32(&area_bytes(&extracted, b"MDLa"), 0, "MDLa").unwrap(),
+            2
+        );
         let prfa = area_bytes(&extracted, b"PRFa");
         let banks: Vec<_> = (0..2)
             .map(|slot| {

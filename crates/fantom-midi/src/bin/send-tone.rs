@@ -34,7 +34,9 @@ fn block_bytes(frec: &[u8], block: &params::Block) -> Vec<u8> {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);
-    let path = args.next().ok_or("usage: send-tone <FANTOM.SVD> [tone-index] [zone]")?;
+    let path = args
+        .next()
+        .ok_or("usage: send-tone <FANTOM.SVD> [tone-index] [zone]")?;
     let index: usize = args.next().and_then(|s| s.parse().ok()).unwrap_or(0);
     let zone: u8 = args.next().and_then(|s| s.parse().ok()).unwrap_or(0);
     let b = std::fs::read(&path)?;
@@ -51,27 +53,41 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rs = u32::from_le_bytes(b[pata + 4..pata + 8].try_into()?) as usize;
     let rec = &b[pata + 16 + index * rs..pata + 16 + (index + 1) * rs];
     let name = String::from_utf8_lossy(&rec[0..16]).trim_end().to_string();
-    println!("sending {name:?} (PATa[{index}] of {path}) to zone {}", zone + 1);
+    println!(
+        "sending {name:?} (PATa[{index}] of {path}) to zone {}",
+        zone + 1
+    );
 
     let out = MidiOutput::new("send-tone-out")?;
     let inp = MidiInput::new("send-tone-in")?;
-    let dest = out.ports().into_iter()
-        .find(|p| out.port_name(p).as_deref() == Ok(PORT)).ok_or("Fantom not found")?;
-    let src = inp.ports().into_iter()
-        .find(|p| inp.port_name(p).as_deref() == Ok(PORT)).ok_or("Fantom not found")?;
+    let dest = out
+        .ports()
+        .into_iter()
+        .find(|p| out.port_name(p).as_deref() == Ok(PORT))
+        .ok_or("Fantom not found")?;
+    let src = inp
+        .ports()
+        .into_iter()
+        .find(|p| inp.port_name(p).as_deref() == Ok(PORT))
+        .ok_or("Fantom not found")?;
     let (tx, rx) = mpsc::channel();
     let mut pending: Vec<u8> = Vec::new();
-    let _ci = inp.connect(&src, "s", move |_, m, _| {
-        if m.first() == Some(&0xF0) {
-            pending.clear();
-        } else if pending.is_empty() {
-            return;
-        }
-        pending.extend_from_slice(m);
-        if pending.last() == Some(&0xF7) {
-            let _ = tx.send(std::mem::take(&mut pending));
-        }
-    }, ())?;
+    let _ci = inp.connect(
+        &src,
+        "s",
+        move |_, m, _| {
+            if m.first() == Some(&0xF0) {
+                pending.clear();
+            } else if pending.is_empty() {
+                return;
+            }
+            pending.extend_from_slice(m);
+            if pending.last() == Some(&0xF7) {
+                let _ = tx.send(std::mem::take(&mut pending));
+            }
+        },
+        (),
+    )?;
     let mut co = out.connect(&dest, "s")?;
 
     // The temporary Z-Core address only applies while the zone holds a Z-Core tone, so point the
@@ -84,7 +100,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Play on whatever channel the zone actually listens to.
     while rx.try_recv().is_ok() {}
     co.send(&rq1(zone_block, 0x49))?;
-    let channel = rx.recv_timeout(REPLY).ok()
+    let channel = rx
+        .recv_timeout(REPLY)
+        .ok()
         .and_then(|r| r.get(15).copied())
         .filter(|c| *c < 16)
         .unwrap_or(zone);
@@ -114,8 +132,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (mut ok, mut bad, mut unread) = (0, 0, 0);
     let mut first: Option<String> = None;
     for inst in params::tone::TONE {
-        co.send(&rq1(offset_addr(base, inst.sysex_offset), inst.block.sysex_len as u32))?;
-        let Ok(r) = rx.recv_timeout(REPLY) else { unread += 1; continue };
+        co.send(&rq1(
+            offset_addr(base, inst.sysex_offset),
+            inst.block.sysex_len as u32,
+        ))?;
+        let Ok(r) = rx.recv_timeout(REPLY) else {
+            unread += 1;
+            continue;
+        };
         let wire = &r[12..r.len() - 2];
         let frec = &rec[inst.byte_offset as usize..];
         for p in inst.block.params {
@@ -134,7 +158,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 if first.is_none() {
                     first = Some(format!(
                         "{}.{} expected {:02X?}, got {:02X?}",
-                        inst.block.name, p.id, expect, &wire[at..at + expect.len()]));
+                        inst.block.name,
+                        p.id,
+                        expect,
+                        &wire[at..at + expect.len()]
+                    ));
                 }
             }
         }
@@ -142,7 +170,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let back = {
         co.send(&rq1(base, 0x36))?;
-        rx.recv_timeout(REPLY).ok()
+        rx.recv_timeout(REPLY)
+            .ok()
             .map(|r| String::from_utf8_lossy(&r[12..28]).trim_end().to_string())
     };
     println!("instrument now reports: {:?}", back.unwrap_or_default());

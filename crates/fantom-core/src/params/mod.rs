@@ -73,11 +73,9 @@ pub fn render(p: &Param, value: i32) -> String {
             Some(label) => (*label).to_string(),
             None => value.to_string(),
         },
-        Display::Scaled { divisor, decimals } => format!(
-            "{:.*}",
-            decimals as usize,
-            value as f64 / divisor as f64
-        ),
+        Display::Scaled { divisor, decimals } => {
+            format!("{:.*}", decimals as usize, value as f64 / divisor as f64)
+        }
         Display::Number => value.to_string(),
     };
     if p.unit.is_empty() {
@@ -173,7 +171,10 @@ impl Instance {
     ///
     /// The whole point of keeping display data in the table: a caller can dump a block it knows
     /// nothing about and get labelled values out.
-    pub fn fields<'a>(&self, record: &'a [u8]) -> impl Iterator<Item = (&'static str, String)> + 'a {
+    pub fn fields<'a>(
+        &self,
+        record: &'a [u8],
+    ) -> impl Iterator<Item = (&'static str, String)> + 'a {
         let block = self.block;
         let at = self.byte_offset as usize;
         let end = at + block.byte_len as usize;
@@ -210,7 +211,11 @@ mod tests {
 
     #[test]
     fn every_parameter_fits_inside_its_block() {
-        for block in [&scene::SCENE_COMMON, &scene::SCENE_ZONE, &scene::ZONE_CONTROL] {
+        for block in [
+            &scene::SCENE_COMMON,
+            &scene::SCENE_ZONE,
+            &scene::ZONE_CONTROL,
+        ] {
             for p in block.params {
                 assert!(
                     p.byte_offset as usize + p.len_bytes as usize <= block.byte_len as usize,
@@ -235,7 +240,11 @@ mod tests {
         assert_eq!(zone0.block.byte_len as usize, ZoneSettings::LEN);
         assert_eq!(zone0.block.param("Zone_Level").unwrap().byte_offset, 0x07);
         assert_eq!(
-            zone0.block.param("Tone_Bank_Select_MSB").unwrap().byte_offset,
+            zone0
+                .block
+                .param("Tone_Bank_Select_MSB")
+                .unwrap()
+                .byte_offset,
             0x00
         );
 
@@ -262,7 +271,10 @@ mod tests {
         assert_eq!(memo.byte_offset, 0x40);
         assert_eq!(memo.sysex_offset, 0x42);
         let tempo = scene::SCENE_COMMON.param("Scene_Tempo").unwrap();
-        assert_eq!((tempo.byte_offset, tempo.len_bytes, tempo.len_sysex), (0x38, 2, 4));
+        assert_eq!(
+            (tempo.byte_offset, tempo.len_bytes, tempo.len_sysex),
+            (0x38, 2, 4)
+        );
     }
 
     /// The two tables come from different sources — the tone table from Roland's editor data, the
@@ -281,8 +293,14 @@ mod tests {
     #[test]
     fn renders_each_kind_of_display() {
         assert_eq!(rendered(&scene::SCENE_ZONE, "Zone_Mono_Poly", 2), "TONE");
-        assert_eq!(rendered(&scene::SCENE_ZONE, "Zone_Output_Assign", 1), "IFX1");
-        assert_eq!(rendered(&scene::SCENE_COMMON, "Scene_Tempo", 12000), "120.00");
+        assert_eq!(
+            rendered(&scene::SCENE_ZONE, "Zone_Output_Assign", 1),
+            "IFX1"
+        );
+        assert_eq!(
+            rendered(&scene::SCENE_COMMON, "Scene_Tempo", 12000),
+            "120.00"
+        );
         assert_eq!(rendered(&scene::SCENE_ZONE, "Zone_Pan", -16), "L16");
         assert_eq!(rendered(&scene::SCENE_ZONE, "Zone_Pan", 0), "C");
         assert_eq!(rendered(&scene::SCENE_ZONE, "Zone_Pan", 25), "25R");
@@ -323,7 +341,11 @@ mod tests {
             .unwrap();
         let fields: Vec<_> = eq.fields(&record).collect();
         // A switch reads as its member name, not as 0/1, without the caller knowing it is one.
-        assert!(fields.iter().any(|(id, v)| *id == "EQ_Switch" && v == "OFF"));
-        assert!(fields.iter().any(|(id, v)| *id == "EQ_Low_Gain" && v == "0 dB"));
+        assert!(fields
+            .iter()
+            .any(|(id, v)| *id == "EQ_Switch" && v == "OFF"));
+        assert!(fields
+            .iter()
+            .any(|(id, v)| *id == "EQ_Low_Gain" && v == "0 dB"));
     }
 }

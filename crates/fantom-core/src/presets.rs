@@ -38,7 +38,15 @@ fn table() -> &'static HashMap<u16, PresetTone> {
                 let number: u16 = f.next()?.parse().ok()?;
                 let name = f.next()?;
                 let category = f.next().unwrap_or("");
-                Some((id, PresetTone { bank, number, name, category }))
+                Some((
+                    id,
+                    PresetTone {
+                        bank,
+                        number,
+                        name,
+                        category,
+                    },
+                ))
             })
             .collect()
     })

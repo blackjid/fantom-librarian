@@ -323,7 +323,10 @@ mod tests {
         let acb = spec_for_tag(b"ACBa").unwrap();
         assert_eq!(acb.decode_name(b"tfoSS & ltbu  2e"), "Soft & Subtle2");
         assert_eq!(&acb.encode_name("Soft & Subtle2"), b"tfoSS & ltbu  2e");
-        assert_eq!(acb.decode_name(&acb.encode_name("Soft & Subtle3")), "Soft & Subtle3");
+        assert_eq!(
+            acb.decode_name(&acb.encode_name("Soft & Subtle3")),
+            "Soft & Subtle3"
+        );
 
         // A plain area is unchanged by both directions.
         let pat = spec_for_tag(b"PATa").unwrap();

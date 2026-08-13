@@ -356,7 +356,10 @@ mod tests {
     fn an_impossible_data_start_falls_back_to_the_fixed_header() {
         let mut area = area_with(&[("Africa Brass", 0x23)], 64);
         area[8..12].copy_from_slice(&0x5555_5555u32.to_le_bytes());
-        assert_eq!(PatArea::parse(&area).unwrap().get(0).unwrap().name, "Africa Brass");
+        assert_eq!(
+            PatArea::parse(&area).unwrap().get(0).unwrap().name,
+            "Africa Brass"
+        );
     }
 
     /// Build a tone record whose partials use the given `(group, left, right)` triples.
@@ -386,7 +389,10 @@ mod tests {
             Vec::<u16>::new()
         );
         // Repeats collapse: four partials layering one sample is still one dependency.
-        assert_eq!(sample_slots(&tone_with_partials(&[(2, 5, 0), (2, 5, 0)])), [5]);
+        assert_eq!(
+            sample_slots(&tone_with_partials(&[(2, 5, 0), (2, 5, 0)])),
+            [5]
+        );
         // A record too short to hold the partials yields nothing rather than panicking.
         assert!(sample_slots(&[0u8; 32]).is_empty());
     }

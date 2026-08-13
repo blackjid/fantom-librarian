@@ -122,7 +122,10 @@ impl SampleBank {
         let mut out = Vec::new();
         for slot in &self.slots {
             if !self.data.iter().any(|d| d.slot as usize == slot.index) {
-                out.push(format!("slot {} {:?} has no waveform data", slot.index, slot.name));
+                out.push(format!(
+                    "slot {} {:?} has no waveform data",
+                    slot.index, slot.name
+                ));
             }
         }
         for data in &self.data {
@@ -424,7 +427,8 @@ mod tests {
             let mut section = vec![0u8; SMPD_HEADER_LEN];
             section[..4].copy_from_slice(SMPD_MAGIC);
             section[SMPD_SIZE..SMPD_SIZE + 4].copy_from_slice(&(words * 2).to_le_bytes());
-            section[SMPD_CHANNEL_BYTES..SMPD_CHANNEL_BYTES + 4].copy_from_slice(&words.to_le_bytes());
+            section[SMPD_CHANNEL_BYTES..SMPD_CHANNEL_BYTES + 4]
+                .copy_from_slice(&words.to_le_bytes());
             section[SMPD_NAME..SMPD_NAME + name.len()].copy_from_slice(name.as_bytes());
             section[SMPD_RATE..SMPD_RATE + 4].copy_from_slice(&48000u32.to_le_bytes());
             offset += section.len();
@@ -510,15 +514,15 @@ mod tests {
         let mut edited = factory_multisample(LEN);
         edited[..16].copy_from_slice(b"My Multisample  ");
 
-        let records = vec![
-            edited,
-            factory_multisample(LEN),
-            factory_multisample(LEN),
-        ];
+        let records = vec![edited, factory_multisample(LEN), factory_multisample(LEN)];
         let (raw, svd) = svd_with(&[(b"MLSa", multisample_area(&records, LEN))]);
         let bank = read(&raw, &svd).unwrap();
 
-        assert_eq!(bank.multisamples.len(), 1, "only the edited slot is reported");
+        assert_eq!(
+            bank.multisamples.len(),
+            1,
+            "only the edited slot is reported"
+        );
         assert_eq!(bank.multisamples[0].index, 0);
         assert_eq!(bank.multisamples[0].name, "My Multisample");
     }

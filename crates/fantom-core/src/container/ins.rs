@@ -109,7 +109,10 @@ mod tests {
         // Instrument 15 pointing at slot 1 is exactly what the capture produced.
         assert_eq!(sample_slots(&kit(&[(15, 2, 1)])), [1]);
         // Several keys, deduplicated, in key order.
-        assert_eq!(sample_slots(&kit(&[(40, 2, 9), (2, 2, 4), (60, 2, 9)])), [4, 9]);
+        assert_eq!(
+            sample_slots(&kit(&[(40, 2, 9), (2, 2, 4), (60, 2, 9)])),
+            [4, 9]
+        );
     }
 
     #[test]

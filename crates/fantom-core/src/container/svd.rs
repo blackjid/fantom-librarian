@@ -151,12 +151,12 @@ mod tests {
         b.extend_from_slice(&30u16.to_le_bytes()); // 0x00
         b.extend_from_slice(b"SVD5"); // 0x02
         b.extend_from_slice(&[0u8; 10]); // 0x06 reserved
-        // area table (0x10): one PRFa entry
+                                         // area table (0x10): one PRFa entry
         b.extend_from_slice(b"PRFa"); // tag
         b.extend_from_slice(b"KY19"); // format
         b.extend_from_slice(&0x20u32.to_le_bytes()); // offset
         b.extend_from_slice(&0x20u32.to_le_bytes()); // size (one 32-byte record)
-        // PRFa area data (0x20): one scene record, name at +0x10
+                                                     // PRFa area data (0x20): one scene record, name at +0x10
         b.extend_from_slice(&0x10u32.to_le_bytes()); // name_offset
         b.extend_from_slice(&0x20u32.to_le_bytes()); // record_size (stride = 32)
         b.extend_from_slice(&[0u8; 8]); // unknown
@@ -172,12 +172,12 @@ mod tests {
         b.push(3); // 0x05 format revision
         b.extend_from_slice(b"KY019$"); // 0x06
         b.extend_from_slice(&[0u8; 4]); // 0x0c
-        // area table (0x10): one PATa entry
+                                        // area table (0x10): one PATa entry
         b.extend_from_slice(b"PATa");
         b.extend_from_slice(b"ZCOR");
         b.extend_from_slice(&0x20u32.to_le_bytes()); // offset
         b.extend_from_slice(&0x34u32.to_le_bytes()); // size: info 20 + one 32-byte record
-        // area body: count, record_size, info_length = 20 (16 + one 4-byte word)
+                                                     // area body: count, record_size, info_length = 20 (16 + one 4-byte word)
         b.extend_from_slice(&1u32.to_le_bytes());
         b.extend_from_slice(&0x20u32.to_le_bytes());
         b.extend_from_slice(&20u32.to_le_bytes());
@@ -215,8 +215,8 @@ mod tests {
         let raw = synthetic_svz();
         let svd = Svd::parse(&raw).unwrap();
         let area = svd.area(b"PATa").unwrap();
-        let table =
-            crate::container::RecordTable::parse(area, svd.area_bytes(&raw, area).unwrap()).unwrap();
+        let table = crate::container::RecordTable::parse(area, svd.area_bytes(&raw, area).unwrap())
+            .unwrap();
 
         assert_eq!(table.info_len, 20);
         assert_eq!(table.len(), 1);

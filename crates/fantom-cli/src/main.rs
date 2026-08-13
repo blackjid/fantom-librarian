@@ -307,7 +307,12 @@ fn run_diff(
 
     let mut out = String::new();
     let _ = writeln!(out, "left:  {} ({} bytes)", left.display(), left_raw.len());
-    let _ = writeln!(out, "right: {} ({} bytes)", right.display(), right_raw.len());
+    let _ = writeln!(
+        out,
+        "right: {} ({} bytes)",
+        right.display(),
+        right_raw.len()
+    );
     let _ = writeln!(out);
 
     let selected: Vec<&Finding> = findings
@@ -362,7 +367,13 @@ fn run_diff(
                     let _ = writeln!(
                         out,
                         "{}",
-                        render_run(&format!("{tag}.header"), run, &left_raw, &right_raw, context)
+                        render_run(
+                            &format!("{tag}.header"),
+                            run,
+                            &left_raw,
+                            &right_raw,
+                            context
+                        )
                     );
                 }
             }
@@ -421,10 +432,7 @@ fn render_run(
         // Clamp against the record-relative offset as well as the two file offsets: a run at the
         // start of a record (a scene rename lands at offset 0) has less context available before
         // it than the caller asked for.
-        let before = context
-            .min(run.offset)
-            .min(run.left_at)
-            .min(run.right_at);
+        let before = context.min(run.offset).min(run.left_at).min(run.right_at);
         let after = context;
         (
             window(left, run.left_at - before, before + run.left.len() + after),
@@ -745,7 +753,10 @@ fn sample_warning(output: &Raw, source: &Raw) -> String {
             .find(|s| s.index + 1 == *slot as usize)
             .map(|s| s.name.as_str())
             .unwrap_or("<not in this file>");
-        let _ = writeln!(out, "           slot {slot:>3}  {name:<20} (played by {tone:?})");
+        let _ = writeln!(
+            out,
+            "           slot {slot:>3}  {name:<20} (played by {tone:?})"
+        );
     }
     out.push_str(&other_dependencies(output));
     out
@@ -791,7 +802,10 @@ fn other_dependencies(output: &Raw) -> String {
                     if multis.len() == 1 { "" } else { "s" },
                 );
                 for (slot, tone) in &multis {
-                    let _ = writeln!(out, "           multisample {slot:>3}  (played by {tone:?})");
+                    let _ = writeln!(
+                        out,
+                        "           multisample {slot:>3}  (played by {tone:?})"
+                    );
                 }
             }
             if !banks.is_empty() {
@@ -826,7 +840,11 @@ fn run_verify(file: &PathBuf) -> fantom_core::Result<String> {
         report.checked,
         if report.checked == 1 { "" } else { "s" },
         report.areas_with_checksums,
-        if report.areas_with_checksums == 1 { "" } else { "s" },
+        if report.areas_with_checksums == 1 {
+            ""
+        } else {
+            "s"
+        },
     );
     if report.areas_with_checksums == 0 {
         let _ = writeln!(out, "(this container stores no per-record checksums)");

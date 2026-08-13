@@ -128,7 +128,10 @@ mod tests {
     /// The captured `T8_MSAMP`: three samples across three key ranges.
     #[test]
     fn reads_the_key_ranges_of_a_multisample() {
-        let record = multisample("T8_MSAMP", &[(0, 45, 2003), (46, 76, 2005), (77, 127, 2018)]);
+        let record = multisample(
+            "T8_MSAMP",
+            &[(0, 45, 2003), (46, 76, 2005), (77, 127, 2018)],
+        );
         assert_eq!(sample_slots(&record), [2003, 2005, 2018]);
 
         let map = key_map(&record);

@@ -27,9 +27,14 @@ struct Stat {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let path = std::env::args().nth(1).ok_or("usage: validate-params <FANTOM.SVD>")?;
+    let path = std::env::args()
+        .nth(1)
+        .ok_or("usage: validate-params <FANTOM.SVD>")?;
     let b = std::fs::read(&path)?;
-    let tones: usize = std::env::args().nth(2).and_then(|s| s.parse().ok()).unwrap_or(8);
+    let tones: usize = std::env::args()
+        .nth(2)
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(8);
 
     let mut pata = None;
     let header_size = u16::from_le_bytes([b[0], b[1]]) as usize;
@@ -45,23 +50,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let out = MidiOutput::new("fantom-validate-out")?;
     let inp = MidiInput::new("fantom-validate-in")?;
-    let dest = out.ports().into_iter()
-        .find(|p| out.port_name(p).as_deref() == Ok(PORT)).ok_or("Fantom not found")?;
-    let src = inp.ports().into_iter()
-        .find(|p| inp.port_name(p).as_deref() == Ok(PORT)).ok_or("Fantom not found")?;
+    let dest = out
+        .ports()
+        .into_iter()
+        .find(|p| out.port_name(p).as_deref() == Ok(PORT))
+        .ok_or("Fantom not found")?;
+    let src = inp
+        .ports()
+        .into_iter()
+        .find(|p| inp.port_name(p).as_deref() == Ok(PORT))
+        .ok_or("Fantom not found")?;
     let (tx, rx) = mpsc::channel();
     let mut pending: Vec<u8> = Vec::new();
-    let _ci = inp.connect(&src, "v", move |_, m, _| {
-        if m.first() == Some(&0xF0) {
-            pending.clear();
-        } else if pending.is_empty() {
-            return;
-        }
-        pending.extend_from_slice(m);
-        if pending.last() == Some(&0xF7) {
-            let _ = tx.send(std::mem::take(&mut pending));
-        }
-    }, ())?;
+    let _ci = inp.connect(
+        &src,
+        "v",
+        move |_, m, _| {
+            if m.first() == Some(&0xF0) {
+                pending.clear();
+            } else if pending.is_empty() {
+                return;
+            }
+            pending.extend_from_slice(m);
+            if pending.last() == Some(&0xF7) {
+                let _ = tx.send(std::mem::take(&mut pending));
+            }
+        },
+        (),
+    )?;
     let mut co = out.connect(&dest, "v")?;
 
     let mut stats: HashMap<(&str, &str), Stat> = HashMap::new();
@@ -85,7 +101,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Confirm the instrument really loaded the tone this file record describes.
         co.send(&rq1(temp_tone(0), 0x36))?;
-        let Ok(r) = rx.recv_timeout(REPLY) else { continue };
+        let Ok(r) = rx.recv_timeout(REPLY) else {
+            continue;
+        };
         let wname = String::from_utf8_lossy(&r[12..28]).trim_end().to_string();
         if wname != fname {
             skipped += 1;
@@ -104,14 +122,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let wire = &r[12..r.len() - 2];
             // The instrument is the authority on block length: PCMS_PTL is documented as 30
             // bytes but a FANTOM-6 returns 29. Only require room for the fields themselves.
-            let needed = inst.block.params.iter()
+            let needed = inst
+                .block
+                .params
+                .iter()
                 .map(|p| p.sysex_offset as usize + p.len_sysex as usize)
-                .max().unwrap_or(0);
+                .max()
+                .unwrap_or(0);
             if wire.len() < needed {
                 *misses.entry((inst.block.name, "short")).or_insert(0) += 1;
                 if first_short.is_none() {
                     first_short = Some(format!(
-                        "{} needed {} got {}", inst.block.name, needed, wire.len()));
+                        "{} needed {} got {}",
+                        inst.block.name,
+                        needed,
+                        wire.len()
+                    ));
                 }
                 continue;
             }
@@ -128,7 +154,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 let actual = &wire[at..at + expect.len()];
                 let e = stats.entry((inst.block.name, p.id)).or_insert(Stat {
-                    agree: 0, differ: 0, meaningful: 0, example: None,
+                    agree: 0,
+                    differ: 0,
+                    meaningful: 0,
+                    example: None,
                 });
                 if actual == expect.as_slice() {
                     e.agree += 1;
@@ -140,7 +169,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if e.example.is_none() {
                         e.example = Some(format!(
                             "{fname}: file {:?} -> expected {:02X?}, got {:02X?}",
-                            file_value(frec, p), expect, actual
+                            file_value(frec, p),
+                            expect,
+                            actual
                         ));
                     }
                 }
@@ -154,11 +185,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut by_block: HashMap<&str, (usize, usize, usize)> = HashMap::new();
     for ((block, _), s) in &stats {
         let e = by_block.entry(block).or_default();
-        if s.differ > 0 { e.1 += 1 } else if s.meaningful > 0 { e.0 += 1 } else { e.2 += 1 }
+        if s.differ > 0 {
+            e.1 += 1
+        } else if s.meaningful > 0 {
+            e.0 += 1
+        } else {
+            e.2 += 1
+        }
     }
     let mut names: Vec<_> = by_block.keys().copied().collect();
     names.sort();
-    println!("{:<10} {:>9} {:>9} {:>9}", "block", "confirmed", "MISMATCH", "untested");
+    println!(
+        "{:<10} {:>9} {:>9} {:>9}",
+        "block", "confirmed", "MISMATCH", "untested"
+    );
     for n in names {
         let (ok, bad, un) = by_block[n];
         println!("{n:<10} {ok:>9} {bad:>9} {un:>9}");
@@ -171,7 +211,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         for ((b, why), n) in m {
             println!("  {b:<10} {why} x{n}");
         }
-        if let Some(s) = &first_short { println!("  e.g. {s}"); }
+        if let Some(s) = &first_short {
+            println!("  e.g. {s}");
+        }
     }
 
     let mut bad: Vec<_> = stats.iter().filter(|(_, s)| s.differ > 0).collect();

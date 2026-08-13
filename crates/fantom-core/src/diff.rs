@@ -410,8 +410,16 @@ mod tests {
         assert!(matches!(
             findings.as_slice(),
             [
-                Finding::RecordCountDiffers { left: 1, right: 2, .. },
-                Finding::RecordOnlyIn { side: Side::Right, record: 1, .. },
+                Finding::RecordCountDiffers {
+                    left: 1,
+                    right: 2,
+                    ..
+                },
+                Finding::RecordOnlyIn {
+                    side: Side::Right,
+                    record: 1,
+                    ..
+                },
             ]
         ));
         assert_eq!(findings[1].tag(), "DCWa");
@@ -458,7 +466,11 @@ mod tests {
             for (tag, body) in [(b"PRFa", &prfa), (b"DIFa", &difa.to_vec())] {
                 bytes.extend_from_slice(tag);
                 bytes.extend_from_slice(b"KY19");
-                let at = if tag == b"PRFa" { first } else { first + prfa.len() };
+                let at = if tag == b"PRFa" {
+                    first
+                } else {
+                    first + prfa.len()
+                };
                 bytes.extend_from_slice(&(at as u32).to_le_bytes());
                 bytes.extend_from_slice(&(body.len() as u32).to_le_bytes());
             }

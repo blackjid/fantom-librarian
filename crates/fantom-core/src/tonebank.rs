@@ -49,7 +49,10 @@ impl LoadedArea {
     fn load(raw: &Raw, svd: &Svd, area: &Area) -> Result<Self> {
         let table = RecordTable::parse(area, svd.area_bytes(raw, area)?)?;
         let header: [u8; HEADER_LEN] = table.header().try_into().map_err(|_| {
-            Error::Unrecognized(format!("{} area is shorter than its header", area.tag_str()))
+            Error::Unrecognized(format!(
+                "{} area is shorter than its header",
+                area.tag_str()
+            ))
         })?;
         let records = table.records().map(<[u8]>::to_vec).collect::<Vec<_>>();
         let info = (0..records.len())
@@ -326,9 +329,9 @@ fn read_waveforms(raw: &Raw, svd: &Svd) -> Result<Vec<Waveform>> {
         let offset = u32::from_le_bytes(entry[4..8].try_into().unwrap()) as usize;
         let size = u32::from_le_bytes(entry[8..12].try_into().unwrap()) as usize;
         let word = u32::from_le_bytes(entry[12..16].try_into().unwrap());
-        let section = bytes.get(offset..offset + size).ok_or_else(|| {
-            Error::Unrecognized(format!("USDa section {index} exceeds the area"))
-        })?;
+        let section = bytes
+            .get(offset..offset + size)
+            .ok_or_else(|| Error::Unrecognized(format!("USDa section {index} exceeds the area")))?;
         out.push(Waveform {
             slot,
             word,
@@ -464,7 +467,10 @@ fn rebuild(bank: &ToneBank, keep: &[usize]) -> Result<Raw> {
             areas.push((slots.tag, slots.format, slots.build(&bank.all_slots())?));
         }
         if !bank.waveforms.is_empty() {
-            let sections = bank.waveforms.iter().map(|w| (w.slot, w.word, w.bytes.as_slice()));
+            let sections = bank
+                .waveforms
+                .iter()
+                .map(|w| (w.slot, w.word, w.bytes.as_slice()));
             areas.push((
                 *b"USDa",
                 bank.waveform_format,
@@ -590,8 +596,10 @@ fn merge(a: &ToneBank, b: &ToneBank) -> Result<Raw> {
                 areas.push((slots.tag, slots.format, slots.build(&source.all_slots())?));
             }
             if !source.waveforms.is_empty() {
-                let sections =
-                    source.waveforms.iter().map(|w| (w.slot, w.word, w.bytes.as_slice()));
+                let sections = source
+                    .waveforms
+                    .iter()
+                    .map(|w| (w.slot, w.word, w.bytes.as_slice()));
                 areas.push((
                     *b"USDa",
                     source.waveform_format,
@@ -979,14 +987,17 @@ mod tests {
         let svd = Svd::parse(&extracted).unwrap();
         let slots = RecordTable::parse(
             svd.area(b"USPa").unwrap(),
-            svd.area_bytes(&extracted, svd.area(b"USPa").unwrap()).unwrap(),
+            svd.area_bytes(&extracted, svd.area(b"USPa").unwrap())
+                .unwrap(),
         )
         .unwrap();
         assert_eq!(slots.len(), 1, "only the referenced slot travels");
         assert_eq!(&slots.record(0).unwrap()[..7], b"SlotTwo");
 
         // And its audio, verbatim.
-        let usda = svd.area_bytes(&extracted, svd.area(b"USDa").unwrap()).unwrap();
+        let usda = svd
+            .area_bytes(&extracted, svd.area(b"USDa").unwrap())
+            .unwrap();
         assert!(
             usda.windows(8).any(|w| w == b"SMPd-two"),
             "the referenced waveform is missing"
@@ -1071,7 +1082,10 @@ mod tests {
         let area = svd.area(b"PATa").unwrap();
         let table = RecordTable::parse(area, svd.area_bytes(&extracted, area).unwrap()).unwrap();
         let emitted = u32::from_le_bytes(table.record_info(0).unwrap().try_into().unwrap());
-        assert_ne!(emitted, original, "checksum was carried over, not recomputed");
+        assert_ne!(
+            emitted, original,
+            "checksum was carried over, not recomputed"
+        );
     }
 
     /// A record copied through untouched must keep its original checksum exactly.
@@ -1099,7 +1113,11 @@ mod tests {
         let extracted = extract_tones(&bank, &[1]).unwrap();
 
         assert_eq!(tone_names(&extracted), ["Kit B"]);
-        assert_eq!(slot_count(&extracted), 1, "only the kit's own sample travels");
+        assert_eq!(
+            slot_count(&extracted),
+            1,
+            "only the kit's own sample travels"
+        );
         assert!(contains(&extracted, b"SMPd-two"));
         assert!(!contains(&extracted, b"SMPd-one"));
     }
@@ -1182,7 +1200,9 @@ mod tests {
 
     #[test]
     fn rejects_a_tone_index_past_the_end() {
-        let error = extract_tones(&sampled_bank(), &[9]).unwrap_err().to_string();
+        let error = extract_tones(&sampled_bank(), &[9])
+            .unwrap_err()
+            .to_string();
         assert!(error.contains("out of range"), "{error}");
     }
 }

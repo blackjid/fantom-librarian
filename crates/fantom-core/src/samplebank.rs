@@ -216,9 +216,9 @@ fn svz_section(section: &[u8]) -> Result<Vec<u8>> {
         } else {
             0
         };
-    let audio = section.get(smpd::backup::AUDIO..).ok_or_else(|| {
-        Error::Unrecognized("SMPd section is shorter than its header".into())
-    })?;
+    let audio = section
+        .get(smpd::backup::AUDIO..)
+        .ok_or_else(|| Error::Unrecognized("SMPd section is shorter than its header".into()))?;
 
     let mut out = vec![0u8; smpd::svz::AUDIO + audio.len()];
     out[..4].copy_from_slice(b"SMPd");

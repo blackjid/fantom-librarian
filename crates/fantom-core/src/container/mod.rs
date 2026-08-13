@@ -50,13 +50,13 @@ pub fn remap_sample_slots_of(
         _ => {}
     }
 }
+pub use msmp::{key_map as multisample_key_map, KeyMap};
 pub use raw::Raw;
 pub use records::RecordTable;
-pub use msmp::{key_map as multisample_key_map, KeyMap};
 pub use sample::{Multisample, SampleBank, SampleData, SampleSlot, PANEL_SLOTS};
+pub(crate) use svd::ascii_trim;
 pub use svd::{Area, Kind, Svd, PREAMBLE_LEN};
 pub use zone::{RawZone, ZoneSettings};
-pub(crate) use svd::ascii_trim;
 
 /// Read the user sample bank (`SMPa` / `USDa` / `MLSa`) of a file.
 pub use sample::read as read_samples;

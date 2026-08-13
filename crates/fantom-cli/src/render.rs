@@ -197,10 +197,7 @@ mod tests {
         let mut t = Table::new(vec![("zone", Align::Right), ("tone", Align::Left)]);
         t.row(vec!["1".into(), "Africa Brass".into()]);
         t.row(vec!["16".into(), "Sax".into()]);
-        assert_eq!(
-            t.render(),
-            "zone  tone\n   1  Africa Brass\n  16  Sax\n"
-        );
+        assert_eq!(t.render(), "zone  tone\n   1  Africa Brass\n  16  Sax\n");
     }
 
     /// A short row must not panic or misalign the columns after it.
