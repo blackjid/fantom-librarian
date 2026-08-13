@@ -6,6 +6,10 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 use fantom_core::container::Raw;
+use fantom_core::params;
+
+mod render;
+use render::{Align, Table};
 
 #[derive(Parser)]
 #[command(
@@ -437,10 +441,10 @@ fn render_run(
     format!(
         "{where_}+0x{offset:04x}  @0x{:06x}  {} -> {}  |{}| -> |{}|",
         run.left_at,
-        hex(&left_bytes),
-        hex(&right_bytes),
-        ascii(&left_bytes),
-        ascii(&right_bytes),
+        render::hex(&left_bytes),
+        render::hex(&right_bytes),
+        render::ascii(&left_bytes),
+        render::ascii(&right_bytes),
     )
 }
 
@@ -449,27 +453,6 @@ fn window(raw: &Raw, at: usize, len: usize) -> Vec<u8> {
         .get(at..(at + len).min(raw.len()))
         .unwrap_or_default()
         .to_vec()
-}
-
-fn hex(bytes: &[u8]) -> String {
-    bytes
-        .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
-fn ascii(bytes: &[u8]) -> String {
-    bytes
-        .iter()
-        .map(|&b| {
-            if b.is_ascii_graphic() || b == b' ' {
-                b as char
-            } else {
-                '.'
-            }
-        })
-        .collect()
 }
 
 fn run_dependencies(file: &PathBuf) -> fantom_core::Result<String> {
@@ -497,7 +480,7 @@ fn run_dependencies(file: &PathBuf) -> fantom_core::Result<String> {
             let _ = writeln!(
                 out,
                 "{:<6} {:<6} {:>10} {:<24}",
-                area_tag(tag),
+                render::area_tag(tag),
                 "-",
                 "-",
                 "absent"
@@ -505,10 +488,6 @@ fn run_dependencies(file: &PathBuf) -> fantom_core::Result<String> {
         }
     }
     Ok(out)
-}
-
-fn area_tag(tag: &[u8; 4]) -> String {
-    String::from_utf8_lossy(tag).into_owned()
 }
 
 fn run_scenes(file: &PathBuf) -> fantom_core::Result<String> {
@@ -566,73 +545,61 @@ fn run_show(file: &PathBuf, scene: usize, all: bool) -> fantom_core::Result<Stri
     if !s.comment.is_empty() {
         let _ = writeln!(out, "note: {}", s.comment);
     }
-    let header = format!(
-        "{:>4}  {:<3}  {:<9}  {:<8}  {:<22}  {:>10}  {:>7}  {:>5}  {:>5}  {:>5}  {:>3}  {:>3}",
-        "zone", "on", "type", "bank", "tone", "range", "vel", "level", "pan", "trans", "oct", "ch"
-    );
-    let _ = writeln!(out, "{header}");
-    for z in &s.zones {
-        if !z.enabled && !all {
-            continue;
-        }
-        let _ = writeln!(
-            out,
-            "{:>4}  {:<3}  {:<9}  {:<8}  {:<22}  {:>10}  {:>7}  {:>5}  {:>5}  {:>5}  {:>3}  {:>3}",
-            z.number + 1,
-            zone_state(z),
-            tone_type_label(&z.tone),
-            z.tone
-                .bank()
-                .map(str::to_owned)
-                .unwrap_or_else(|| format!("LSB {}", z.tone.address.lsb)),
-            tone_label(&z.tone),
-            format!("{}..{}", note_name(z.key_low), note_name(z.key_high)),
-            format!("{}..{}", z.velocity_low, z.velocity_high),
-            z.level,
-            pan_label(z.pan),
-            signed(z.transpose),
-            signed(z.octave),
-            z.midi_channel + 1,
-        );
+    let shown = |z: &&fantom_core::model::Zone| z.enabled || all;
+    let mut table = Table::new(vec![
+        ("zone", Align::Right),
+        ("on", Align::Left),
+        ("type", Align::Left),
+        ("bank", Align::Left),
+        ("tone", Align::Left),
+        ("range", Align::Right),
+        ("vel", Align::Right),
+        ("level", Align::Right),
+        ("pan", Align::Right),
+        ("trans", Align::Right),
+        ("oct", Align::Right),
+        ("ch", Align::Right),
+    ]);
+    for z in s.zones.iter().filter(shown) {
+        table.row(vec![
+            (z.number + 1).to_string(),
+            render::zone_state(z).to_string(),
+            render::tone_type(&z.tone),
+            render::bank(&z.tone),
+            render::tone(&z.tone),
+            render::range(render::note(z.key_low), render::note(z.key_high)),
+            render::range(z.velocity_low, z.velocity_high),
+            z.level.to_string(),
+            pan(z.pan),
+            render::signed(z.transpose),
+            render::signed(z.octave),
+            (z.midi_channel + 1).to_string(),
+        ]);
     }
-    if s.zones.iter().any(|z| z.arpeggio && (z.enabled || all)) {
-        let arps: Vec<String> = s
-            .zones
-            .iter()
-            .filter(|z| z.arpeggio && (z.enabled || all))
-            .map(|z| (z.number + 1).to_string())
-            .collect();
+    out.push_str(&table.render());
+
+    let arps: Vec<String> = s
+        .zones
+        .iter()
+        .filter(shown)
+        .filter(|z| z.arpeggio)
+        .map(|z| (z.number + 1).to_string())
+        .collect();
+    if !arps.is_empty() {
         let _ = writeln!(out, "arpeggio: zone {}", arps.join(", "));
     }
     Ok(out)
 }
 
-/// A zone is off, muted, or on — muted is its own state, since a muted zone still receives.
-fn zone_state(z: &fantom_core::model::Zone) -> &'static str {
-    match (z.enabled, z.muted) {
-        (false, _) => "off",
-        (true, true) => "mut",
-        (true, false) => "on",
-    }
-}
-
-/// Pan as the panel writes it: `L64`, `C`, `63R`.
-fn pan_label(pan: i8) -> String {
-    match pan.cmp(&0) {
-        std::cmp::Ordering::Less => format!("L{}", -(pan as i32)),
-        std::cmp::Ordering::Equal => "C".to_string(),
-        std::cmp::Ordering::Greater => format!("{pan}R"),
-    }
-}
-
-/// A signed offset, always printed. Zero shows as `0`, not blank: a blank cell reads as "this
-/// could not be decoded" rather than "this is centred", which is the same reason pan prints `C`.
-fn signed(v: i8) -> String {
-    if v == 0 {
-        "0".to_string()
-    } else {
-        format!("{v:+}")
-    }
+/// Pan, formatted by the parameter table itself rather than by a rule restated here.
+///
+/// `L64`/`C`/`63R` is Roland's own notation for the field, and the table carries it — so this is
+/// the one zone column the CLI does not get to have an opinion about.
+fn pan(value: i8) -> String {
+    let p = params::scene::SCENE_ZONE
+        .param("Zone_Pan")
+        .expect("the scene table has Zone Pan");
+    params::render(p, value as i32)
 }
 
 fn run_tones(file: &PathBuf) -> fantom_core::Result<String> {
@@ -645,7 +612,7 @@ fn run_tones(file: &PathBuf) -> fantom_core::Result<String> {
         let _ = writeln!(
             out,
             "{:<6} {:<9} {:>5}  {}",
-            area_tag(&tone.area),
+            render::area_tag(&tone.area),
             tone.tone_type.label(),
             tone.index,
             tone.name
@@ -680,7 +647,7 @@ fn run_samples(file: &PathBuf) -> fantom_core::Result<String> {
             slot.name,
             slot.end,
             data.map(|d| d.seconds()).unwrap_or_default(),
-            note_name(slot.original_key),
+            render::note(slot.original_key),
             data.map(|d| d.name.as_str()).unwrap_or("<no waveform>"),
         );
     }
@@ -1074,31 +1041,6 @@ fn run_merge(target: &PathBuf, source: &PathBuf, output: &PathBuf) -> fantom_cor
         source.display(),
         output.display()
     ))
-}
-
-/// Render a zone's tone reference for display.
-fn tone_label(tone: &fantom_core::model::ToneRef) -> String {
-    match (tone.preset(), tone.name()) {
-        (Some(p), _) => format!("{:04} {}", p.number, p.name),
-        (_, Some(name)) => name.to_owned(),
-        _ => format!("PC {:03}", tone.address.pc),
-    }
-}
-
-fn tone_type_label(tone: &fantom_core::model::ToneRef) -> String {
-    use fantom_core::model::ToneType;
-    match tone.tone_type() {
-        ToneType::Unknown => format!("MSB {}", tone.address.msb),
-        known => known.label().to_owned(),
-    }
-}
-
-/// Render a MIDI note number as a name, e.g. 60 -> `C4` (Roland convention: middle C = C4).
-fn note_name(n: u8) -> String {
-    const NAMES: [&str; 12] = [
-        "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B",
-    ];
-    format!("{}{}", NAMES[(n % 12) as usize], (n / 12) as i16 - 1)
 }
 
 #[cfg(test)]

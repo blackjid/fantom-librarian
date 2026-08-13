@@ -22,6 +22,7 @@ crates/
                  #   tone.rs  a 1632-byte ZEN-Core tone; scene.rs  a 3572-byte scene
     tests/       # tests against real files; each skips when its fixture is absent
   fantom-cli/    # the `fantom` binary — first consumer of the library
+    render.rs    # value labels and table layout; presentation only, no I/O
   fantom-midi/   # SysEx transport; reads the parameter map from fantom-core
 tools/           # gen_params.py / gen_scene_params.py — regenerate the parameter tables
 docs/FORMAT.md   # reverse-engineering notebook for the on-disk layout
