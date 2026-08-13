@@ -400,6 +400,71 @@ fn a_sampled_scene_travels_as_a_bank_plus_a_companion_sample_file() {
     assert!(fantom_core::verify::check(&companion).unwrap().is_ok());
 }
 
+/// A bank this tool built, imported to a FANTOM-6 and exported straight back, returns unchanged.
+///
+/// The strongest available statement about the scene repackager: the instrument stored our records
+/// verbatim rather than merely tolerating them. Only `SYSa` differs, where it stamps its own system
+/// settings on the way out — `PRFa` and `PATa` come back byte for byte, rebased sample references
+/// included.
+#[test]
+fn a_bank_round_tripped_through_the_instrument_comes_back_unchanged() {
+    let (Some(sent), Some(back)) = (
+        open("hwtest/T3_BANK/FANTOM.SVD"),
+        open("hwtest_back/T6_BACK/FANTOM.SVD"),
+    ) else {
+        return;
+    };
+    assert_eq!(sent.bytes().len(), back.bytes().len(), "size changed");
+
+    let svd = fantom_core::container::Svd::parse(&back).unwrap();
+    for area in &svd.areas {
+        let ours = fantom_core::container::Svd::parse(&sent)
+            .unwrap()
+            .area(&area.tag)
+            .map(|a| {
+                fantom_core::container::Svd::parse(&sent)
+                    .unwrap()
+                    .area_bytes(&sent, a)
+                    .unwrap()
+                    .to_vec()
+            });
+        let theirs = svd.area_bytes(&back, area).unwrap();
+        let tag = area.tag_str();
+        if tag == "SYSa" {
+            continue; // the instrument's own settings, not ours to preserve
+        }
+        assert_eq!(
+            ours.as_deref(),
+            Some(theirs),
+            "{tag} changed passing through the instrument"
+        );
+    }
+}
+
+/// The instrument's own export of a rebased tone carries **both** of its wave numbers' samples.
+///
+/// `Beat It Gong` was sent in referencing slots 2001 and 2002. Exported back by the FANTOM it holds
+/// two samples renumbered to 1 and 2 — so Roland's dependency scan reads the right wave number even
+/// though its editor never displays one for a sampled partial. Following it is not optional.
+#[test]
+fn an_instrument_export_carries_the_right_wave_numbers_sample_too() {
+    let Some(raw) = open("hwtest_back/T6_TONE.svz") else {
+        return;
+    };
+    let svd = fantom_core::container::Svd::parse(&raw).unwrap();
+    let bank = fantom_core::container::read_samples(&raw, &svd).unwrap();
+    let names: Vec<&str> = bank.slots.iter().map(|s| s.name.as_str()).collect();
+    assert_eq!(names, ["1 Beat It - C2", "doh duh 2"]);
+
+    let tones = fantom_core::container::PatArea::from_svd(&raw, &svd).unwrap();
+    assert_eq!(tones.get(0).unwrap().name, "Beat It Gong");
+    assert_eq!(
+        tones.get(0).unwrap().samples,
+        [1, 2],
+        "both wave numbers renumbered densely"
+    );
+}
+
 /// A file with no user samples cannot be a source, and must say so rather than emit an empty bank.
 #[test]
 fn a_scene_export_cannot_source_sample_audio() {
