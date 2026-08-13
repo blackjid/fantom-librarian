@@ -74,11 +74,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }, ())?;
     let mut co = out.connect(&dest, "s")?;
 
-    // The temporary Z-Core address only applies while the zone holds a Z-Core tone.
-    co.send(&[0xB0 | zone, 0x00, 87])?;
-    co.send(&[0xB0 | zone, 0x20, 0])?;
-    co.send(&[0xC0 | zone, 0])?;
+    // The temporary Z-Core address only applies while the zone holds a Z-Core tone, so point the
+    // zone at USER ZEN-Core slot 1 first. Addressing the zone's own block rather than sending
+    // bank-select on channel `zone` keeps this right when a scene remaps its receive channels.
+    let zone_block = [0x02, 0x00, 0x10 + zone, 0x00];
+    co.send(&dt1(zone_block, &[87, 0, 0]))?;
     std::thread::sleep(Duration::from_millis(300));
+
+    // Play on whatever channel the zone actually listens to.
+    while rx.try_recv().is_ok() {}
+    co.send(&rq1(zone_block, 0x49))?;
+    let channel = rx.recv_timeout(REPLY).ok()
+        .and_then(|r| r.get(15).copied())
+        .filter(|c| *c < 16)
+        .unwrap_or(zone);
+    println!("zone {} receives on MIDI channel {}", zone + 1, channel + 1);
 
     let base = temp_tone(zone);
     for inst in params::TONE {
@@ -88,6 +98,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::thread::sleep(Duration::from_millis(20)); // Roland's inter-packet interval
     }
     println!("wrote {} blocks", params::TONE.len());
+
+    // The panel caches the tone name and a temporary-memory write does not invalidate it, so the
+    // screen keeps showing the old name until something makes it redraw. Selecting another zone
+    // does, and Current Zone is just a parameter — so do it from here and land back on `zone`.
+    const CURRENT_ZONE: [u8; 4] = [0x02, 0x00, 0x00, 0x12];
+    co.send(&dt1(CURRENT_ZONE, &[if zone == 0 { 1 } else { 0 }]))?;
+    std::thread::sleep(Duration::from_millis(150));
+    co.send(&dt1(CURRENT_ZONE, &[zone]))?;
+    std::thread::sleep(Duration::from_millis(150));
 
     std::thread::sleep(Duration::from_millis(300));
     while rx.try_recv().is_ok() {}
@@ -135,12 +154,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Play it, so the result is audible and not just a byte count.
     println!("playing…");
     for n in [48u8, 55, 60, 64] {
-        co.send(&[0x90 | zone, n, 90])?;
+        co.send(&[0x90 | channel, n, 90])?;
         std::thread::sleep(Duration::from_millis(120));
     }
     std::thread::sleep(Duration::from_millis(1400));
     for n in [48u8, 55, 60, 64] {
-        co.send(&[0x80 | zone, n, 0])?;
+        co.send(&[0x80 | channel, n, 0])?;
     }
     Ok(())
 }

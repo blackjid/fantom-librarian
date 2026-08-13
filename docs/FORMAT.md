@@ -911,6 +911,13 @@ Addresses **and sizes** carry 7 bits per byte: 144 is `00 00 01 10`, not `00 00 
 | `02 00 00 00` | Temporary Scene; Common `+00 00 00`, Zone *n* `+00 1n 00`, Zone Control `+00 3n 00` |
 | `02 1n 00 00` | Temporary Z-Core Tone, zone *n* |
 
+The temporary tone address only applies while the zone holds a tone of that engine; write the
+zone's own block (`02 00 1n 00`, MSB/LSB/PC) to change it, rather than sending bank-select on
+channel *n*, which assumes a receive-channel mapping a scene is free to remap.
+
+**The panel caches the tone name.** Writing temporary memory sets the edited asterisk but does not
+redraw it. Writing Scene Common `+0x12` (Current Zone) away and back does — verified on a FANTOM-6.
+
 ### A record on disk is its SysEx parameter blocks, packed
 
 The same map describes both sides. Converting file → wire:
