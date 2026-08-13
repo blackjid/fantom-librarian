@@ -11,10 +11,10 @@
 //! areas the same way (see [`crate::address`]), the only difference is how much gets left behind.
 //! The output is always a self-contained scene-export bank.
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use crate::address;
-use crate::container::{Raw, RawZone, Svd, ZoneSettings};
+use crate::container::{Kind, Raw, RawZone, RecordTable, Svd, ZoneSettings};
 use crate::{Error, Result};
 
 const HEADER_LEN: usize = 0x10;
@@ -28,9 +28,13 @@ const PRESERVED: [&[u8; 4]; 2] = [b"SYSa", b"DIFa"];
 /// Areas we recognise but deliberately leave behind.
 ///
 /// These hold the user sample bank: `SMPa` the slot directory, `MLSa` multisamples, `USDa` the
-/// waveform payload (23 MB in a full backup). How a tone references a sample is **not decoded**, so
-/// there is no way to carry the right subset or renumber what remains. Copying them wholesale would
-/// bloat every export with a bank's worth of audio while still pointing at the wrong slots.
+/// waveform payload (23 MB in a full backup). Dropping them is not a limitation but a match for
+/// what the instrument does — its own scene exports carry no sample area either, and nothing in the
+/// scene-import path reads one. A scene bank's sample references are absolute panel slots precisely
+/// *because* there is no table here for an index to point into.
+///
+/// The audio still travels, in the container built for it: [`crate::samplebank`] writes a companion
+/// `.svz`, and [`rebase_sample_slots`] repoints this bank at wherever that companion is imported.
 const DROPPED: [&[u8; 4]; 3] = [b"SMPa", b"MLSa", b"USDa"];
 
 struct RecordArea {
@@ -541,6 +545,93 @@ fn read_u32(bytes: &[u8], at: usize, tag: &str) -> Result<u32> {
     Ok(u32::from_le_bytes(value.try_into().unwrap()))
 }
 
+/// The user-sample slots this bank's bundled ZEN-Core tones play: 1-based, sorted, deduplicated.
+///
+/// These are **panel slot numbers**, and they are what makes a sampled scene bank incomplete
+/// elsewhere: the destination has to hold this audio at these numbers.
+pub fn referenced_sample_slots(raw: &Raw) -> Result<Vec<u16>> {
+    let svd = Svd::parse(raw)?;
+    let Some(table) = RecordTable::from_svd(raw, &svd, b"PATa")? else {
+        return Ok(Vec::new());
+    };
+    let mut slots = BTreeSet::new();
+    for record in table.records() {
+        slots.extend(crate::container::sample_slots(record));
+    }
+    Ok(slots.into_iter().collect())
+}
+
+/// Repoint every bundled tone's user-sample references through `remap` (old slot -> new slot).
+///
+/// The numbers a scene bank stores are absolute panel slots, so a sampled bank only plays correctly
+/// where the destination happens to hold that audio at those exact slots — which is why commercial
+/// packs tell you to wipe slots 1-50 and load theirs there. Rewriting the references instead lets
+/// the audio land anywhere free: pair this with a [`crate::samplebank`] companion file and the
+/// numbers agree by construction.
+///
+/// Slots with no entry in `remap` are left alone. Only `PATa` is rewritten, because only a
+/// ZEN-Core tone's sample references are decoded — see [`crate::address::AreaSpec`]; a caller
+/// holding a bank with drum kits should say so.
+pub fn rebase_sample_slots(raw: &Raw, remap: &BTreeMap<u16, u16>) -> Result<Raw> {
+    let svd = Svd::parse(raw)?;
+    if svd.kind == Kind::Svz {
+        return Err(Error::Unrecognized(
+            "an SVZ addresses samples by position within its own USPa, so there is nothing to \
+             rebase — extract already carries and renumbers them"
+                .into(),
+        ));
+    }
+
+    let mut bytes = raw.bytes().to_vec();
+    let Some(table) = RecordTable::from_svd(raw, &svd, b"PATa")? else {
+        return Ok(Raw::from_bytes(bytes));
+    };
+    if table.info_stride() != 0 {
+        // No SVD5 area stores per-record checksums, so this cannot happen — but rewriting records
+        // without refreshing them would hand the instrument a file that fails its own check.
+        return Err(Error::Unrecognized(
+            "PATa carries per-record checksums; rebasing would invalidate them".into(),
+        ));
+    }
+    let record_size = table.record_size;
+    let offsets: Vec<usize> = (0..table.len()).map(|i| table.record_offset(i)).collect();
+
+    for at in offsets {
+        let Some(record) = bytes.get_mut(at..at + record_size) else {
+            break;
+        };
+        crate::container::remap_sample_slots(record, remap);
+    }
+
+    let out = Raw::from_bytes(bytes);
+    let report = crate::verify::check(&out)?;
+    if !report.is_ok() {
+        return Err(Error::Unrecognized(format!(
+            "rebasing produced an inconsistent file: {}",
+            report
+                .problems
+                .iter()
+                .map(|p| p.to_string())
+                .collect::<Vec<_>>()
+                .join("; ")
+        )));
+    }
+    Ok(out)
+}
+
+/// Map each slot in `slots` onto a contiguous run starting at `base`, in slot order.
+///
+/// This is the mapping a companion sample file implies: it numbers its samples densely, the
+/// instrument imports them as one run from whichever slot the user picks, so the *n*th slot this
+/// bank referenced becomes `base + n`.
+pub fn contiguous_remap(slots: &[u16], base: u16) -> BTreeMap<u16, u16> {
+    slots
+        .iter()
+        .enumerate()
+        .map(|(index, &slot)| (slot, base + index as u16))
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -629,6 +720,85 @@ mod tests {
             (b"SYSa", system_area(system)),
             (b"PATa", record_area(&tones, TONE_SIZE)),
         ])
+    }
+
+    /// A tone record long enough to hold four real partials, unlike the 32-byte stub above.
+    const SAMPLED_TONE_SIZE: usize = 0xdc + 4 * 124 + 8;
+
+    /// A tone whose `partial` plays user sample `slot`, at the confirmed group/number offsets.
+    fn sampled_tone(name: &str, partials: &[(usize, u16)]) -> Vec<u8> {
+        let mut record = vec![0u8; SAMPLED_TONE_SIZE];
+        record[..NAME_LEN].fill(b' ');
+        record[..name.len()].copy_from_slice(name.as_bytes());
+        for &(partial, slot) in partials {
+            let base = 0xdc + partial * 124;
+            record[base + 3] = 2;
+            record[base + 6..base + 8].copy_from_slice(&slot.to_le_bytes());
+        }
+        record
+    }
+
+    fn sampled_bank(tones: &[Vec<u8>]) -> Raw {
+        build_svd(&[
+            (b"PRFa", record_area(&[scene("One", &[0])], SCENE_SIZE)),
+            (b"SYSa", system_area(&[0u8; 8])),
+            (b"PATa", record_area(tones, SAMPLED_TONE_SIZE)),
+        ])
+    }
+
+    #[test]
+    fn reports_the_sample_slots_the_bundled_tones_play() {
+        let raw = sampled_bank(&[
+            sampled_tone("Plain", &[]),
+            sampled_tone("Two", &[(0, 29), (1, 7)]),
+            sampled_tone("Dup", &[(0, 7)]),
+        ]);
+        assert_eq!(referenced_sample_slots(&raw).unwrap(), [7, 29]);
+    }
+
+    /// The point of rebasing: a bank whose tones name panel slots 7 and 29 can be repointed at a
+    /// contiguous run the destination actually has free, so the audio need not land on top of
+    /// whatever the user already keeps in those slots.
+    #[test]
+    fn rebasing_repoints_every_reference_onto_a_contiguous_run() {
+        let raw = sampled_bank(&[
+            sampled_tone("Plain", &[]),
+            sampled_tone("Two", &[(0, 29), (1, 7)]),
+        ]);
+        let slots = referenced_sample_slots(&raw).unwrap();
+        let remap = contiguous_remap(&slots, 101);
+
+        let rebased = rebase_sample_slots(&raw, &remap).unwrap();
+        assert_eq!(referenced_sample_slots(&rebased).unwrap(), [101, 102]);
+
+        // Slot 7 was the first referenced, so it becomes the first of the run.
+        let svd = Svd::parse(&rebased).unwrap();
+        let table = RecordTable::from_svd(&rebased, &svd, b"PATa").unwrap().unwrap();
+        assert_eq!(crate::container::sample_slots(table.record(1).unwrap()), [102, 101]);
+    }
+
+    #[test]
+    fn rebasing_leaves_a_bank_without_samples_untouched() {
+        let raw = sampled_bank(&[sampled_tone("Plain", &[])]);
+        let rebased = rebase_sample_slots(&raw, &contiguous_remap(&[], 101)).unwrap();
+        assert_eq!(rebased.bytes(), raw.bytes());
+    }
+
+    /// An SVZ numbers its samples by position in its own USPa, so "rebasing" one is meaningless.
+    #[test]
+    fn rebasing_refuses_a_tone_bank() {
+        let raw = Raw::from_bytes({
+            let mut b = b"SVZa".to_vec();
+            b.push(0);
+            b.push(3);
+            b.extend_from_slice(b"KY019$");
+            b.extend_from_slice(&[0u8; 4]);
+            b
+        });
+        let error = rebase_sample_slots(&raw, &BTreeMap::new())
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("position within its own USPa"), "{error}");
     }
 
     fn area_bytes(raw: &Raw, tag: &[u8; 4]) -> Vec<u8> {
