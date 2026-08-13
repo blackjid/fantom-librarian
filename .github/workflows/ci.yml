@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Format
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      # Runs the committed fixtures in fixtures/ and every unit test. The private corpus
+      # (fixtures-local/) is never available here and its tests skip by design — see
+      # fixtures/README.md. Tests reaching for a committed fixture fail rather than skip,
+      # so this job cannot pass by testing nothing.
+      - name: Test
+        run: cargo test --workspace

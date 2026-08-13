@@ -26,7 +26,8 @@ crates/
   fantom-midi/   # SysEx transport; reads the parameter map from fantom-core
 tools/           # gen_params.py / gen_scene_params.py — regenerate the parameter tables
 docs/FORMAT.md   # reverse-engineering notebook for the on-disk layout
-fixtures/        # real Fantom files and hardware captures (gitignored)
+fixtures/        # committed test files — see fixtures/README.md for what may go here
+fixtures-local/  # private corpus: backups, docs, purchased packs (gitignored)
 ```
 
 ## Status
