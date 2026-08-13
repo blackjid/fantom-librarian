@@ -1,0 +1,204 @@
+//! The scene parameter table, against files a FANTOM-6 wrote.
+//!
+//! `params::scene` is generated from Roland's MIDI Implementation, which describes the *wire*.
+//! Its file offsets are derived by the packing rule in `docs/FORMAT.md`, so the derivation is
+//! what needs checking, and only real records can check it. Like `fixtures.rs`, every test here
+//! skips when its fixture is missing.
+
+use std::path::{Path, PathBuf};
+
+use fantom_core::codec;
+use fantom_core::container::{Raw, RecordTable, Svd};
+use fantom_core::params::{scene, Instance};
+
+fn fixtures() -> Option<PathBuf> {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures");
+    dir.is_dir().then_some(dir)
+}
+
+fn open(relative: &str) -> Option<Raw> {
+    let path = fixtures()?.join(relative);
+    if !path.is_file() {
+        eprintln!("skipping: {} not present", path.display());
+        return None;
+    }
+    Some(Raw::open(&path).expect("fixture is readable"))
+}
+
+/// Every scene record in a file, as raw bytes.
+fn records(raw: &Raw) -> Vec<Vec<u8>> {
+    let svd = Svd::parse(raw).expect("parses");
+    let table = RecordTable::from_svd(raw, &svd, b"PRFa")
+        .expect("readable")
+        .expect("has a PRFa area");
+    table.records().map(|r| r.to_vec()).collect()
+}
+
+/// The `n`th instance of a named block within the scene record.
+fn block(name: &str, n: usize) -> &'static Instance {
+    scene::SCENE
+        .iter()
+        .filter(|i| i.block.name == name)
+        .nth(n)
+        .unwrap_or_else(|| panic!("scene has no {name} instance {n}"))
+}
+
+fn zone(n: usize) -> &'static Instance {
+    block("Scene Zone", n)
+}
+
+fn control(n: usize) -> &'static Instance {
+    block("Zone Control", n)
+}
+
+/// The controlled single-variable edits that first established these offsets. `TEST 1..3` differ
+/// by one deliberate panel change each, so they pin the fields the table now claims to hold.
+#[test]
+fn the_controlled_edits_read_back_through_the_table() {
+    let Some(raw) = open("tests/TEST 1/FANTOM.SVD") else {
+        return;
+    };
+    let recs = records(&raw);
+    let r = &recs[0];
+    let common = block("Scene Common", 0);
+
+    assert_eq!(common.read(r, "Scene_Level"), Some(100));
+    // Tempo is the four-nibble field whose packing puts the memo at file +0x40, wire +0x42.
+    assert_eq!(common.read(r, "Scene_Tempo"), Some(12000), "120.00 BPM");
+    assert_eq!(common.read(r, "Current_Zone"), Some(0));
+
+    // TEST 3 set zone 1's key range to C4-C5 and its level to 50.
+    let Some(raw3) = open("tests/TEST 3/FANTOM.SVD") else {
+        return;
+    };
+    let recs3 = records(&raw3);
+    let r3 = &recs3[0];
+    assert_eq!(zone(0).read(r3, "Zone_Level"), Some(50));
+    assert_eq!(
+        control(0).read(r3, "Keyboard_Control_Range_Lower"),
+        Some(60),
+        "C4"
+    );
+    assert_eq!(
+        control(0).read(r3, "Keyboard_Control_Range_Upper"),
+        Some(72),
+        "C5"
+    );
+
+    // TEST 2 is the same scene before the level edit.
+    let Some(raw2) = open("tests/TEST 2/FANTOM.SVD") else {
+        return;
+    };
+    assert_eq!(zone(0).read(&records(&raw2)[0], "Zone_Level"), Some(100));
+}
+
+/// The table must reproduce, for every zone of every scene, exactly what the existing decoder
+/// reports — a decoder whose offsets were confirmed against the FANTOM-6 panel. Agreement over
+/// hundreds of scenes is what turns a derived map into a checked one.
+#[test]
+fn agrees_with_the_decoder_across_a_whole_backup() {
+    let Some(raw) = open("backup/ROLAND/SOUND/NARF/FANTOM.SVD") else {
+        return;
+    };
+    let scenes = codec::read_scenes(&raw).expect("decodes");
+    let recs = records(&raw);
+    assert_eq!(scenes.len(), recs.len());
+
+    let mut checked = 0;
+    for (s, r) in scenes.iter().zip(&recs) {
+        for z in &s.zones {
+            let n = z.number as usize;
+            assert_eq!(
+                zone(n).read(r, "Tone_Bank_Select_MSB"),
+                Some(z.tone.address.msb as u32),
+                "scene {:?} zone {} MSB",
+                s.name,
+                n + 1
+            );
+            assert_eq!(
+                zone(n).read(r, "Tone_Bank_Select_LSB"),
+                Some(z.tone.address.lsb as u32)
+            );
+            assert_eq!(
+                zone(n).read(r, "Tone_Program_Change"),
+                Some(z.tone.address.pc as u32)
+            );
+            assert_eq!(zone(n).read(r, "Zone_Level"), Some(z.level as u32));
+            assert_eq!(
+                control(n).read(r, "Keyboard_Control_Range_Lower"),
+                Some(z.key_low as u32)
+            );
+            assert_eq!(
+                control(n).read(r, "Keyboard_Control_Range_Upper"),
+                Some(z.key_high as u32)
+            );
+            assert_eq!(
+                control(n).read(r, "Keyboard_Switch"),
+                Some(z.enabled as u32)
+            );
+            checked += 1;
+        }
+    }
+    assert!(checked > 100, "only {checked} zones checked");
+}
+
+/// Blocks the decoder has never read, whose placement is therefore only as good as the layout
+/// arithmetic. Every zone of every scene must hold a *plausible* EQ — gains centred, the three
+/// band frequencies in range, Q one of six values — which a misplaced block would not.
+#[test]
+fn the_newly_placed_blocks_hold_values_in_range() {
+    let Some(raw) = open("backup/ROLAND/SOUND/NARF/FANTOM.SVD") else {
+        return;
+    };
+    for r in &records(&raw) {
+        for n in 0..16 {
+            let eq = block("Zone EQ", n);
+            for band in ["EQ_Low_Frequency", "EQ_Mid_Frequency", "EQ_High_Frequency"] {
+                let v = eq.read(r, band).expect("band is mapped");
+                assert!(v <= 29, "{band} = {v}, past the 30-entry frequency list");
+            }
+            assert!(eq.read(r, "EQ_Mid_Q").unwrap() <= 5);
+            assert!(eq.read(r, "EQ_Switch").unwrap() <= 1);
+        }
+
+        // Ranges as the MIDI Implementation declares them: cutoff and resonance are the
+        // four-nibble 0-1023 fields, and the type is one of OFF/LPF1/LPF2/LPF3/HPF/BPF.
+        let af = block("Analog Filter", 0);
+        assert!(af.read(r, "Analog_Filter_Cutoff_1").unwrap() <= 1023);
+        assert!(af.read(r, "Analog_Filter_Cutoff_2").unwrap() <= 1023);
+        assert!(af.read(r, "Analog_Filter_Resonance_1").unwrap() <= 1023);
+        assert!(af.read(r, "Analog_Filter_Resonance_2").unwrap() <= 1023);
+        assert!(af.read(r, "Analog_Filter_Type").unwrap() <= 5);
+        assert!(af.read(r, "Analog_Filter_Amp_Sw").unwrap() <= 1);
+        assert!(af.read(r, "Analog_Filter_Drive_Sw").unwrap() <= 1);
+
+        // A controller assign triple is (assign, min, max); the range bytes are 7-bit.
+        let ctl = block("Scene Controller", 0);
+        assert!(ctl.read(r, "Pedal_1_Range_Min").unwrap() <= 127);
+        assert!(ctl.read(r, "Pedal_1_Range_Max").unwrap() <= 127);
+    }
+}
+
+/// The scene name and memo are the two fields the librarian already reads and writes. Reading
+/// them through the parameter table must give the same bytes.
+#[test]
+fn name_and_memo_agree_with_the_codec() {
+    let Some(raw) = open("backup/ROLAND/SOUND/NARF/FANTOM.SVD") else {
+        return;
+    };
+    let scenes = codec::read_scenes(&raw).expect("decodes");
+    let common = block("Scene Common", 0);
+    for (s, r) in scenes.iter().zip(&records(&raw)) {
+        let name: String = (1..=16)
+            .filter_map(|i| common.read(r, &format!("Scene_Name_{i}")))
+            .map(|b| b as u8 as char)
+            .collect();
+        assert_eq!(name.trim_end(), s.name);
+
+        let memo: String = (1..=64)
+            .filter_map(|i| common.read(r, &format!("Scene_Memo_{i}")))
+            .map(|b| b as u8 as char)
+            .collect();
+        assert_eq!(memo.trim_end(), s.comment);
+    }
+}

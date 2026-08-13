@@ -83,28 +83,44 @@ The `PRFa` area opens with a 16-byte header, then an array of fixed-stride scene
 | +4  | 4    | `record_size` | `f4 0d 00 00` | Stride per record (3572 bytes)            |
 | +8  | 8    | (unknown)     |               | TBD                                        |
 
-**Each scene record (`record_size` bytes):** starts with a 16-byte ASCII `name`, space-padded
-(e.g. `DSOTM Breathe`, `Africa Main`), followed at **`+0x40`** by a longer ASCII **comment/memo**
-field (e.g. `"KEY SPLIT[SPLIT POINT B4] C5 …"`). It also holds two parallel 16-entry per-zone tables. Offsets
-below were **confirmed by controlled single-variable edits** (`fixtures/tests/TEST 1..3`) and
-cross-checked against the "Africa Main" panel: zone order is 1:1 with the panel (zone 0 = Zone 1).
+**Each scene record (`record_size` bytes)** is Roland's Scene parameter blocks packed end to end,
+by the file/wire rule below. Zone order is 1:1 with the panel (zone 0 = Zone 1).
 
-**A) Zone table — record-relative `0x6d0`, 16 × 0x60 (96) bytes** (CONFIRMED):
-| Off   | Field       | Evidence                                                          |
-|-------|-------------|-------------------------------------------------------------------|
-| +0x04 | `enable`    | 0/1. TEST1→TEST2 flipped zone1's byte 0x734 (`0x6d0+0x60+4`) 0→1  |
-| +0x08 | `key_low`   | MIDI note. TEST3 set zone0 to `3c` (C4=60) at 0x6d8               |
-| +0x09 | `key_high`  | MIDI note. TEST3 set zone0 to `48` (C5=72) at 0x6d9               |
-| +0x3e | `marker`    | Constant `cf cd` (16 of them at stride 0x60, from 0x70e)          |
+| File   | Block              | Len | ×  | Holds                                          |
+|--------|--------------------|-----|----|------------------------------------------------|
+| `0x000`| `[Scene Common]`   | 144 | 1  | name, level, tempo, memo, colour, rating       |
+| `0x090`| `[Chorus]`         | 48  | 1  | scene chorus                                   |
+| `0x0c0`| `[Reverb]`         | 44  | 1  | scene reverb                                   |
+| `0x0ec`| `[MFX]`            | 84  | 2  | scene IFX 1 and 2                              |
+| `0x194`| `[Scene Zone]`     | 72  | 16 | tone reference, level, pan, tune, scale, Rx    |
+| `0x614`| `[Zone EQ]`        | 12  | 16 | three-band EQ per zone                         |
+| `0x6d4`| `[Zone Control]`   | 96  | 16 | key/velocity range, transpose, arp, external   |
+| `0xcd4`| `[Scene Controller]`| 256| 1  | pedal, knob, slider and wheel assigns          |
+| `0xdd4`| `[Analog Filter]`  | 32  | 1  | FANTOM-8 analog filter                         |
 
-**B) Zone settings table — record-relative `0x194`, 16 × 0x48 (72) bytes** (partly decoded):
-| Off   | Field       | Evidence                                                          |
-|-------|-------------|-------------------------------------------------------------------|
-| +0x00 | tone MSB    | MIDI Bank Select MSB; selects the sound engine/area                |
-| +0x01 | tone LSB    | MIDI Bank Select LSB; user page or factory bank                    |
-| +0x02 | tone PC     | Zero-based program/index within the bank                           |
-| +0x03 | zone index  | 0..15                                                             |
-| +0x07 | `level`     | 0..127. TEST2→TEST3 set zone0 level `64`→`32` (100→50) at 0x19b   |
+These tile `0xdf4` = 3572 exactly, with no gap. Block lengths are the packed parameter length plus
+padding that the wire map does not predict, so they are measured, not derived; `params::scene`
+asserts the tiling. Selected fields:
+
+| Block | Off | Field | Evidence |
+|-------|-----|-------|----------|
+| Scene Common | +0x10 | Scene Level | 100 in TEST 1 |
+| Scene Common | +0x38 | Scene Tempo, u16 ×100 | `12000` = 120.00 BPM |
+| Scene Common | +0x40 | Scene Memo, 64 ASCII | wire `+0x42`; see the packing rule |
+| Scene Zone | +0x00..02 | tone MSB / LSB / PC | |
+| Scene Zone | +0x03 | Receive Channel | 0..15, *not* the zone index |
+| Scene Zone | +0x07 | Zone Level | TEST2→TEST3 set zone0 `64`→`32` at 0x19b |
+| Scene Zone | +0x08 | Zone Pan | zero-centred |
+| Zone Control | +0x00 | Keyboard Switch | TEST1→TEST2 flipped zone1's 0x738 0→1 |
+| Zone Control | +0x04 | Keyboard Range Lower | TEST3 set zone0 `3c` (C4) at 0x6d8 |
+| Zone Control | +0x05 | Keyboard Range Upper | TEST3 set zone0 `48` (C5) at 0x6d9 |
+| Zone Control | +0x08 | Zone Transpose | zero-centred, ±48 |
+
+> **The zone table starts at `0x6d4`, not `0x6d0`.** `container::zone::RawZone` frames it four bytes
+> early, so its fields read four higher than Zone Control's (`enable` = `+0x04` is Keyboard Switch
+> `+0x00`) and its `cf cd` marker at `+0x3e` is Zone Control `+0x3a`. The four bytes are the tail of
+> the last `[Zone EQ]` entry. The framing is consistent, so the decoder is correct; only the
+> boundary was misplaced, which is why the 188 bytes before it looked like an unexplained gap.
 
 The tone reference is the three-byte **MSB / LSB / PC** tuple at table B `+0x00..+0x02`.
 Earlier analysis treated LSB/PC alone as a big-endian `tone_id`; that representation remains useful
@@ -623,7 +639,7 @@ data for other ZEN-Core devices — Jupiter-X, Juno-X, MV-1 — rather than from
 - [Roland-Structured-Storage](https://github.com/DrKnackeratorStrikesAgain/Roland-Structured-Storage)
   (MIT) is a JS library whose parameter tables carry `byteOffset` **and** `sysexOffset` per field,
   plus the bias for signed ones. That correspondence is the SysEx mapping documented above, and
-  `tools/gen_params.py` generates `fantom-midi`'s table from it.
+  `tools/gen_params.py` generates `params::tone` from it. It has no scene group.
 
 The first two are used as sources of *hypotheses*, not of facts: every field was checked against the
 fixtures in this repository before being written down, which is how the second wave number turned
@@ -644,9 +660,14 @@ chapter" there. The `USPa`/`SMPa`/`SMPd` mapping in this document has no counter
 > WAV export would have needed to know.
 
 **Validation** — "Africa Main" (scene 385) decodes to exactly the panel's 4 zones:
-Z1 Brass 0–71 · Z2 Kalimba 73–127 · Z3 Kalimba 72–72 · Z4 JX-Cream 0–71 (levels 107/107/100/82).
+Z1 Brass 0–71 · Z2 Kalimba 73–127 · Z3 Kalimba 72–72 · Z4 JX-Cream 0–71 (levels 107/107/100/82,
+pans L16/17R/C/25R).
 
-**Still TBD:** pan and other per-zone params; the scene-common block before `0x194`.
+> **A biased field's file bytes are two's-complement.** Pan `0xf0` is −16, and goes out as
+> −16 + 64 = `0x30`. Read one unsigned and L16 shows as 240. In the generated table a non-zero
+> `bias` is the flag that says to sign-extend, and it is set only where Roland's displayed range
+> starts *negative* — a display that merely counts from 1, as Receive Channel's `1 - 16` does, is a
+> label for the player and biasing by it would corrupt the wire value.
 
 ### Controlled user-tone parameter diffs (TONEMAP4/5)
 
@@ -926,13 +947,21 @@ The same map describes both sides. Converting file → wire:
 - signed fields are stored zero-centred and biased on the wire (pan `0xf0` = −16 → `0x30`);
 - the instrument **clamps** out-of-range values silently, so an unbiased byte lands wrong, not rejected.
 
-`PRFa` is exactly this: Scene Common is 150 addresses and 148 bytes, the difference being the
-4-nibble Scene Tempo at wire `+0x38`, which is why the memo is at file `+0x40` and wire `+0x42`.
-The zone table at `+0x6d0` is `[Zone Control]` behind a 4-byte prefix.
+`PRFa` is exactly this: Scene Common is 150 addresses and 144 bytes, the difference being the
+4-nibble Scene Tempo at wire `+0x38` and two other multi-nibble fields, which is why the memo is at
+file `+0x40` and wire `+0x42`. See the scene record layout above for the full block map.
 
 `PATa` is the same parameter *sequence* with file-only padding interleaved, so its offsets must be
-looked up rather than computed. `crates/fantom-midi/src/params.rs` holds the table, generated by
-`tools/gen_params.py`; `PCMEX` totals 1632 bytes across 33 blocks.
+looked up rather than computed. `crates/fantom-core/src/params/` holds both tables; `PCMEX` totals
+1632 bytes across 33 blocks and a scene 3572 across 55.
+
+**The two tables have different sources, because the editor data has no scene.** Its groups are
+`PCMEX`, `PCMR`, `MdlSynPrm0` and `INST_CMN_GROUP` — tones, drum kits, MODEL — and none of its 26
+blocks is a Scene Common, Scene Zone, Zone EQ, Zone Control or Scene Controller. `params::scene` is
+therefore generated from the FANTOM EX MIDI Implementation by `tools/gen_scene_params.py`, which
+derives file offsets from wire addresses by the packing rule above. Both tables contain `[MFX]` and
+independently agree it is 84 bytes in the file against 80 of parameters — the check that the
+derivation is right, asserted in `params`.
 
 Two corrections to the generated data, both confirmed by RQ1 and by the FANTOM MIDI Implementation:
 `PCMS_PTL` (`[Tone Synth Partial]`) is **29** bytes, not 30, with `0x1b` onward Reserved. And
