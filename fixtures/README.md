@@ -18,6 +18,11 @@ differ by 2 and 4 bytes respectively, which is what makes them able to pin an of
 carry no engine or sample areas at all, so no bundled tone travels with them; the one tone
 they name is a factory preset referenced by MIDI address, which carries no content.
 
+The intent is for this tier to grow until it covers the whole suite and the private one is
+empty — see [AUTHORING.md](AUTHORING.md) for the bench sessions that get there, and which test
+each capture replaces. Until then `fixtures-local/` is where reverse-engineering scratch work
+and the not-yet-replaced captures live.
+
 ### Adding to this tier
 
 A file belongs here only if you made it yourself and it holds nothing you did not author.
