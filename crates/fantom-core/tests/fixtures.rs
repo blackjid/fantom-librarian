@@ -465,6 +465,57 @@ fn an_instrument_export_carries_the_right_wave_numbers_sample_too() {
     );
 }
 
+/// The capture that decoded a drum kit's sample reference, asserted against the instrument's files.
+///
+/// `DRUM_BEFORE` and `DRUM_AFTER` are one FANTOM-6 kit exported either side of pointing a single
+/// key's instrument at a user sample. The whole difference is five bytes at instrument 15's first
+/// wave block — group type `0 → 2`, group id `8 → 10004`, wave number `588 → 1` — and the "after"
+/// file gained `USPa`/`USDa` carrying the audio.
+///
+/// The unit tests for this decode build their own bytes, which proves only that the reader matches
+/// the writer. This proves it matches the instrument.
+#[test]
+fn a_drum_kit_that_plays_a_user_sample_is_read_from_the_capture() {
+    let (Some(before), Some(after)) = (
+        open("hwtest_back/DRUM_BEFORE.svz"),
+        open("hwtest_back/DRUM_AFTER.svz"),
+    ) else {
+        return;
+    };
+
+    let slots_of = |raw: &fantom_core::container::Raw| -> Vec<u16> {
+        let svd = fantom_core::container::Svd::parse(raw).unwrap();
+        let table = fantom_core::container::RecordTable::from_svd(raw, &svd, b"INSa")
+            .unwrap()
+            .unwrap();
+        table
+            .records()
+            .flat_map(|record| fantom_core::container::sample_slots_of(b"INSa", record))
+            .collect()
+    };
+    assert!(
+        slots_of(&before).is_empty(),
+        "the unedited kit plays only ROM waves"
+    );
+    assert_eq!(slots_of(&after), [1], "the edited key names sample slot 1");
+
+    // The instrument carried the audio into the export, which is what makes a sampled kit
+    // transferable at all — and what the carry-everything fallback used to approximate.
+    let svd = fantom_core::container::Svd::parse(&after).unwrap();
+    let bank = fantom_core::container::read_samples(&after, &svd).unwrap();
+    assert_eq!(bank.slots.len(), 1);
+    assert_eq!(bank.slots[0].name, "doh duh 2");
+
+    // And extracting the kit selects that one sample rather than carrying whatever is present.
+    let extracted = fantom_core::tonebank::extract_tones(&after, &[0]).unwrap();
+    let svd = fantom_core::container::Svd::parse(&extracted).unwrap();
+    let carried = fantom_core::container::read_samples(&extracted, &svd).unwrap();
+    assert_eq!(carried.slots.len(), 1);
+    assert_eq!(carried.slots[0].name, "doh duh 2");
+    assert_eq!(slots_of(&extracted), [1], "renumbered in the paired INSa");
+    assert!(fantom_core::verify::check(&extracted).unwrap().is_ok());
+}
+
 /// A file with no user samples cannot be a source, and must say so rather than emit an empty bank.
 #[test]
 fn a_scene_export_cannot_source_sample_audio() {
