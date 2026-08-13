@@ -282,6 +282,23 @@ leaves the audio behind. So dropping those areas when repackaging matches Roland
 sampled tone is complete only where the destination already holds that sample in that slot. The
 CLI now names the required slots rather than warning generically.
 
+**The reference is absolute, and no import order works around it.** The slot number lives *inside*
+the tone record, and a scene export bundles its own copies of those records — so importing a tone
+`.svz` first cannot help: it creates different records elsewhere in USER memory and never touches the
+bytes the scene bank carries. There is no indirection in the format for a tone to say "the sample
+that travelled with me"; there is one field, and it names one of the panel's 8000 slots.
+
+`FFC SAMPLES 1-50.svz` and its scene bank show a commercial author hitting exactly this. The bank's
+`PATa` holds 348 tones, 29 of which carry group-2 references covering **all 50 slots 1..50 and
+nothing outside**, so the pack's instructions have to say: delete whatever you have in slots 1–50,
+import the pack's samples *specifically* to 0001–0050, and — for your own samples — "you will need
+to re-reference your User samples to your User Tones". That last line is the author confirming from
+the outside that the instrument does not fix references up on import.
+
+Only two things can make the numbers agree: move the samples to where the tones point (what the pack
+does), or rewrite the tones to point where the samples land (a byte edit this tool can already
+make — see `remap_sample_slots`).
+
 > **This is untestable by ear on the source instrument.** Re-importing a canary there sounds
 > correct because its slots still hold the audio the tone points at. Confirmed on a FANTOM-6:
 > `CNY Levitating`'s sampled zones played normally despite the bank carrying no audio. Only the
@@ -304,6 +321,45 @@ INSa[0] +0x000 'TR-808 Rimshot P'
 
 So `INSa[i]` holds the 88 key instruments of drum kit `RHYa[i]`. A scene's MSB-86 reference selects
 the pair, which is why the two areas must always be copied and renumbered together.
+
+#### An instrument's four wave blocks — CONFIRMED shape, group field UNCONFIRMED
+
+Each 216-byte instrument carries **four wave blocks at stride 28 (`0x1c`), starting at `+0x1c`**:
+
+| Block offset | Size | Field | Notes |
+|--------------|------|-------|-------|
+| `+0x00` | 2 | wave switch | **only ever 0 or 1** across 45056 blocks in four files |
+| `+0x02` | 2 | wave bank/type | 8 overwhelmingly; also 16, 2, 10, 11 |
+| `+0x04` | 2 | wave number L | 1..963, matching the ROM wave range |
+| `+0x06` | 2 | wave number R | 0..906; a stereo wave stores a consecutive pair here |
+
+Evidence: `Starship` selects `(422, 0)`, `(481, 482)`, `(422, 0)`, `(806, 807)` — the pairs are the
+stereo halves. `High Q` selects `(963, 0)` and leaves blocks 1–3 switched off, and its three off
+blocks are all zero. The `+0x00` field takes no value but 0 and 1 in any fixture, which is what
+fixes the block base and stride; at any other alignment it takes dozens.
+
+**How a drum instrument selects a *user sample* is still unknown**, and deliberately not guessed at.
+A `PATa` partial marks one with a wave group byte at `+0x03` of its block (see above), but the byte
+in that position here is **0 in all 45056 blocks**, as is `+0x01`. Both readings — group at `+0x01`,
+or the `+0x02` field taking some other value — predict exactly that when nothing is sampled, so the
+fixtures cannot separate them:
+
+| File | instruments | wave blocks | blocks with a user sample |
+|------|-------------|-------------|---------------------------|
+| `DRUM_20260623.svz` | 3344 | 13376 | none |
+| `2023.4.8+topandprisma` | 11264 | 45056 | none |
+| `Black NARFSOUNDS` | 11264 | 45056 | none |
+| `Fantom-0 TOP80` | 11264 | 45056 | none |
+
+Note also that `PATa`'s `+0x04` field is *not* the marker, tempting as it looks: its 93 group-2
+partials in `Black NARFSOUNDS` carry values 1010, 8, 1001 and 1007 there, and plenty of group-0
+partials carry 8 too. Only the group byte separates them.
+
+**The capture that would settle it:** on the instrument, take one drum kit, point a single key's
+instrument at a user sample, and export the kit as `.svz` twice — once before the change, once
+after. `fantom diff before.svz after.svz --area INSa --context 4` then names the differing bytes
+directly, exactly as the `TONEMAP*` pairs did for the opaque engines. Until then, `crate::tonebank`
+treats a drum kit's samples as unselectable and carries all of them.
 
 **Validation** — "Africa Main" (scene 385) decodes to exactly the panel's 4 zones:
 Z1 Brass 0–71 · Z2 Kalimba 73–127 · Z3 Kalimba 72–72 · Z4 JX-Cream 0–71 (levels 107/107/100/82).
@@ -429,17 +485,105 @@ This is the format's most useful property, and the opposite of a scene export:
 - **`USDa`** — variable-size records (`record_size = 0`). A 16-byte header, then one 16-byte
   directory entry per section — `{u32 slot, u32 offset, u32 size, u32 word}`, offsets relative to
   the area body — then the `SMPd` sections themselves. In an SVZ's `SMPd`, the 16-bit sample count
-  sits at `+0x04` and the rate at `+0x0c` (44100 in this fixture), with the name still at `+0x10`.
-  `384 + frames × 4` equals the section size exactly for both samples, i.e. a 384-byte header and
-  16-bit stereo audio.
+  sits at `+0x04` and the rate at `+0x0c`, with the name still at `+0x10`. **The audio begins at
+  `+0x60`.**
+
+> **Correction — there is no 384-byte `SMPd` header.** A previous revision read `384 + frames × 4 ==
+> section size` off `Z-Core_20260623.svz` and concluded the header was 384 bytes. It is 96 (`0x60`),
+> and that file's two sections merely happen to hold 288 bytes past their playable end. `FFC SAMPLES
+> 1-50.svz` disproves the old rule outright: its 50 sections leave 204–1080 bytes over, no two alike.
+> The count at `+0x04` is the *playable* length — it equals `USPa.end × 2` exactly — and a section
+> can carry audio beyond it.
 
 A tone references a sample exactly as in an SVD — wave group 2, 1-based `USPa` slot — so the same
 decode drives both. `Z-Core_20260623.svz` has one sampled tone, `MyPolySyn1`, pointing at slot 2.
+
+### A tone exported *with* its sample — CONFIRMED
+
+`EXPORT_Z-Core2.svz` is a FANTOM-6 export of one ZEN-Core tone plus the user sample it plays:
+`DIFa` + `PATa` (1 record) + `USPa` (1 record) + `USDa` (1 section). It is the smallest complete
+example of what this tool builds, and it settles two things.
+
+**The instrument renumbers the exported reference to a dense 1-based index.** The tone's partial 0
+is `group 2, wave 1` and the file carries exactly one `USPa` record — while **on the panel, that
+tone's wave reads group `SAMP`, sample `0029`**. So slot 29 became slot 1 on the way out: an SVZ
+addresses samples by position within its own `USPa`, not by the panel slot they came from. That is
+the same renumbering `crate::tonebank` applies when it selects tones, now confirmed against the
+instrument rather than merely self-consistent.
+
+This has a consequence worth stating plainly. A reference renumbered on the way out is only
+meaningful if it is renumbered again on the way in: an SVZ that says "wave 1" must be repointed at
+whatever panel slot its sample lands in, or the imported tone would play whatever happens to sit in
+panel slot 1. **So the two containers behave in opposite ways, and for a structural reason:**
+
+| | sample areas | what a tone's reference means | fixed up on import |
+|---|---|---|---|
+| SVZ tone export | `USPa` + `USDa` | position within this file's `USPa` | must be — the slot is chosen at import |
+| SVD scene export | none | an absolute panel slot | **cannot be** — nothing to renumber against |
+
+A scene export carries no sample area, so there is no table for a dense index to point into and
+nothing the import could rewrite a reference to. Its numbers are panel slots and they stay panel
+slots — which is exactly what `FFC 3PCK BUNDLE` shows, its bundled tones naming slots 1..50 and its
+instructions demanding the destination put the audio there.
+
+**Rebuilding it reproduces the instrument's file byte for byte.** Selecting its only tone makes the
+repackager lay the whole file out from parts, and the result `cmp`s equal to Roland's: preamble,
+area order and offsets, every `info_length`, every record CRC-32, the `USPa` record, and the `USDa`
+directory including its carried per-section word. Pinned by
+`rebuilding_an_instrument_written_sampled_export_is_byte_identical`.
+
+> The preamble stamp is **not** the constant this document claimed. This file reads `KY019%` where
+> every other fixture reads `KY019$` (`0x25` vs `0x24`), same revision 3. Meaning unknown; the
+> preamble is copied verbatim, so nothing depends on it.
+
+> **This export also exposed a reader bug.** `PatArea` started its records at a fixed 16 bytes, so it
+> misread every SVZ `PATa` — whose records begin at `16 + 4 × count`. It went unnoticed because the
+> CLI's tone listing goes through `RecordTable`, which honours the declared length, and every other
+> `PatArea` caller reads SVD5 areas, which all declare 16. Fixed to use the declared start with the
+> same clamping rule `RecordTable` uses.
+
+### A sample-only SVZ, and how it maps onto a backup — CONFIRMED
+
+An `.svz` need not hold tones at all. `FFC SAMPLES 1-50.svz` (a commercial pack) is `DIFa` + `USPa` +
+`USDa` and nothing else — the format Roland's **MENU → IMPORT SAMPLE** consumes, which lets the user
+choose the destination slot range. It is the only container that moves user audio between
+instruments without moving tones with it.
+
+That pack is a Rosetta Stone: its 50 samples are the *same recordings* as the ones in the
+`2023.4.8+topandprisma` backup, so the two container shapes can be diffed directly. **All 50 agree
+on every field**:
+
+| SVZ `SMPd` | Backup `SMPd` | Field |
+|------------|---------------|-------|
+| `+0x04` | `+0x0c` | playable length in 16-bit words |
+| `+0x0c` | `+0x20` | sample rate |
+| `+0x10` | `+0x10` | name (same offset in both) |
+| `+0x60` | `+0x80` | **audio — byte-identical, all 50** |
+| `USDa` directory `word` | `+0x24` | see below |
+| `+0x08` (`0x1002`/`0x11002`) | `+0x04` (`0x02010020`) | flags, undecoded |
+
+**The `USDa` directory's fourth word is not a checksum — it is carried.** Earlier revisions recorded
+it as "not a CRC-32 of its section — still unknown". It is the backup `SMPd`'s own `+0x24` word,
+copied across unchanged: **50 of 50**. Nothing needs computing to emit one, only preserving. (Tested
+and ruled out for the record: CRC-32 over the section, the audio alone, the header alone, two offset
+variants, adler32, and a byte sum.)
+
+So converting a backup's sample into SVZ form is a **header rewrite around an unchanged audio
+payload**, not a re-encode. The remaining unknown is the flags word, which takes two values across
+the pack (`0x1002` and `0x11002`) and one in the backup.
 
 **Repackaging** (`crate::tonebank`) selects tones by index, carries the paired `INSa` for drum kits,
 and carries the `USPa` slots and `USDa` sections the selected tones play, renumbering the tone's
 references to match. Samples nothing references are left behind, and the CLI says so. Area order is
 preserved from the source.
+
+That selection only works where the tone→sample link is decoded, which means `PATa` alone. For a
+drum bank, "no tone references this sample" and "we cannot see the reference" are the same
+observation, so **every sample travels, at its original slot number** — the numbers must not move,
+because a reference that cannot be found cannot be rewritten. The CLI reports it. Merging two drum
+banks that carry *different* samples is refused for the same reason: their slots collide and nothing
+can be repointed. The rule lives in `AreaSpec::sample_refs_decoded`, so decoding the `INSa` group
+field later is a one-line change to what the repackager is allowed to do.
 
 ## How to inspect
 
