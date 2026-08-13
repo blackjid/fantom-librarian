@@ -90,10 +90,15 @@ cargo run -p fantom-cli -- extract backup/FANTOM.SVD 401 -o out/FANTOM.SVD \
 ```
 
 That writes the scene bank *and* a sample-only `.svz` holding just the samples those scenes play —
-one sample, 1 MB, not the backup's 23 — then rewrites the bank's references so they point wherever
-you import it. Load the `.svz` through **MENU → IMPORT SAMPLE** at slot 101 and the numbers agree.
-Without `--samples-at` the run starts at slot 1. The alternative, which is what commercial packs
-have to tell their buyers, is to delete whatever you keep in slots 1–50 and load theirs there.
+two samples, 1.2 MB, not the backup's 23 — then rewrites the bank's references so they point
+wherever you import it. Load the `.svz` through **MENU → IMPORT SAMPLE**, put each sample in the
+slot the tool names, and the numbers agree. The alternative, which is what commercial packs have to
+tell their buyers, is to delete whatever you keep in slots 1–50 and load theirs there.
+
+**Hardware-confirmed on a FANTOM-6.** The companion imported to slots 2001–2002, the bank imported
+as a scene, and the tone plays with the panel showing its wave number as `2001` — the number this
+tool wrote, at a slot that had never held that audio. `IMPORT SAMPLE` asks for a destination per
+sample, so the tool prints each sample's name against its required slot rather than a range.
 
 The companion is built from a full backup, since only a backup holds the audio, and the builder is
 tested by reproducing a commercially shipped sample pack from one: all 23,427,900 bytes, differing

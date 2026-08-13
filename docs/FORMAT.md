@@ -356,7 +356,19 @@ to re-reference your User samples to your User Tones". That last line is the aut
 the outside that the instrument does not fix references up on import.
 
 Only two things can make the numbers agree: move the samples to where the tones point (what the pack
-does), or rewrite the tones to point where the samples land. **The tool now does the second.**
+does), or rewrite the tones to point where the samples land. **The tool now does the second, and it
+works on hardware.**
+
+> **Hardware-confirmed on a FANTOM-6, end to end.** Scene 401 `Beat It` was extracted from a backup
+> with `--samples-at 2001`, producing a 16 KB bank plus a 1.2 MB companion. The companion imported
+> to slots 2001–2002; the bank imported as a scene; **the tone plays, and the panel shows its wave
+> number as `2001`**. That last detail is the proof: the instrument stored the number this tool
+> wrote, at a slot that had never held this audio on any machine. A sampled scene moved between
+> sample banks without the destination having to surrender slots 1–50.
+>
+> Note also what the panel reading rules out — the scene did not sound because the instrument
+> resolved something it already had, which is the coincidence that makes this whole area hard to
+> test by ear.
 `extract --samples out.svz --samples-at 101` writes the scene bank plus a sample-only `.svz` holding
 exactly the samples those scenes play, and rewrites the bank's references onto the contiguous run
 starting at 101 — the run the instrument produces when that file is imported there. The audio can
