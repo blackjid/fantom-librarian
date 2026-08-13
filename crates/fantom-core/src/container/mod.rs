@@ -13,7 +13,9 @@ mod sample;
 mod svd;
 mod zone;
 
-pub use pat::{remap_sample_slots, sample_slots, PatArea, Tone};
+pub use pat::{
+    expansion_banks, multisample_slots, remap_sample_slots, sample_slots, PatArea, Tone,
+};
 pub use raw::Raw;
 pub use records::RecordTable;
 pub use sample::{Multisample, SampleBank, SampleData, SampleSlot, PANEL_SLOTS};

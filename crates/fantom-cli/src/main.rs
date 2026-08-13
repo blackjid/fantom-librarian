@@ -697,7 +697,7 @@ fn sample_warning(output: &Raw, source: &Raw) -> String {
         }
     }
     if needed.is_empty() {
-        return drum_kit_caveat(output);
+        return other_dependencies(output);
     }
     needed.sort_by_key(|(slot, _)| *slot);
 
@@ -721,25 +721,78 @@ fn sample_warning(output: &Raw, source: &Raw) -> String {
             .unwrap_or("<not in this file>");
         let _ = writeln!(out, "           slot {slot:>3}  {name:<20} (played by {tone:?})");
     }
-    out.push_str(&drum_kit_caveat(output));
+    out.push_str(&other_dependencies(output));
     out
 }
 
 /// Say what the sample list above cannot cover.
 ///
-/// Only a ZEN-Core tone's sample references are decoded. A bundled drum kit's live in its paired
-/// `INSa`, where the field marking a wave as a user sample has never been observed set — so a kit
-/// that plays one contributes nothing to the list, and silence here would read as "no dependency"
-/// when the honest claim is "none that can be seen".
-fn drum_kit_caveat(output: &Raw) -> String {
-    match drum_kits(output) {
-        0 => String::new(),
-        kits => format!(
-            "note: this bank also bundles {kits} drum kit{}. Whether a kit plays a user sample\n\
-             \x20     cannot be read, so any such dependency is missing from the list above.\n",
-            if kits == 1 { "" } else { "s" }
-        ),
+/// Three kinds of dependency a scene bank can hold that its samples list does not show. Two are
+/// visible but uncarryable — a multisample, and a wave from an installed expansion — and the third
+/// is invisible: a bundled drum kit's sample references are not decoded, so a kit that plays one
+/// contributes nothing. Silence here would read as "no dependency" when the honest claim is "none
+/// that can be seen".
+fn other_dependencies(output: &Raw) -> String {
+    let mut out = String::new();
+
+    if let Ok(svd) = fantom_core::container::Svd::parse(output) {
+        if let Ok(tones) = fantom_core::container::PatArea::from_svd(output, &svd) {
+            let mut multis: Vec<(u16, &str)> = Vec::new();
+            let mut banks: Vec<u16> = Vec::new();
+            for tone in tones.tones() {
+                for &slot in &tone.multisamples {
+                    if !multis.iter().any(|(s, _)| *s == slot) {
+                        multis.push((slot, tone.name.as_str()));
+                    }
+                }
+                for &id in &tone.expansions {
+                    if !banks.contains(&id) {
+                        banks.push(id);
+                    }
+                }
+            }
+            multis.sort_by_key(|(slot, _)| *slot);
+            banks.sort_unstable();
+
+            if !multis.is_empty() {
+                let _ = writeln!(
+                    out,
+                    "warning: the extracted tones also play {} user multisample{}, which this tool\n\
+                     \x20        cannot carry — an MLSa record is not decoded, and a multisample in\n\
+                     \x20        turn references samples of its own. The destination needs:",
+                    multis.len(),
+                    if multis.len() == 1 { "" } else { "s" },
+                );
+                for (slot, tone) in &multis {
+                    let _ = writeln!(out, "           multisample {slot:>3}  (played by {tone:?})");
+                }
+            }
+            if !banks.is_empty() {
+                let list = banks
+                    .iter()
+                    .map(u16::to_string)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let _ = writeln!(
+                    out,
+                    "note: these tones play waves from installed expansion bank{} {list}. Like a\n\
+                     \x20     factory sound, that content lives in the instrument and must already\n\
+                     \x20     be installed on the destination.",
+                    if banks.len() == 1 { "" } else { "s" },
+                );
+            }
+        }
     }
+
+    if let kits @ 1.. = drum_kits(output) {
+        let _ = write!(
+            out,
+            "note: this bank also bundles {kits} drum kit{}. Whether a kit plays a user sample\n\
+             \x20     cannot be read, so any such dependency is missing from the lists above.\n",
+            if kits == 1 { "" } else { "s" }
+        );
+    }
+    out
 }
 
 fn run_verify(file: &PathBuf) -> fantom_core::Result<String> {

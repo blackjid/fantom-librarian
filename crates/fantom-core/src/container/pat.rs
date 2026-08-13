@@ -24,6 +24,15 @@ pub struct Tone {
     /// User sample slots this tone plays, 1-based as stored. Empty for the vast majority of
     /// tones, which play ROM waves. See [`sample_slots`].
     pub samples: Vec<u16>,
+    /// User **multisample** slots this tone plays, 1-based. A separate dependency from `samples`
+    /// and one this tool cannot yet carry: the `MLSa` records that define a multisample are not
+    /// decoded. Naming them is the least that can be done — see [`multisample_slots`].
+    pub multisamples: Vec<u16>,
+    /// Wave group ids of any installed expansion this tone plays from, distinct and in order.
+    ///
+    /// Like a factory ROM reference, this cannot travel: the destination needs the same expansion
+    /// installed. Unlike one, it is easy to forget, so it is worth naming. See [`expansion_banks`].
+    pub expansions: Vec<u16>,
 }
 
 const HEADER_LEN: usize = 0x10;
@@ -52,10 +61,21 @@ mod wave {
     /// Where partial 0's wave fields begin, chosen so the offsets below are small.
     pub const BASE: usize = 0xde;
     pub const GROUP_TYPE: usize = 0x01;
+    pub const GROUP_ID: usize = 0x02;
     pub const NUMBER_L: usize = 0x04;
     pub const NUMBER_R: usize = 0x06;
-    /// The group-type value meaning "these numbers are user sample slots, not ROM waves".
+
+    /// The four wave group types, read off a FANTOM-6 panel against tones whose bytes were known.
+    ///
+    /// | value | panel | what the numbers mean |
+    /// |-------|-------|-----------------------|
+    /// | 0 | — | an internal ROM wave |
+    /// | 1 | `EXP` | a wave in an installed expansion; the group id picks the bank |
+    /// | 2 | `SAMP` | a 1-based user sample slot |
+    /// | 3 | `MSAMP` | a 1-based user **multisample** slot |
+    pub const GROUP_EXPANSION: u8 = 1;
     pub const GROUP_SAMPLE: u8 = 2;
+    pub const GROUP_MULTISAMPLE: u8 = 3;
 }
 
 /// The user sample slots a `PATa` tone record plays, 1-based, in partial order.
@@ -76,25 +96,73 @@ mod wave {
 /// carries no audio with it. The instrument's own scene exports behave the same way — NARF holds
 /// 68 such references and no sample areas at all — so samples must be transferred separately.
 pub fn sample_slots(record: &[u8]) -> Vec<u16> {
-    let mut slots = Vec::new();
+    numbers_for_group(record, wave::GROUP_SAMPLE)
+}
+
+/// The user **multisample** slots a tone plays, 1-based, in partial order.
+///
+/// Group 3 reads `MSAMP` on the panel: `Finesse Rise` partial 1 is group 3 number 1, and the
+/// instrument shows it as multisample 1. This is a dependency exactly as a sample is, and one this
+/// tool cannot carry — the `MLSa` records defining a multisample are undecoded, and a multisample
+/// in turn references samples per key. Reporting it beats the alternative, which is a scene that
+/// silently claims to need nothing.
+///
+/// (In the one fixture that has such a reference the multisample does not exist: every `MLSa`
+/// record in that backup is still the factory `INITIAL MSMPL`, so the tone points at nothing. That
+/// is a property of the fixture, not of the format.)
+pub fn multisample_slots(record: &[u8]) -> Vec<u16> {
+    numbers_for_group(record, wave::GROUP_MULTISAMPLE)
+}
+
+/// The wave group ids of installed expansions this tone plays from, distinct and in partial order.
+///
+/// Group 1 reads `EXP`, and the group id selects the bank: a FANTOM-6 showed id 1005 as `EXZ005`
+/// and id 1008 as `EXZ006`, so the displayed number is *not* simply the id and the mapping is not
+/// decoded. The id is reported raw rather than guessed at.
+pub fn expansion_banks(record: &[u8]) -> Vec<u16> {
+    let mut banks = Vec::new();
     for partial in 0..PARTIAL_COUNT {
         let base = wave::BASE + partial * PARTIAL_STRIDE;
         let Some(&group) = record.get(base + wave::GROUP_TYPE) else {
             break;
         };
-        if group != wave::GROUP_SAMPLE {
+        if group != wave::GROUP_EXPANSION {
+            continue;
+        }
+        // A partial with no wave selected names no bank, whatever its group says.
+        let plays = [wave::NUMBER_L, wave::NUMBER_R]
+            .iter()
+            .any(|&at| read_u16(record, base + at).unwrap_or(0) != 0);
+        if let (true, Some(id)) = (plays, read_u16(record, base + wave::GROUP_ID)) {
+            if !banks.contains(&id) {
+                banks.push(id);
+            }
+        }
+    }
+    banks
+}
+
+/// Wave numbers named by every partial whose group type is `group`, deduplicated, in order.
+fn numbers_for_group(record: &[u8], group: u8) -> Vec<u16> {
+    let mut numbers = Vec::new();
+    for partial in 0..PARTIAL_COUNT {
+        let base = wave::BASE + partial * PARTIAL_STRIDE;
+        let Some(&kind) = record.get(base + wave::GROUP_TYPE) else {
+            break;
+        };
+        if kind != group {
             continue;
         }
         for at in [wave::NUMBER_L, wave::NUMBER_R] {
             let Some(number) = read_u16(record, base + at) else {
                 break;
             };
-            if number != 0 && !slots.contains(&number) {
-                slots.push(number);
+            if number != 0 && !numbers.contains(&number) {
+                numbers.push(number);
             }
         }
     }
-    slots
+    numbers
 }
 
 fn read_u16(bytes: &[u8], at: usize) -> Option<u16> {
@@ -131,6 +199,8 @@ impl PatArea {
                 name: ascii_trim(&record[..NAME_LEN]),
                 category: record[CATEGORY_OFFSET],
                 samples: sample_slots(record),
+                multisamples: multisample_slots(record),
+                expansions: expansion_banks(record),
             });
         }
         Ok(Self { tones })
@@ -300,6 +370,24 @@ mod tests {
         assert_eq!(sample_slots(&tone_with_partials(&[(2, 1, 0)])), [1]);
         // The same slot on both channels is still one dependency.
         assert_eq!(sample_slots(&tone_with_partials(&[(2, 4, 4)])), [4]);
+    }
+
+    /// Group 3 is `MSAMP` on the panel — a user multisample, a dependency of its own that must not
+    /// be confused with a sample slot or quietly dropped.
+    #[test]
+    fn a_multisample_reference_is_read_separately_from_a_sample() {
+        let record = tone_with_partials(&[(2, 30, 31), (3, 1, 0), (1, 355, 0), (0, 383, 0)]);
+        assert_eq!(sample_slots(&record), [30, 31]);
+        assert_eq!(multisample_slots(&record), [1]);
+        // The ROM partial names no bank, and only the group-1 partial contributes one.
+        assert_eq!(expansion_banks(&record), [0]);
+    }
+
+    /// A partial whose group says "expansion" but which selects no wave names no bank.
+    #[test]
+    fn an_empty_partial_contributes_no_expansion() {
+        assert!(expansion_banks(&tone_with_partials(&[(1, 0, 0)])).is_empty());
+        assert!(multisample_slots(&tone_with_partials(&[(3, 0, 0)])).is_empty());
     }
 
     #[test]

@@ -276,7 +276,7 @@ wave selection is four consecutive fields 23 bytes in:
 
 | Partial offset | Absolute (p=0) | Size | Field |
 |----------------|----------------|------|-------|
-| `+23` | `0xdf` | 1 | wave **group type**: `0` = internal ROM wave, `2` = **user sample**, `1`/`3` also seen |
+| `+23` | `0xdf` | 1 | wave **group type** — see the table below |
 | `+24` | `0xe0` | 2 | wave group id |
 | `+26` | `0xe2` | 2 | wave **number L**, LE — a ROM wave index, or a **1-based `SMPa` slot** when the group is 2 |
 | `+28` | `0xe4` | 2 | wave **number R**, same encoding; `0` means none |
@@ -284,6 +284,37 @@ wave selection is four consecutive fields 23 bytes in:
 > Earlier revisions listed only the group at `0xdf` and the number at `0xe2`. Those offsets were
 > right, but stopping there hid a field: **there are two wave numbers, one per channel**, and only
 > the left was being read.
+
+**All four group types — CONFIRMED against the panel.** Tones whose bytes were known were opened in
+the FANTOM-6's tone editor and the wave group field read off directly:
+
+| Value | Panel | The numbers mean | Travels? |
+|-------|-------|------------------|----------|
+| `0` | — | an internal ROM wave | in the instrument |
+| `1` | `EXP` | a wave in an installed expansion; the **group id** picks the bank | must be installed |
+| `2` | `SAMP` | a 1-based **user sample** slot | via a companion `.svz` |
+| `3` | `MSAMP` | a 1-based **user multisample** slot | **not yet — `MLSa` is undecoded** |
+
+Evidence, all from one session: `Sledge + Hammer` partials 1 and 2 read `SAMP` waves `0030` and
+`0031`, matching the bytes' slots 30 and 31 — an independent confirmation of the sample decode
+against the instrument's own display. `Money Bass Stab` partial 1 reads `EXP`, bank `EXZ006`, wave
+`355 MG Fat Bs`, right `0 Off` — confirming both the left number and that zero displays as "off".
+`Beat It EP` partial 1 reads `EXP`, bank `EXZ005`, wave `13 Dyn EP 2`. And `Finesse Rise` partial 1
+reads **`MSAMP`**, which is the finding: group 3 is a multisample.
+
+The group id is *not* the displayed bank number — id 1005 shows as `EXZ005` but id 1008 shows as
+`EXZ006`, so the mapping is something else and is reported raw rather than guessed.
+
+> **A multisample is a dependency this tool cannot carry.** An `MLSa` record is undecoded, and a
+> multisample in turn references samples of its own, so neither the definition nor its audio can be
+> rebundled. Until then the CLI names them, which is the least that can be done: before this was
+> decoded, a scene playing a multisample reported *no dependency at all*.
+>
+> The one such reference in any fixture is dangling. `Finesse Rise` partial 1 is switched on and
+> names multisample 1, but every `MLSa` record in that backup is still the factory `INITIAL MSMPL`
+> — the multisample it wants does not exist, which is presumably why the zone is switched off.
+> That is a property of the fixture, not of the format, and it means a populated `MLSa` capture is
+> still needed to decode the record itself.
 
 **Both numbers are live references.** 25 of `Black NARFSOUNDS`'s 93 sampled partials name a right
 slot, and it is frequently a *different* sample: `Beat It Gong` plays slot 1 `1 Beat It - C2` on the
