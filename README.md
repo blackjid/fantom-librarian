@@ -20,6 +20,8 @@ crates/
     presets.rs   # factory ZEN-Core preset tone name lookup (bundled sound list)
     tests/       # tests against real files; each skips when its fixture is absent
   fantom-cli/    # the `fantom` binary — first consumer of the library
+  fantom-midi/   # SysEx transport; params.rs maps file bytes onto Roland's parameter map
+tools/           # gen_params.py — regenerates the parameter table
 docs/FORMAT.md   # reverse-engineering notebook for the on-disk layout
 fixtures/        # real Fantom files and hardware captures (gitignored)
 ```

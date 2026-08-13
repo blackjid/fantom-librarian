@@ -1,0 +1,11 @@
+[package]
+name = "fantom-midi"
+description = "SysEx transport and parameter mapping for Roland Fantom hardware."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+fantom-core.workspace = true
+midir.workspace = true

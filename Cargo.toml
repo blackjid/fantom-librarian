@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/fantom-core", "crates/fantom-cli"]
+members = ["crates/fantom-core", "crates/fantom-cli", "crates/fantom-midi"]
 
 [workspace.package]
 version = "0.1.0"
@@ -14,3 +14,4 @@ thiserror = "2"
 clap = { version = "4", features = ["derive"] }
 insta = "1"
 fantom-core = { path = "crates/fantom-core" }
+midir = "0.10"
