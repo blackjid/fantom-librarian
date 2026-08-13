@@ -4,237 +4,87 @@ use std::fmt::Write as _;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use fantom_core::container::Raw;
 use fantom_core::params;
 
+mod cli;
 mod render;
+use cli::{
+    AreasCommand, Cli, Command, DependenciesCommand, SamplesCommand, ScenesCommand, TonesCommand,
+    WriteOptions,
+};
 use render::{Align, Table};
-
-#[derive(Parser)]
-#[command(
-    name = "fantom",
-    version,
-    about = "Librarian for Roland Fantom data files"
-)]
-struct Cli {
-    #[command(subcommand)]
-    command: Command,
-}
-
-#[derive(Subcommand)]
-enum Command {
-    /// Inspect a file's envelope: size, magic, and a hexdump of its head.
-    ///
-    /// This is the reverse-engineering microscope — record what you learn in `docs/FORMAT.md`.
-    Inspect {
-        /// Path to a `.svd` / `.svz` / `.sdz` file.
-        file: PathBuf,
-
-        /// How many bytes to hexdump from the given offset.
-        #[arg(long, default_value_t = 256)]
-        len: usize,
-
-        /// Byte offset to start the hexdump at.
-        #[arg(long, default_value_t = 0)]
-        offset: usize,
-    },
-
-    /// List the memory areas in an SVD container.
-    Areas {
-        /// Path to a `.svd` file.
-        file: PathBuf,
-    },
-
-    /// Compare two SVD files, reporting each difference as AREA[record]+offset.
-    ///
-    /// The counterpart to `inspect`: export two files that differ by one deliberate change and
-    /// this shows exactly which bytes carry it. Record the result in `docs/FORMAT.md`.
-    Diff {
-        /// Baseline file.
-        left: PathBuf,
-        /// File to compare against the baseline.
-        right: PathBuf,
-        /// Only report this area (e.g. `DCWa`); repeatable.
-        #[arg(long, value_name = "TAG")]
-        area: Vec<String>,
-        /// Unchanged bytes to show on either side of each run.
-        #[arg(long, default_value_t = 0)]
-        context: usize,
-    },
-
-    /// Report bundled ACB, V-Piano, and Model dependency areas.
-    Dependencies {
-        /// Path to a `.svd` file.
-        file: PathBuf,
-    },
-
-    /// List the scene names in an SVD backup.
-    Scenes {
-        /// Path to a `.svd` file.
-        file: PathBuf,
-    },
-
-    /// Show one scene: tempo, level, memo, and its zones.
-    ///
-    /// A scene always holds 16 zone slots; by default only the switched-on ones are listed,
-    /// because an unused slot still carries a leftover tone reference and reads as clutter.
-    Show {
-        /// Path to a `.svd` file.
-        file: PathBuf,
-        /// Scene number, 1-based (as printed by `scenes`).
-        scene: usize,
-        /// Include zones that are switched off.
-        #[arg(short, long)]
-        all: bool,
-    },
-
-    /// List every named user tone bundled in an SVD.
-    Tones {
-        /// Path to a `.svd` file.
-        file: PathBuf,
-    },
-
-    /// List the user samples and multisamples a file carries.
-    Samples {
-        /// Path to a `.svd` file.
-        file: PathBuf,
-    },
-
-    /// Check a file's structure and record checksums.
-    ///
-    /// SVZ areas store a CRC-32 per record; this recomputes every one. Run it on anything this
-    /// tool wrote before loading it on the instrument.
-    Verify {
-        /// Path to a `.svd` / `.svz` file.
-        file: PathBuf,
-    },
-
-    /// Rename a scene. Without --output this is a dry run.
-    Rename {
-        /// Path to a `.svd` file.
-        file: PathBuf,
-        /// Scene number, 1-based (as printed by `scenes`).
-        scene: usize,
-        /// New scene name (max 16 chars; longer is truncated).
-        name: String,
-        /// Write the edited file here (omit for a dry run; pass the input path to edit in place).
-        #[arg(short, long)]
-        output: Option<PathBuf>,
-    },
-
-    /// Set a scene's comment/memo. Without --output this is a dry run.
-    Comment {
-        /// Path to a `.svd` file.
-        file: PathBuf,
-        /// Scene number, 1-based.
-        scene: usize,
-        /// New comment (max 64 chars; longer is truncated).
-        text: String,
-        /// Write the edited file here (omit for a dry run).
-        #[arg(short, long)]
-        output: Option<PathBuf>,
-    },
-
-    /// Build a new bank from a self-contained scene export and selected scenes.
-    Extract {
-        /// Self-contained scene-export SVD file.
-        file: PathBuf,
-        /// Scene numbers to include, 1-based and in the desired output order.
-        #[arg(required = true, num_args = 1..)]
-        scenes: Vec<usize>,
-        /// Write the extracted bank here.
-        #[arg(short, long)]
-        output: PathBuf,
-        /// Also write a companion `.svz` carrying the user samples these scenes play, for
-        /// MENU -> IMPORT SAMPLE. Requires a full backup as the source, since only a backup holds
-        /// the audio.
-        #[arg(long, value_name = "FILE")]
-        samples: Option<PathBuf>,
-        /// Panel slot the companion's first sample will be imported to, 1-based; the bank's
-        /// references are rewritten to match. Defaults to 1 alongside --samples.
-        #[arg(long, value_name = "SLOT")]
-        samples_at: Option<u16>,
-    },
-
-    /// Extract one scene with visible canary names for hardware tone-bundle validation.
-    Canary {
-        /// Self-contained scene-export SVD file.
-        file: PathBuf,
-        /// Scene number to extract, 1-based.
-        scene: usize,
-        /// Write the canary bank here.
-        #[arg(short, long)]
-        output: PathBuf,
-    },
-
-    /// Merge two self-contained scene-export banks and rebundle their user tones.
-    Merge {
-        /// Bank whose scenes and non-scene areas form the base of the output.
-        target: PathBuf,
-        /// Bank whose scenes will be appended.
-        source: PathBuf,
-        /// Write the merged bank here.
-        #[arg(short, long)]
-        output: PathBuf,
-    },
-}
 
 fn main() -> ExitCode {
     let result = match Cli::parse().command {
-        Command::Inspect { file, len, offset } => run_inspect(&file, offset, len),
-        Command::Areas { file } => run_areas(&file),
+        Command::Inspect {
+            file,
+            offset,
+            length,
+        } => run_inspect(&file, offset, length),
         Command::Diff {
             left,
             right,
             area,
             context,
         } => run_diff(&left, &right, &area, context),
-        Command::Dependencies { file } => run_dependencies(&file),
-        Command::Scenes { file } => run_scenes(&file),
-        Command::Show { file, scene, all } => run_show(&file, scene, all),
-        Command::Tones { file } => run_tones(&file),
-        Command::Samples { file } => run_samples(&file),
         Command::Verify { file } => run_verify(&file),
-        Command::Rename {
-            file,
-            scene,
-            name,
-            output,
-        } => run_edit(
-            &file,
-            output.as_ref(),
-            &format!("renamed scene {scene} to {name:?}"),
-            |raw| fantom_core::codec::set_scene_name(raw, scene, &name),
-        ),
-        Command::Comment {
-            file,
-            scene,
-            text,
-            output,
-        } => run_edit(
-            &file,
-            output.as_ref(),
-            &format!("set comment on scene {scene}"),
-            |raw| fantom_core::codec::set_scene_comment(raw, scene, &text),
-        ),
-        Command::Extract {
-            file,
-            scenes,
-            output,
-            samples,
-            samples_at,
-        } => run_extract(&file, &scenes, &output, samples.as_ref(), samples_at),
-        Command::Canary {
-            file,
-            scene,
-            output,
-        } => run_canary(&file, scene, &output),
-        Command::Merge {
-            target,
-            source,
-            output,
-        } => run_merge(&target, &source, &output),
+        Command::Areas { command } => match command {
+            AreasCommand::List { file } => run_areas(&file),
+        },
+        Command::Dependencies { command } => match command {
+            DependenciesCommand::List { file } => run_dependencies(&file),
+        },
+        Command::Tones { command } => match command {
+            TonesCommand::List { file } => run_tones(&file),
+        },
+        Command::Samples { command } => match command {
+            SamplesCommand::List { file } => run_samples(&file),
+        },
+        Command::Scenes { command } => match command {
+            ScenesCommand::List { file } => run_scenes(&file),
+            ScenesCommand::Show {
+                file,
+                scene,
+                include_disabled,
+            } => run_show(&file, scene, include_disabled),
+            ScenesCommand::Rename {
+                file,
+                scene,
+                name,
+                write,
+            } => run_edit(
+                &file,
+                &write,
+                &format!("renamed scene {scene} to {name:?}"),
+                |raw| fantom_core::codec::set_scene_name(raw, scene, &name),
+            ),
+            ScenesCommand::Comment {
+                file,
+                scene,
+                text,
+                write,
+            } => run_edit(
+                &file,
+                &write,
+                &format!("set comment on scene {scene}"),
+                |raw| fantom_core::codec::set_scene_comment(raw, scene, &text),
+            ),
+            ScenesCommand::Extract {
+                file,
+                scenes,
+                write,
+                samples,
+                samples_at,
+            } => run_extract(&file, &scenes, &write, samples.as_ref(), samples_at),
+            ScenesCommand::Canary { file, scene, write } => run_canary(&file, scene, &write),
+            ScenesCommand::Merge {
+                target,
+                source,
+                write,
+            } => run_merge(&target, &source, &write),
+        },
     };
     match result {
         Ok(text) => print_output(&text),
@@ -682,10 +532,10 @@ fn run_samples(file: &PathBuf) -> fantom_core::Result<String> {
     Ok(out)
 }
 
-/// Apply an in-place edit to a file, then either write it (with `--output`) or report a dry run.
+/// Apply an in-place edit, then either write it or report its explicit dry run.
 fn run_edit(
     file: &PathBuf,
-    output: Option<&PathBuf>,
+    write: &WriteOptions,
     what: &str,
     edit: impl FnOnce(&mut Raw) -> fantom_core::Result<()>,
 ) -> fantom_core::Result<String> {
@@ -693,14 +543,11 @@ fn run_edit(
     edit(&mut raw)?;
     let mut out = String::new();
     let _ = writeln!(out, "{what}");
-    match output {
-        Some(path) => {
-            raw.save(path)?;
-            let _ = writeln!(out, "wrote {}", path.display());
-        }
-        None => {
-            let _ = writeln!(out, "(dry run — pass --output <file> to write)");
-        }
+    if write.should_write() {
+        raw.save(write.output())?;
+        let _ = writeln!(out, "wrote {}", write.output().display());
+    } else {
+        let _ = writeln!(out, "{}", write.dry_run_notice());
     }
     Ok(out)
 }
@@ -913,6 +760,7 @@ fn carry_scene_samples(
     extracted: &Raw,
     companion: Option<&PathBuf>,
     base: Option<u16>,
+    should_write: bool,
 ) -> fantom_core::Result<(Raw, String)> {
     let slots = fantom_core::repackage::referenced_sample_slots(extracted)?;
     if slots.is_empty() {
@@ -930,10 +778,13 @@ fn carry_scene_samples(
     if let Some(path) = companion {
         let indexes: Vec<usize> = slots.iter().map(|&slot| slot as usize - 1).collect();
         let bank = fantom_core::samplebank::export_samples(source, &indexes)?;
-        bank.save(path)?;
+        if should_write {
+            bank.save(path)?;
+        }
         let _ = writeln!(
             out,
-            "wrote {} sample{} to {}",
+            "{} {} sample{} to {}",
+            if should_write { "wrote" } else { "would write" },
             slots.len(),
             if slots.len() == 1 { "" } else { "s" },
             path.display()
@@ -975,14 +826,16 @@ fn carry_scene_samples(
 fn run_extract(
     file: &PathBuf,
     scenes: &[usize],
-    output: &PathBuf,
+    write: &WriteOptions,
     samples: Option<&PathBuf>,
     samples_at: Option<u16>,
 ) -> fantom_core::Result<String> {
     let raw = Raw::open(file)?;
     if is_tone_bank(&raw) {
         let extracted = fantom_core::tonebank::extract_tones(&raw, scenes)?;
-        extracted.save(output)?;
+        if write.should_write() {
+            extracted.save(write.output())?;
+        }
         let mut out = carried_all_samples_note(&raw, &extracted);
         // Samples travel with the tones that play them; anything unreferenced is left behind, so
         // say so rather than silently shrinking the file.
@@ -997,14 +850,14 @@ fn run_extract(
         }
         let _ = writeln!(
             out,
-            "extracted {} tone{}{} to {}",
+            "extracted {} tone{}{}{}",
             scenes.len(),
             if scenes.len() == 1 { "" } else { "s" },
             match after {
                 0 => String::new(),
                 n => format!(" with {n} sample{}", if n == 1 { "" } else { "s" }),
             },
-            output.display()
+            write_destination(write),
         );
         return Ok(out);
     }
@@ -1014,7 +867,9 @@ fn run_extract(
     // names what the destination must already hold. With either, the samples are made to travel.
     let (final_bank, note) = match (samples, samples_at) {
         (None, None) => (extracted, String::new()),
-        (companion, base) => carry_scene_samples(&raw, &extracted, companion, base)?,
+        (companion, base) => {
+            carry_scene_samples(&raw, &extracted, companion, base, write.should_write())?
+        }
     };
     let note = if note.is_empty() {
         sample_warning(&final_bank, &raw)
@@ -1022,58 +877,230 @@ fn run_extract(
         note
     };
 
-    final_bank.save(output)?;
+    if write.should_write() {
+        final_bank.save(write.output())?;
+    }
     Ok(format!(
-        "{note}extracted {} scene{} to {}\n",
+        "{note}extracted {} scene{}{}\n",
         scenes.len(),
         if scenes.len() == 1 { "" } else { "s" },
-        output.display()
+        write_destination(write),
     ))
 }
 
-fn run_canary(file: &PathBuf, scene: usize, output: &PathBuf) -> fantom_core::Result<String> {
+fn write_destination(write: &WriteOptions) -> String {
+    if write.should_write() {
+        format!(" to {}", write.output().display())
+    } else {
+        format!(" ({})", write.dry_run_notice())
+    }
+}
+
+fn run_canary(file: &PathBuf, scene: usize, write: &WriteOptions) -> fantom_core::Result<String> {
     let raw = Raw::open(file)?;
     let canary = fantom_core::repackage::canary_scene(&raw, scene)?;
-    canary.save(output)?;
+    if write.should_write() {
+        canary.save(write.output())?;
+    }
     Ok(format!(
-        "{}wrote scene {scene} canary with marked dependencies to {}\n",
+        "{}{} scene {scene} canary with marked dependencies{}\n",
         sample_warning(&canary, &raw),
-        output.display()
+        if write.should_write() {
+            "wrote"
+        } else {
+            "prepared"
+        },
+        write_destination(write),
     ))
 }
 
-fn run_merge(target: &PathBuf, source: &PathBuf, output: &PathBuf) -> fantom_core::Result<String> {
+fn run_merge(
+    target: &PathBuf,
+    source: &PathBuf,
+    write: &WriteOptions,
+) -> fantom_core::Result<String> {
     let target_raw = Raw::open(target)?;
     let source_raw = Raw::open(source)?;
     if is_tone_bank(&target_raw) {
         let before = fantom_core::codec::read_bundled_tones(&target_raw)?.len();
         let merged = fantom_core::tonebank::merge_tones(&target_raw, &source_raw)?;
         let after = fantom_core::codec::read_bundled_tones(&merged)?.len();
-        merged.save(output)?;
+        if write.should_write() {
+            merged.save(write.output())?;
+        }
         return Ok(format!(
-            "{}merged to {} tones ({} new) in {}\n",
+            "{}merged to {} tones ({} new){}\n",
             carried_all_samples_note(&target_raw, &merged),
             after,
             after - before,
-            output.display()
+            write_destination(write),
         ));
     }
     let source_count = fantom_core::codec::read_scenes(&source_raw)?.len();
     let merged = fantom_core::repackage::merge_scenes(&target_raw, &source_raw)?;
-    merged.save(output)?;
+    if write.should_write() {
+        merged.save(write.output())?;
+    }
     Ok(format!(
-        "{}appended {source_count} scene{} from {} to {}\n",
+        "{}appended {source_count} scene{} from {}{}\n",
         sample_warning(&merged, &source_raw),
         if source_count == 1 { "" } else { "s" },
         source.display(),
-        output.display()
+        write_destination(write),
     ))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::CommandFactory;
     use fantom_core::diff::ByteRun;
+
+    #[test]
+    fn scenes_list_is_accepted() {
+        let cli = Cli::try_parse_from(["fantom", "scenes", "list", "bank.svd"]);
+        assert!(cli.is_ok());
+    }
+
+    #[test]
+    fn every_canonical_command_path_is_accepted() {
+        let commands: &[&[&str]] = &[
+            &["fantom", "scenes", "list", "bank.svd"],
+            &[
+                "fantom",
+                "scenes",
+                "show",
+                "bank.svd",
+                "1",
+                "--include-disabled",
+            ],
+            &[
+                "fantom",
+                "scenes",
+                "rename",
+                "bank.svd",
+                "1",
+                "New name",
+                "--dry-run",
+            ],
+            &[
+                "fantom",
+                "scenes",
+                "comment",
+                "bank.svd",
+                "1",
+                "A comment",
+                "--output",
+                "out.svd",
+            ],
+            &[
+                "fantom",
+                "scenes",
+                "extract",
+                "bank.svd",
+                "1",
+                "2",
+                "--dry-run",
+            ],
+            &[
+                "fantom", "scenes", "canary", "bank.svd", "1", "--output", "out.svd",
+            ],
+            &[
+                "fantom",
+                "scenes",
+                "merge",
+                "base.svd",
+                "source.svd",
+                "--dry-run",
+            ],
+            &["fantom", "tones", "list", "bank.svd"],
+            &["fantom", "samples", "list", "bank.svd"],
+            &["fantom", "areas", "list", "bank.svd"],
+            &["fantom", "dependencies", "list", "bank.svd"],
+            &["fantom", "inspect", "bank.svd", "--length", "512"],
+            &[
+                "fantom",
+                "diff",
+                "before.svd",
+                "after.svd",
+                "--area",
+                "DCWa",
+            ],
+            &["fantom", "verify", "bank.svd"],
+        ];
+
+        for argv in commands {
+            assert!(
+                Cli::try_parse_from(*argv).is_ok(),
+                "failed to parse {argv:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn write_commands_require_output_or_dry_run() {
+        for argv in [
+            ["fantom", "scenes", "rename", "bank.svd", "1", "New name"].as_slice(),
+            ["fantom", "scenes", "comment", "bank.svd", "1", "A comment"].as_slice(),
+            ["fantom", "scenes", "extract", "bank.svd", "1"].as_slice(),
+            ["fantom", "scenes", "canary", "bank.svd", "1"].as_slice(),
+            ["fantom", "scenes", "merge", "base.svd", "source.svd"].as_slice(),
+        ] {
+            assert!(
+                Cli::try_parse_from(argv).is_err(),
+                "unexpectedly parsed {argv:?}"
+            );
+        }
+
+        assert!(Cli::try_parse_from([
+            "fantom",
+            "scenes",
+            "rename",
+            "bank.svd",
+            "1",
+            "New name",
+            "--dry-run",
+            "--output",
+            "out.svd",
+        ])
+        .is_ok());
+    }
+
+    #[test]
+    fn removed_flat_commands_and_options_are_rejected() {
+        for argv in [
+            ["fantom", "scenes", "bank.svd"].as_slice(),
+            ["fantom", "show", "bank.svd", "1"].as_slice(),
+            ["fantom", "rename", "bank.svd", "1", "New name", "--dry-run"].as_slice(),
+            ["fantom", "inspect", "bank.svd", "--len", "512"].as_slice(),
+            ["fantom", "scenes", "show", "bank.svd", "1", "--all"].as_slice(),
+        ] {
+            assert!(
+                Cli::try_parse_from(argv).is_err(),
+                "unexpectedly parsed {argv:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn root_and_scenes_help_are_discoverable() {
+        let mut root = Cli::command();
+        let root_help = root.render_help().to_string();
+        assert!(root_help.contains("scenes"));
+        assert!(root_help.contains("inspect"));
+
+        let mut scenes = Cli::command();
+        let scenes_command = scenes.find_subcommand_mut("scenes").unwrap();
+        let scenes_help = scenes_command.render_help().to_string();
+        for command in [
+            "list", "show", "rename", "comment", "extract", "canary", "merge",
+        ] {
+            assert!(
+                scenes_help.contains(command),
+                "missing {command} from scenes help"
+            );
+        }
+    }
 
     fn run_at(offset: usize, file_offset: usize) -> ByteRun {
         ByteRun {

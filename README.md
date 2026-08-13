@@ -96,7 +96,7 @@ the exact slots a destination must already hold.
 instrument will read audio from:
 
 ```sh
-cargo run -p fantom-cli -- extract backup/FANTOM.SVD 401 -o out/FANTOM.SVD \
+cargo run -p fantom-cli -- scenes extract backup/FANTOM.SVD 401 -o out/FANTOM.SVD \
     --samples out/samples.svz --samples-at 101
 ```
 
@@ -123,52 +123,53 @@ the destination.
 
 ```sh
 # Envelope + hexdump — the reverse-engineering microscope.
-cargo run -p fantom-cli -- inspect path/to/FANTOM.SVD --len 512
+cargo run -p fantom-cli -- inspect path/to/FANTOM.SVD --length 512
 
 # List the memory areas in an SVD container.
-cargo run -p fantom-cli -- areas path/to/FANTOM.SVD
+cargo run -p fantom-cli -- areas list path/to/FANTOM.SVD
 
 # Compare two files, reporting each difference as AREA[record]+offset.
 # Export two files differing by one deliberate change and this finds the bytes that carry it.
 cargo run -p fantom-cli -- diff before.SVD after.SVD --area DCWa --context 4
 
 # List the scene names in an SVD backup.
-cargo run -p fantom-cli -- scenes path/to/FANTOM.SVD
+cargo run -p fantom-cli -- scenes list path/to/FANTOM.SVD
 
 # Show one scene with its zones (type, bank, tone, switch, key range, level).
-# Use --all for off zones.
-cargo run -p fantom-cli -- show path/to/FANTOM.SVD 385
+# Use --include-disabled for off zones.
+cargo run -p fantom-cli -- scenes show path/to/FANTOM.SVD 385
 
 # List the tones bundled in a file.
-cargo run -p fantom-cli -- tones path/to/FANTOM.SVD
+cargo run -p fantom-cli -- tones list path/to/FANTOM.SVD
 
 # List the user samples and multisamples a file carries.
-cargo run -p fantom-cli -- samples path/to/FANTOM.SVD
+cargo run -p fantom-cli -- samples list path/to/FANTOM.SVD
 
 # Check structure and record checksums. Exits non-zero on a problem, so it works as a gate.
 cargo run -p fantom-cli -- verify path/to/FANTOM.SVD
 
-# SVZ tone banks use the same verbs. Numbers are the indexes `tones` prints.
-cargo run -p fantom-cli -- tones   path/to/Z-Core.svz
-cargo run -p fantom-cli -- extract path/to/Z-Core.svz 0 12 3 -o subset.svz
-cargo run -p fantom-cli -- merge   a.svz b.svz -o combined.svz
+# SVZ tone banks use the same scene operations. Numbers are the indexes `tones list` prints.
+cargo run -p fantom-cli -- tones list path/to/Z-Core.svz
+cargo run -p fantom-cli -- scenes extract path/to/Z-Core.svz 0 12 3 -o subset.svz
+cargo run -p fantom-cli -- scenes merge a.svz b.svz -o combined.svz
 
-# Edit scene metadata (dry run without -o; pass -o to write a copy).
-cargo run -p fantom-cli -- rename  path/to/FANTOM.SVD 44 "My Scene"   -o out.svd
-cargo run -p fantom-cli -- comment path/to/FANTOM.SVD 44 "split at B4" -o out.svd
+# Edit scene metadata (pass --dry-run to preview; --output is required to write).
+cargo run -p fantom-cli -- scenes rename  path/to/FANTOM.SVD 44 "My Scene"   --dry-run
+cargo run -p fantom-cli -- scenes rename  path/to/FANTOM.SVD 44 "My Scene"   -o out.svd
+cargo run -p fantom-cli -- scenes comment path/to/FANTOM.SVD 44 "split at B4" -o out.svd
 
 # Build a smaller bank from scenes 44 and 3, in that order, with their referenced user tones.
-cargo run -p fantom-cli -- extract path/to/FANTOM.SVD 44 3 -o extracted/FANTOM.SVD
+cargo run -p fantom-cli -- scenes extract path/to/FANTOM.SVD 44 3 -o extracted/FANTOM.SVD
 
 # The same, plus a companion sample file, with the bank repointed at slots 101+.
-cargo run -p fantom-cli -- extract path/to/BACKUP.SVD 401 -o out/FANTOM.SVD \
+cargo run -p fantom-cli -- scenes extract path/to/BACKUP.SVD 401 -o out/FANTOM.SVD \
     --samples out/samples.svz --samples-at 101
 
 # Build a one-scene hardware-test bank with visible CNY scene/tone names.
-cargo run -p fantom-cli -- canary path/to/FANTOM.SVD 44 -o canary/FANTOM.SVD
+cargo run -p fantom-cli -- scenes canary path/to/FANTOM.SVD 44 -o canary/FANTOM.SVD
 
 # Append all scenes from one scene-export bank to another, de-duplicating identical user tones.
-cargo run -p fantom-cli -- merge base/FANTOM.SVD additions/FANTOM.SVD -o merged/FANTOM.SVD
+cargo run -p fantom-cli -- scenes merge base/FANTOM.SVD additions/FANTOM.SVD -o merged/FANTOM.SVD
 
 cargo build            # build everything
 cargo test             # run tests

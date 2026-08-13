@@ -982,8 +982,8 @@ mismatches. `send-tone` writes a complete tone from a file into temporary memory
 ## How to inspect
 
 ```sh
-cargo run -p fantom-cli -- inspect fixtures/your-file.svd --len 512
-cargo run -p fantom-cli -- inspect fixtures/your-file.svd --offset 0x40 --len 128
+cargo run -p fantom-cli -- inspect fixtures/your-file.svd --length 512
+cargo run -p fantom-cli -- inspect fixtures/your-file.svd --offset 0x40 --length 128
 ```
 
 **Finding new offsets.** Export two files that differ by exactly one deliberate change, then let
