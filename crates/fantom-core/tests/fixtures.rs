@@ -556,7 +556,7 @@ fn extracting_a_sampled_tone_carries_its_waveform() {
     // Same audio, not a re-encode: frames and rate must match the source exactly.
     for slot in &carried.data {
         let original = source.data.iter().find(|d| d.name == slot.name).unwrap();
-        assert_eq!(slot.words, original.words);
+        assert_eq!(slot.channel_bytes, original.channel_bytes);
         assert_eq!(slot.sample_rate, original.sample_rate);
     }
 }

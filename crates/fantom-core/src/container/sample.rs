@@ -54,17 +54,23 @@ pub struct SampleData {
     /// Name as stored in the section header. May differ from the slot name if the user renamed the
     /// slot after importing.
     pub name: String,
-    /// Section size in bytes, excluding the 64-byte gap before the next section.
+    /// Total size of the section's audio, both channels including their padding.
     pub size: u32,
-    /// Number of 16-bit words of PCM: two per frame, i.e. stereo.
-    pub words: u32,
+    /// Bytes of real PCM **per channel** — 16-bit mono each, so twice the frame count.
+    ///
+    /// The two channels are stored as separate contiguous blocks, left then right, each padded up
+    /// to a multiple of 512 (and given another 512 if that would leave under 128 bytes of slack).
+    /// So `size == 2 * pad512(channel_bytes)`, which holds for all 50 samples of a FANTOM-6 backup.
+    /// The audio is *not* interleaved, which an earlier reading of this field as "16-bit words, two
+    /// per frame" implied — the frame count works out the same either way.
+    pub channel_bytes: u32,
     pub sample_rate: u32,
 }
 
 impl SampleData {
     /// Length in frames.
     pub fn frames(&self) -> u32 {
-        self.words / 2
+        self.channel_bytes / 2
     }
 
     /// Duration in seconds.
@@ -154,11 +160,11 @@ const SMPD_MAGIC: &[u8; 4] = b"SMPd";
 
 /// SVZ `USDa` directory entry: `{u32 slot, u32 offset, u32 size, u32 word}`.
 pub(crate) const SVZ_DIRECTORY_ENTRY: usize = 16;
-/// In an SVZ `SMPd`, the 16-bit sample count and rate sit closer to the front than in a backup's.
-const SVZ_SMPD_WORDS: usize = 0x04;
+/// In an SVZ `SMPd`, the per-channel byte count and rate sit closer to the front than in a backup's.
+const SVZ_SMPD_CHANNEL_BYTES: usize = 0x04;
 const SVZ_SMPD_RATE: usize = 0x0c;
 const SMPD_SIZE: usize = 0x08;
-const SMPD_WORDS: usize = 0x0c;
+const SMPD_CHANNEL_BYTES: usize = 0x0c;
 const SMPD_NAME: usize = 0x10;
 const SMPD_RATE: usize = 0x20;
 const SMPD_HEADER_LEN: usize = 0x24;
@@ -238,7 +244,7 @@ fn read_svz_data(raw: &Raw, svd: &Svd) -> Result<Vec<SampleData>> {
             offset,
             name: ascii_trim(&section[SMPD_NAME..SMPD_NAME + 16]),
             size: le_u32(entry, 8),
-            words: le_u32(section, SVZ_SMPD_WORDS),
+            channel_bytes: le_u32(section, SVZ_SMPD_CHANNEL_BYTES),
             sample_rate: le_u32(section, SVZ_SMPD_RATE),
         });
     }
@@ -303,7 +309,7 @@ fn read_data(raw: &Raw, svd: &Svd) -> Result<Vec<SampleData>> {
             offset,
             name: ascii_trim(&section[SMPD_NAME..SMPD_NAME + 16]),
             size: le_u32(section, SMPD_SIZE),
-            words: le_u32(section, SMPD_WORDS),
+            channel_bytes: le_u32(section, SMPD_CHANNEL_BYTES),
             sample_rate: le_u32(section, SMPD_RATE),
         });
     }
@@ -414,7 +420,7 @@ mod tests {
             let mut section = vec![0u8; SMPD_HEADER_LEN];
             section[..4].copy_from_slice(SMPD_MAGIC);
             section[SMPD_SIZE..SMPD_SIZE + 4].copy_from_slice(&(words * 2).to_le_bytes());
-            section[SMPD_WORDS..SMPD_WORDS + 4].copy_from_slice(&words.to_le_bytes());
+            section[SMPD_CHANNEL_BYTES..SMPD_CHANNEL_BYTES + 4].copy_from_slice(&words.to_le_bytes());
             section[SMPD_NAME..SMPD_NAME + name.len()].copy_from_slice(name.as_bytes());
             section[SMPD_RATE..SMPD_RATE + 4].copy_from_slice(&48000u32.to_le_bytes());
             offset += section.len();

@@ -239,11 +239,25 @@ length), each offset pointing at an `SMPd` section relative to the `USDa` body:
 | Off | Size | Field |
 |-----|------|-------|
 | `0x00` | 4 | `SMPd` magic |
-| `0x08` | 4 | section size in bytes |
-| `0x0c` | 4 | count of 16-bit words (two per frame → stereo) |
+| `0x04` | 4 | flags — `0x02010020`, or `0x42010020` on 4 of 50 |
+| `0x08` | 4 | total audio size, both channels including padding |
+| `0x0c` | 4 | bytes of real PCM **per channel** |
 | `0x10` | 16 | name as imported |
 | `0x20` | 4 | sample rate (48000 in every section seen) |
-| `0x80` | … | 16-bit PCM |
+| `0x24` | 4 | per-sample word, carried into an SVZ's `USDa` directory |
+| `0x80` | … | 16-bit PCM, **left channel block then right**, each padded |
+
+**The audio is not interleaved.** Each channel is a contiguous block of 16-bit mono, padded up to a
+multiple of 512 — with another 512 added when that would leave under 128 bytes of slack — and the
+two blocks sit back to back. So `size == 2 × pad512(channel_bytes)`, which holds for **all 50**
+samples of `2023.4.8+topandprisma`, and `channel_bytes == SMPa.end × 2` for 48 of them (the two
+exceptions are the trimmed samples). The padding at the end of the left block is zero-filled.
+
+> An earlier revision read `+0x0c` as "count of 16-bit words, two per frame", which gives the right
+> frame count by coincidence — `words / 2` and `channel_bytes / 2` are the same number — but implies
+> interleaved stereo, which this is not. The field name and the block layout come from an ImHex
+> pattern for the related MC/MV format (see the attribution note below); the padding rule and the
+> `size == 2 × pad512(…)` identity were then confirmed here.
 
 Verified on `2023.4.8+topandprisma`: 50 directory entries, 50 `SMPd` magics in the file, 50 named
 `SMPa` slots, agreeing by position and name. `words / 2 == SMPa.end` exactly for 48 of 50 (the two
