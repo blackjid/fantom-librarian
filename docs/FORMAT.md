@@ -350,11 +350,18 @@ are confirmed against the panel:
 | `0` | PCM | most partials | yes, via `WAV_NUM_L` |
 | `1` | VA | `Africa Brass` partial 1 | no — synthesised |
 | `2` | PCM Sync | `Human Pad 1` partial 1 | yes, via **`SYNC_WAV_NUM`** |
-| `3` | ? | — | unknown |
-| `4` | ? | — | unknown |
+| `3` | SuperSAW | `Break Free` zone 1; `SuperSawPluckEMA` partial 1 | no — synthesised |
+| `4` | Noise | `LovesMikeJagger` zone 1 → `MAROON Whistle` partial 1 | no — synthesised |
 
-`3` and `4` are presumably SuperSAW and Noise in some order; neither example tone existed on the
-instrument to check. Across one backup the split is 7348 / 640 / 5 / 136 / 62.
+All five read off the panel, except `3`, which is corroborated two ways: `Break Free`'s zone 1 shows
+SuperSAW but plays a *factory* tone whose bytes are in ROM rather than any file, while
+`SuperSawPluckEMA` is a USER tone whose `OSC_TYPE 3` partial is self-evidencing. Across one backup
+the split is 7348 / 640 / 5 / 136 / 62.
+
+Worth noting what that makes `MyPolySyn1` partial 3: a **SuperSAW** partial carrying `group 2` wave
+numbers it cannot play. The instrument exported both of those samples anyway — the clearest evidence
+yet that Roland's dependency scan reads the wave fields without consulting `OSC_TYPE`, and the reason
+this tool does the same.
 
 **A PCM-Sync partial names its wave somewhere else.** `Human Pad 1` reads on the panel as partial 1
 = PCM Sync wave **32**, partial 2 = Int bank a wave **324**. In the bytes, partial 2 is
