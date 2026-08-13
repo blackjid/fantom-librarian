@@ -390,7 +390,7 @@ fn a_sampled_scene_travels_as_a_bank_plus_a_companion_sample_file() {
 
     // With the companion landing at slot 101, the bank has to say 101 and 102 — in that order,
     // because that is the order the instrument will lay the companion's samples down.
-    let remap = fantom_core::repackage::contiguous_remap(&slots, 101);
+    let remap = fantom_core::repackage::contiguous_remap(&slots, 101).unwrap();
     let rebased = fantom_core::repackage::rebase_sample_slots(&extracted, &remap).unwrap();
     assert_eq!(
         fantom_core::repackage::referenced_sample_slots(&rebased).unwrap(),

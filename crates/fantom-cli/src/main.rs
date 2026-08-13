@@ -815,7 +815,7 @@ fn carry_scene_samples(
     }
 
     let base = base.unwrap_or(1);
-    let remap = fantom_core::repackage::contiguous_remap(&slots, base);
+    let remap = fantom_core::repackage::contiguous_remap(&slots, base)?;
     let rebased = fantom_core::repackage::rebase_sample_slots(extracted, &remap)?;
 
     let mut out = String::new();

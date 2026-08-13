@@ -14,7 +14,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use crate::address;
-use crate::container::{Kind, Raw, RawZone, RecordTable, Svd, ZoneSettings};
+use crate::container::{Kind, Raw, RawZone, RecordTable, Svd, ZoneSettings, PANEL_SLOTS};
 use crate::{Error, Result};
 
 const HEADER_LEN: usize = 0x10;
@@ -624,12 +624,28 @@ pub fn rebase_sample_slots(raw: &Raw, remap: &BTreeMap<u16, u16>) -> Result<Raw>
 /// This is the mapping a companion sample file implies: it numbers its samples densely, the
 /// instrument imports them as one run from whichever slot the user picks, so the *n*th slot this
 /// bank referenced becomes `base + n`.
-pub fn contiguous_remap(slots: &[u16], base: u16) -> BTreeMap<u16, u16> {
-    slots
+///
+/// The run has to land inside the panel's `1..=8000` slots. A base of 0 is not merely off by one:
+/// a wave number of zero means *no wave*, so it would silence the partials it was meant to fix.
+pub fn contiguous_remap(slots: &[u16], base: u16) -> Result<BTreeMap<u16, u16>> {
+    if base == 0 {
+        return Err(Error::Unrecognized(
+            "sample slots are numbered from 1; slot 0 means \"no wave\"".into(),
+        ));
+    }
+    let last = base as usize + slots.len().saturating_sub(1);
+    if last > PANEL_SLOTS as usize {
+        return Err(Error::Unrecognized(format!(
+            "{} sample{} starting at slot {base} would run to {last}, past the panel's {PANEL_SLOTS}",
+            slots.len(),
+            if slots.len() == 1 { "" } else { "s" },
+        )));
+    }
+    Ok(slots
         .iter()
         .enumerate()
         .map(|(index, &slot)| (slot, base + index as u16))
-        .collect()
+        .collect())
 }
 
 #[cfg(test)]
@@ -766,7 +782,7 @@ mod tests {
             sampled_tone("Two", &[(0, 29), (1, 7)]),
         ]);
         let slots = referenced_sample_slots(&raw).unwrap();
-        let remap = contiguous_remap(&slots, 101);
+        let remap = contiguous_remap(&slots, 101).unwrap();
 
         let rebased = rebase_sample_slots(&raw, &remap).unwrap();
         assert_eq!(referenced_sample_slots(&rebased).unwrap(), [101, 102]);
@@ -777,10 +793,25 @@ mod tests {
         assert_eq!(crate::container::sample_slots(table.record(1).unwrap()), [102, 101]);
     }
 
+    /// The run has to land on real panel slots. Slot 0 is the trap: a wave number of zero means
+    /// "no wave", so an off-by-one base would silence the very partials it was meant to repoint.
+    #[test]
+    fn a_run_that_would_leave_the_panel_is_refused() {
+        let zero = contiguous_remap(&[7, 29], 0).unwrap_err().to_string();
+        assert!(zero.contains("numbered from 1"), "{zero}");
+
+        let past = contiguous_remap(&[7, 29], PANEL_SLOTS).unwrap_err().to_string();
+        assert!(past.contains("past the panel's"), "{past}");
+
+        // The last slot that still fits is fine, and so is a base with no samples to place.
+        assert!(contiguous_remap(&[7, 29], PANEL_SLOTS - 1).is_ok());
+        assert!(contiguous_remap(&[], PANEL_SLOTS).is_ok());
+    }
+
     #[test]
     fn rebasing_leaves_a_bank_without_samples_untouched() {
         let raw = sampled_bank(&[sampled_tone("Plain", &[])]);
-        let rebased = rebase_sample_slots(&raw, &contiguous_remap(&[], 101)).unwrap();
+        let rebased = rebase_sample_slots(&raw, &contiguous_remap(&[], 101).unwrap()).unwrap();
         assert_eq!(rebased.bytes(), raw.bytes());
     }
 

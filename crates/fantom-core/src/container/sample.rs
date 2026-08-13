@@ -23,6 +23,10 @@
 use crate::container::{ascii_trim, Raw, RecordTable, Svd};
 use crate::Result;
 
+/// How many user sample slots the panel has. `SMPa` holds exactly this many records, and a tone
+/// addresses them 1-based, so `1..=PANEL_SLOTS` is the whole range a reference may name.
+pub const PANEL_SLOTS: u16 = 8000;
+
 /// One of the 8000 user sample slots.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SampleSlot {
