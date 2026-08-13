@@ -79,6 +79,63 @@ def display_low(m):
     return -int(left) if left is not None else int(plain)
 
 
+# The same continuation lines also say how a value is meant to be *read*: an enumeration's member
+# names, a decimal scale, a unit. `Scene Tempo (500 - 30000)` shown as `5.00 - 300.00` is a
+# hundredth of a BPM; `Zone Mono/Poly (0 - 2)` shown as `MONO, POLY, TONE` is an enumeration.
+SCALED = re.compile(r"^[\s|]*(\d+)\.(\d+)\s*-\s*(\d+)\.(\d+)\s*(\[[^\]]*\])?\s*\|?\s*$")
+UNIT = re.compile(r"\[([^\]]+)\]")
+NUMERIC_RANGE_HEAD = re.compile(r"^[\s|]*[+-]?\d+\s*-\s*[+-]?\d+\s*,")
+
+
+def last_column(line):
+    """The description column of a table row, without the gutter.
+
+    A continuation row is `|  |  |  MONO, POLY, TONE |` -- blank address and bit-pattern columns,
+    then the text. Taking the last non-empty pipe-separated field gets it whatever the widths,
+    which vary line to line in the extracted text.
+
+    Rules and the `:` that elides a Reserved run carry no text; without discarding them the block's
+    closing border becomes a label on its last field.
+    """
+    parts = [p for p in line.split("|") if p.strip()]
+    if not parts:
+        return ""
+    text = parts[-1].strip()
+    return "" if not text.strip("-+: ") else text
+
+
+def display_of(text, span):
+    """`(Display, unit)` for a field, from its continuation lines joined into `text`.
+
+    Returns a plain number unless the document is unambiguous, and an enumeration only when the
+    label count matches the declared range exactly — which rejects both a misparse and a range
+    that merely reserves its top value, like `Zone Portamento Time` shown as `0 - 127, TONE`.
+    """
+    unit_m = UNIT.search(text)
+    unit = unit_m.group(1) if unit_m else ""
+    body = UNIT.sub("", text).strip().strip("|").strip()
+    lo, hi = span
+
+    if unit == "ASCII":
+        return "Display::Ascii", ""
+    if DISPLAY.match(text) and "L" in body.split("-")[0] and body.rstrip().endswith("R"):
+        return "Display::Pan", ""
+    m = SCALED.match(text)
+    if m:
+        whole, frac = m.group(1), m.group(2)
+        shown = float(f"{whole}.{frac}")
+        if shown:
+            divisor = round(lo / shown)
+            if divisor > 1:
+                return f"Display::Scaled {{ divisor: {divisor}, decimals: {len(frac)} }}", unit
+    if "," in body and not NUMERIC_RANGE_HEAD.match(body):
+        labels = [t.strip() for t in body.split(",") if t.strip()]
+        if len(labels) == hi - lo + 1 and lo == 0:
+            joined = ", ".join(f'"{l}"' for l in labels)
+            return f"Display::Enum(&[{joined}])", unit
+    return "Display::Number", unit
+
+
 def addr7(hi, lo):
     """A Roland address is 7 bits per byte."""
     return int(hi, 16) * 128 + int(lo, 16)
@@ -106,31 +163,23 @@ def sections(text):
 
 
 def fields(lines, declared):
-    """The block's fields as (addr, nibbles, name, bias).
+    """The block's fields as (addr, nibbles, name, bias, display, unit).
 
     A `#` in the offset column opens a multi-address field whose description lands on its last
-    line. Roland elides runs of Reserved with a `:` row, so any gap in the address sequence, and
-    anything between the last field and the declared size, is Reserved.
+    line; the lines after that carry its displayed range or enumeration, and an enumeration can run
+    over several of them. Roland elides runs of Reserved with a `:` row, so any gap in the address
+    sequence, and anything between the last field and the declared size, is Reserved.
     """
-    raw, pending, prev = [], None, None
+    raw, pending = [], None
 
-    def flush(entry):
-        raw.append(entry)
+    def entry(addr, n, desc, span):
+        return {"addr": addr, "n": n, "desc": desc, "span": span, "cont": []}
 
     for line in lines:
         m = LINE.match(line)
         if not m:
-            # A signed field's displayed range sits on the line after its description.
-            d = DISPLAY.match(line)
-            if d and prev is not None and raw and raw[-1] is prev:
-                lo_store, _ = prev[4]
-                lo_show = display_low(d)
-                # Only a *negative* displayed low means a field stored zero-centred. A display
-                # that merely counts from 1 -- `Receive Channel (0 - 15)` shown as `1 - 16` -- is
-                # a label for the player, and biasing by it would corrupt the wire value.
-                if lo_show < 0:
-                    raw[-1] = (prev[0], prev[1], prev[2], lo_store - lo_show, prev[4])
-                prev = None
+            if raw:
+                raw[-1]["cont"].append(line)
             continue
         hash_, hi, lo, _bits, desc = m.groups()
         addr = addr7(hi, lo)
@@ -140,37 +189,53 @@ def fields(lines, declared):
 
         if hash_:
             if pending:
-                flush((pending[0], pending[1], "Reserved", 0, (0, 0)))
-            pending = (addr, 1, desc, 0, span)
-            prev = None
+                raw.append(entry(pending["addr"], pending["n"], "Reserved", (0, 0)))
+            pending = entry(addr, 1, desc, span)
             continue
         if pending is not None:
-            start, n, _, _, _ = pending
-            if addr == start + n:
-                pending = (start, n + 1, desc, 0, span)
+            if addr == pending["addr"] + pending["n"]:
+                pending["n"] += 1
+                pending["desc"], pending["span"] = desc, span
                 if desc:
-                    entry = (start, n + 1, desc, 0, span)
-                    flush(entry)
-                    prev = entry
+                    raw.append(pending)
                     pending = None
                 continue
-            flush((start, n, "Reserved", 0, (0, 0)))
+            pending["desc"] = "Reserved"
+            raw.append(pending)
             pending = None
-        entry = (addr, 1, desc or "Reserved", 0, span)
-        flush(entry)
-        prev = entry
+        raw.append(entry(addr, 1, desc or "Reserved", span))
     if pending:
-        flush((pending[0], pending[1], pending[2] or "Reserved", 0, pending[4]))
+        pending["desc"] = pending["desc"] or "Reserved"
+        raw.append(pending)
+
+    for e in raw:
+        text = " ".join(c for c in (last_column(l) for l in e["cont"]) if c)
+        lo_store, _ = e["span"]
+        e["bias"] = 0
+        for line in e["cont"]:
+            d = DISPLAY.match(line)
+            if d:
+                lo_show = display_low(d)
+                # Only a *negative* displayed low means a field stored zero-centred. A display
+                # that merely counts from 1 -- `Receive Channel (0 - 15)` shown as `1 - 16` -- is
+                # a label for the player, and biasing by it would corrupt the wire value.
+                if lo_show < 0:
+                    e["bias"] = lo_store - lo_show
+                break
+        if e["desc"] == "Reserved":
+            e["display"], e["unit"] = "Display::Number", ""
+        else:
+            e["display"], e["unit"] = display_of(text, e["span"])
 
     out, at = [], 0
-    for a, n, d, bias, _span in raw:
-        while at < a:
-            out.append((at, 1, "Reserved", 0))
+    for e in raw:
+        while at < e["addr"]:
+            out.append((at, 1, "Reserved", 0, "Display::Number", ""))
             at += 1
-        out.append((a, n, d, bias))
-        at = a + n
+        out.append((e["addr"], e["n"], e["desc"], e["bias"], e["display"], e["unit"]))
+        at = e["addr"] + e["n"]
     while at < declared:
-        out.append((at, 1, "Reserved", 0))
+        out.append((at, 1, "Reserved", 0, "Display::Number", ""))
         at += 1
     return out
 
@@ -192,11 +257,11 @@ def pack(fs):
     """Assign file offsets: a multi-nibble field is one little-endian integer, aligned to its
     own width, exactly as `docs/FORMAT.md` records for the tone table."""
     out, off = [], 0
-    for a, n, d, bias in fs:
+    for a, n, d, bias, disp, unit in fs:
         width = 1 if n == 1 else n // 2
         if width > 1 and off % 2:
             off += 1
-        out.append((off, width, a, n, d, bias))
+        out.append((off, width, a, n, d, bias, disp, unit))
         off += width
     return out, off
 
@@ -211,7 +276,7 @@ def main():
         "//! Generated by `tools/gen_scene_params.py` from Roland's FANTOM EX MIDI",
         "//! Implementation; do not edit by hand.",
         "",
-        "use super::{Block, Instance, Param};",
+        "use super::{Block, Display, Instance, Param};",
         "",
     ]
 
@@ -224,7 +289,7 @@ def main():
         rows, nbytes = pack(fs)
         _base, file_len = PLACEMENT[rust]
         # Trailing Reserved may be unstored, but a real field must never fall off the end.
-        last = max((o + w for o, w, _a, _n, d, _b in rows if d != "Reserved"), default=0)
+        last = max((r[0] + r[1] for r in rows if r[4] != "Reserved"), default=0)
         if last > file_len:
             sys.exit(f"[{name}] real field ends at {last}, past its {file_len}-byte slot")
         rows = [r for r in rows if r[0] + r[1] <= file_len]
@@ -232,13 +297,14 @@ def main():
 
         ids = set()
         out.append(f"static {rust}_PARAMS: &[Param] = &[")
-        for off, width, a, n, d, bias in rows:
+        for off, width, a, n, d, bias, disp, unit in rows:
             reserved = str(d == "Reserved").lower()
             out.append(
                 f'    Param {{ id: "{ident(d, ids)}", byte_offset: {off}, '
                 f"len_bytes: {width}, sysex_offset: {a}, "
                 f"len_sysex: {1 if n == 1 else n}, bias: {bias}, "
-                f"reserved: {reserved} }},"
+                f"reserved: {reserved}, display: {disp}, "
+                f'unit: "{unit}" }},'
             )
         out += ["];", ""]
         out += [

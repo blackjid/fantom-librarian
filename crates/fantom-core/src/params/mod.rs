@@ -31,6 +31,60 @@ pub struct Param {
     /// The wire address exists but carries nothing: send zero, never compare.
     /// A FANTOM-6 stores a phrase reference in two of these and does not report it.
     pub reserved: bool,
+    /// How the stored number becomes what the panel shows.
+    pub display: Display,
+    /// Unit suffix as Roland prints it (`dB`, `Hz`); empty when there is none.
+    pub unit: &'static str,
+}
+
+/// How a stored value is meant to be read by a person.
+///
+/// Roland prints this beside every parameter — an enumeration's member names, a decimal scale, a
+/// left/right pan. Keeping it in the table means a field formats correctly wherever it is read,
+/// instead of each caller having to know that `Zone_Mono_Poly` of 2 means `TONE`.
+#[derive(Clone, Copy)]
+pub enum Display {
+    /// A plain number.
+    Number,
+    /// Labels indexed by the stored value.
+    Enum(&'static [&'static str]),
+    /// Shown as `value / divisor` to `decimals` places: tempo `12000` is `120.00`.
+    Scaled { divisor: u32, decimals: u8 },
+    /// Left of centre, centred, or right: `L64`, `C`, `63R`.
+    Pan,
+    /// One 7-bit ASCII character of a name or memo field.
+    Ascii,
+}
+
+/// Format a parameter's value the way the instrument's own display would.
+///
+/// Takes the value from [`display_value`], so signed fields arrive already sign-extended.
+pub fn render(p: &Param, value: i32) -> String {
+    let body = match p.display {
+        Display::Ascii => return char::from_u32(value as u32).unwrap_or('?').to_string(),
+        Display::Pan => match value.cmp(&0) {
+            std::cmp::Ordering::Less => format!("L{}", -value),
+            std::cmp::Ordering::Equal => "C".to_string(),
+            std::cmp::Ordering::Greater => format!("{value}R"),
+        },
+        // An out-of-range index means the file holds something the document does not describe;
+        // showing the raw number beats inventing a label for it.
+        Display::Enum(labels) => match usize::try_from(value).ok().and_then(|i| labels.get(i)) {
+            Some(label) => (*label).to_string(),
+            None => value.to_string(),
+        },
+        Display::Scaled { divisor, decimals } => format!(
+            "{:.*}",
+            decimals as usize,
+            value as f64 / divisor as f64
+        ),
+        Display::Number => value.to_string(),
+    };
+    if p.unit.is_empty() {
+        body
+    } else {
+        format!("{body} {}", p.unit)
+    }
 }
 
 /// A parameter block, addressed as a unit by RQ1/DT1.
@@ -107,6 +161,28 @@ impl Instance {
     pub fn read_display(&self, record: &[u8], id: &str) -> Option<i32> {
         let p = self.block.param(id)?;
         Some(display_value(self.slice(record)?, p))
+    }
+
+    /// Read one named parameter and format it the way the instrument would; see [`render`].
+    pub fn read_rendered(&self, record: &[u8], id: &str) -> Option<String> {
+        let p = self.block.param(id)?;
+        Some(render(p, display_value(self.slice(record)?, p)))
+    }
+
+    /// Every non-reserved parameter of this instance, as `(id, rendered value)`.
+    ///
+    /// The whole point of keeping display data in the table: a caller can dump a block it knows
+    /// nothing about and get labelled values out.
+    pub fn fields<'a>(&self, record: &'a [u8]) -> impl Iterator<Item = (&'static str, String)> + 'a {
+        let block = self.block;
+        let at = self.byte_offset as usize;
+        let end = at + block.byte_len as usize;
+        let slice = record.get(at..end).unwrap_or(&[]).to_vec();
+        block
+            .params
+            .iter()
+            .filter(|p| !p.reserved)
+            .map(move |p| (p.id, render(p, display_value(&slice, p))))
     }
 }
 
@@ -196,5 +272,58 @@ mod tests {
     fn both_sources_agree_on_the_mfx_block() {
         assert_eq!(scene::IFX.byte_len, tone::MFX.byte_len);
         assert_eq!(scene::IFX.sysex_len, tone::MFX.sysex_len);
+    }
+
+    fn rendered(block: &Block, id: &str, value: i32) -> String {
+        render(block.param(id).expect(id), value)
+    }
+
+    #[test]
+    fn renders_each_kind_of_display() {
+        assert_eq!(rendered(&scene::SCENE_ZONE, "Zone_Mono_Poly", 2), "TONE");
+        assert_eq!(rendered(&scene::SCENE_ZONE, "Zone_Output_Assign", 1), "IFX1");
+        assert_eq!(rendered(&scene::SCENE_COMMON, "Scene_Tempo", 12000), "120.00");
+        assert_eq!(rendered(&scene::SCENE_ZONE, "Zone_Pan", -16), "L16");
+        assert_eq!(rendered(&scene::SCENE_ZONE, "Zone_Pan", 0), "C");
+        assert_eq!(rendered(&scene::SCENE_ZONE, "Zone_Pan", 25), "25R");
+        assert_eq!(rendered(&scene::ZONE_EQ, "EQ_Low_Frequency", 17), "1000 Hz");
+        assert_eq!(rendered(&scene::ZONE_EQ, "EQ_Low_Gain", -24), "-24 dB");
+        assert_eq!(rendered(&scene::SCENE_COMMON, "Scene_Name_1", 65), "A");
+        assert_eq!(rendered(&scene::SCENE_ZONE, "Zone_Level", 100), "100");
+    }
+
+    /// An enumeration is only trustworthy if its labels line up with the values that reach it, so
+    /// the generator emits one only when the label count matches Roland's declared range. A value
+    /// past the end falls back to the number rather than borrowing a neighbour's name.
+    #[test]
+    fn an_out_of_range_enum_value_shows_as_a_number() {
+        assert_eq!(rendered(&scene::SCENE_ZONE, "Zone_Mono_Poly", 9), "9");
+    }
+
+    /// The frequency list is an enumeration of numbers, which is the case most likely to be
+    /// mis-split; it must have exactly the 30 entries the panel offers.
+    #[test]
+    fn the_eq_frequency_list_is_complete() {
+        let p = scene::ZONE_EQ.param("EQ_Low_Frequency").unwrap();
+        let Display::Enum(labels) = p.display else {
+            panic!("EQ frequency should be enumerated");
+        };
+        assert_eq!(labels.len(), 30);
+        assert_eq!((labels[0], labels[29]), ("20", "16000"));
+        assert_eq!(p.unit, "Hz");
+    }
+
+    /// Dumping a block a caller knows nothing about should still give labelled values.
+    #[test]
+    fn a_block_can_be_dumped_without_knowing_its_contents() {
+        let record = vec![0u8; scene::RECORD_LEN];
+        let eq = scene::SCENE
+            .iter()
+            .find(|i| i.block.name == "Zone EQ")
+            .unwrap();
+        let fields: Vec<_> = eq.fields(&record).collect();
+        // A switch reads as its member name, not as 0/1, without the caller knowing it is one.
+        assert!(fields.iter().any(|(id, v)| *id == "EQ_Switch" && v == "OFF"));
+        assert!(fields.iter().any(|(id, v)| *id == "EQ_Low_Gain" && v == "0 dB"));
     }
 }

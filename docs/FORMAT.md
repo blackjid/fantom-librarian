@@ -955,6 +955,12 @@ file `+0x40` and wire `+0x42`. See the scene record layout above for the full bl
 looked up rather than computed. `crates/fantom-core/src/params/` holds both tables; `PCMEX` totals
 1632 bytes across 33 blocks and a scene 3572 across 55.
 
+**The table carries display data too.** Roland prints beside each parameter how its value is meant
+to be read — an enumeration's member names, a decimal scale, a unit — and the generator keeps it, so
+a field formats correctly wherever it is read rather than at each call site. An enumeration is
+emitted only when its label count matches the declared range, which rejects both a misparse and a
+range that merely reserves its top value (`Zone Portamento Time`, shown `0 - 127, TONE`).
+
 **The two tables have different sources, because the editor data has no scene.** Its groups are
 `PCMEX`, `PCMR`, `MdlSynPrm0` and `INST_CMN_GROUP` — tones, drum kits, MODEL — and none of its 26
 blocks is a Scene Common, Scene Zone, Zone EQ, Zone Control or Scene Controller. `params::scene` is
