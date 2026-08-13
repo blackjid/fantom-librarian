@@ -1,8 +1,11 @@
 //! Mapping between container bytes and the [`crate::model`] types.
 //!
-//! This is where a confirmed byte layout becomes [`crate::model`] values: scene name, comment, and
-//! 16 zones (switch, key range, level, tone) from the `PRFa` area, with bundled user-tone names
-//! resolved from their engine areas where possible (see `docs/FORMAT.md`).
+//! This is where a confirmed byte layout becomes [`crate::model`] values: scene name, comment,
+//! tempo, level, and 16 zones from the `PRFa` area, with bundled user-tone names resolved from
+//! their engine areas where possible (see `docs/FORMAT.md`).
+//!
+//! The handful of offsets this module names as constants were found by controlled single-variable
+//! edits; everything else is read through [`crate::params::scene`], which maps the whole record.
 
 use std::collections::HashMap;
 use std::io::Cursor;
@@ -12,6 +15,7 @@ use binrw::BinRead as _;
 use crate::address::{self, AreaSpec};
 use crate::container::{ascii_trim, Raw, RawZone, RecordTable, Svd, ZoneSettings};
 use crate::model::{Scene, ToneRef, ToneType, Zone};
+use crate::params;
 use crate::{Error, Result};
 
 /// The area tag holding Performances/Scenes in a FANTOM-6 SVD backup.
@@ -83,12 +87,19 @@ pub fn read_scenes(raw: &Raw) -> Result<Vec<Scene>> {
     records
         .into_iter()
         .map(|(_, record)| {
+            let common = scene_block("Scene Common", 0);
             Ok(Scene {
                 name: record.get(..NAME_LEN).map(ascii_trim).unwrap_or_default(),
                 comment: record
                     .get(COMMENT_OFFSET..COMMENT_OFFSET + COMMENT_LEN)
                     .map(ascii_trim)
                     .unwrap_or_default(),
+                tempo: common
+                    .and_then(|b| b.read(record, "Scene_Tempo"))
+                    .unwrap_or(0) as u16,
+                level: common
+                    .and_then(|b| b.read(record, "Scene_Level"))
+                    .unwrap_or(0) as u8,
                 zones: read_zones(record, Some(&resolver))?,
             })
         })
@@ -209,6 +220,17 @@ fn record_names(raw: &Raw, svd: &Svd, spec: &AreaSpec) -> Option<Vec<String>> {
     )
 }
 
+/// The `n`th instance of a named block within a scene record, from the parameter table.
+///
+/// The table is the map for everything past the handful of offsets this module found by
+/// controlled edit; `params::scene` asserts the two agree where they overlap.
+fn scene_block(name: &str, n: usize) -> Option<&'static params::Instance> {
+    params::scene::SCENE
+        .iter()
+        .filter(|i| i.block.name == name)
+        .nth(n)
+}
+
 /// Read a zone's raw MSB plus LSB/PC pair, if the record is long enough.
 fn zone_tone_bank(record: &[u8], n: usize) -> Option<(u8, u16)> {
     let at = ZoneSettings::TABLE_OFFSET + n * ZoneSettings::LEN + TONE_ID_OFFSET;
@@ -253,13 +275,29 @@ fn read_zones(record: &[u8], resolver: Option<&ToneResolver>) -> Result<Vec<Zone
         let Some((z, s, msb, tone_id)) = decode_zone_slot(record, n) else {
             continue;
         };
+        let settings = scene_block("Scene Zone", n);
+        let control = scene_block("Zone Control", n);
+        let read = |b: Option<&'static params::Instance>, id: &str| {
+            b.and_then(|b| b.read(record, id)).unwrap_or(0)
+        };
+        let signed = |b: Option<&'static params::Instance>, id: &str| {
+            b.and_then(|b| b.read_display(record, id)).unwrap_or(0) as i8
+        };
         zones.push(Zone {
             number: n as u8,
             enabled: z.enable != 0,
+            muted: read(settings, "Mute_Switch") != 0,
             tone: resolve_tone(msb, tone_id, resolver),
             key_low: z.key_low,
             key_high: z.key_high,
+            velocity_low: read(control, "Velocity_Control_Range_Lower") as u8,
+            velocity_high: read(control, "Velocity_Control_Range_Upper") as u8,
             level: s.level,
+            pan: signed(settings, "Zone_Pan"),
+            transpose: signed(control, "Zone_Transpose"),
+            octave: signed(settings, "Zone_Octave_Shift"),
+            midi_channel: read(settings, "Receive_Channel") as u8,
+            arpeggio: read(control, "Arpeggio_Switch") != 0,
         });
     }
     Ok(zones)

@@ -71,14 +71,17 @@ enum Command {
         file: PathBuf,
     },
 
-    /// Show one scene with its 16 zones (tone, switch, key range, level).
+    /// Show one scene: tempo, level, memo, and its zones.
+    ///
+    /// A scene always holds 16 zone slots; by default only the switched-on ones are listed,
+    /// because an unused slot still carries a leftover tone reference and reads as clutter.
     Show {
         /// Path to a `.svd` file.
         file: PathBuf,
         /// Scene number, 1-based (as printed by `scenes`).
         scene: usize,
         /// Include zones that are switched off.
-        #[arg(long)]
+        #[arg(short, long)]
         all: bool,
     },
 
@@ -553,36 +556,83 @@ fn run_show(file: &PathBuf, scene: usize, all: bool) -> fantom_core::Result<Stri
     })?;
 
     let mut out = String::new();
-    let _ = writeln!(out, "Scene {scene}: {}", s.name);
+    let _ = writeln!(
+        out,
+        "Scene {scene}: {}   {:.2} BPM   level {}",
+        s.name,
+        s.bpm(),
+        s.level
+    );
     if !s.comment.is_empty() {
         let _ = writeln!(out, "note: {}", s.comment);
     }
-    let _ = writeln!(
-        out,
-        "{:>4}  {:<3}  {:<9}  {:<8}  {:<22}  {:>10}  {:>5}",
-        "zone", "on", "type", "bank", "tone", "range", "level"
+    let header = format!(
+        "{:>4}  {:<3}  {:<9}  {:<8}  {:<22}  {:>10}  {:>7}  {:>5}  {:>5}  {:>5}  {:>3}  {:>3}",
+        "zone", "on", "type", "bank", "tone", "range", "vel", "level", "pan", "trans", "oct", "ch"
     );
+    let _ = writeln!(out, "{header}");
     for z in &s.zones {
         if !z.enabled && !all {
             continue;
         }
-        let range = format!("{}..{}", note_name(z.key_low), note_name(z.key_high));
         let _ = writeln!(
             out,
-            "{:>4}  {:<3}  {:<9}  {:<8}  {:<22}  {:>10}  {:>5}",
+            "{:>4}  {:<3}  {:<9}  {:<8}  {:<22}  {:>10}  {:>7}  {:>5}  {:>5}  {:>5}  {:>3}  {:>3}",
             z.number + 1,
-            if z.enabled { "on" } else { "off" },
+            zone_state(z),
             tone_type_label(&z.tone),
             z.tone
                 .bank()
                 .map(str::to_owned)
                 .unwrap_or_else(|| format!("LSB {}", z.tone.address.lsb)),
             tone_label(&z.tone),
-            range,
+            format!("{}..{}", note_name(z.key_low), note_name(z.key_high)),
+            format!("{}..{}", z.velocity_low, z.velocity_high),
             z.level,
+            pan_label(z.pan),
+            signed(z.transpose),
+            signed(z.octave),
+            z.midi_channel + 1,
         );
     }
+    if s.zones.iter().any(|z| z.arpeggio && (z.enabled || all)) {
+        let arps: Vec<String> = s
+            .zones
+            .iter()
+            .filter(|z| z.arpeggio && (z.enabled || all))
+            .map(|z| (z.number + 1).to_string())
+            .collect();
+        let _ = writeln!(out, "arpeggio: zone {}", arps.join(", "));
+    }
     Ok(out)
+}
+
+/// A zone is off, muted, or on — muted is its own state, since a muted zone still receives.
+fn zone_state(z: &fantom_core::model::Zone) -> &'static str {
+    match (z.enabled, z.muted) {
+        (false, _) => "off",
+        (true, true) => "mut",
+        (true, false) => "on",
+    }
+}
+
+/// Pan as the panel writes it: `L64`, `C`, `63R`.
+fn pan_label(pan: i8) -> String {
+    match pan.cmp(&0) {
+        std::cmp::Ordering::Less => format!("L{}", -(pan as i32)),
+        std::cmp::Ordering::Equal => "C".to_string(),
+        std::cmp::Ordering::Greater => format!("{pan}R"),
+    }
+}
+
+/// A signed offset, always printed. Zero shows as `0`, not blank: a blank cell reads as "this
+/// could not be decoded" rather than "this is centred", which is the same reason pan prints `C`.
+fn signed(v: i8) -> String {
+    if v == 0 {
+        "0".to_string()
+    } else {
+        format!("{v:+}")
+    }
 }
 
 fn run_tones(file: &PathBuf) -> fantom_core::Result<String> {

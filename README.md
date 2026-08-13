@@ -19,10 +19,11 @@ crates/
     diff.rs      # compares two files by area and record; how new offsets get found
     presets.rs   # factory ZEN-Core preset tone name lookup (bundled sound list)
     params/      # Roland's parameter map — file bytes against SysEx addresses
+                 #   tone.rs  a 1632-byte ZEN-Core tone; scene.rs  a 3572-byte scene
     tests/       # tests against real files; each skips when its fixture is absent
   fantom-cli/    # the `fantom` binary — first consumer of the library
   fantom-midi/   # SysEx transport; reads the parameter map from fantom-core
-tools/           # gen_params.py — regenerates the parameter table
+tools/           # gen_params.py / gen_scene_params.py — regenerate the parameter tables
 docs/FORMAT.md   # reverse-engineering notebook for the on-disk layout
 fixtures/        # real Fantom files and hardware captures (gitignored)
 ```
@@ -30,8 +31,11 @@ fixtures/        # real Fantom files and hardware captures (gitignored)
 ## Status
 
 Reads the SVD5 container envelope (verified on a Roland **FANTOM-6**), lists **scene names**, and
-shows each scene's **comment/memo** and its **16 zones** (type, bank, tone, switch, key range,
-level). It retains every zone's raw MSB/LSB/PC address and resolves bundled names for ZEN-Core,
+shows each scene's **tempo, level and comment/memo** with its **16 zones** (type, bank, tone,
+switch, key and velocity range, level, pan, transpose, octave, MIDI channel, arpeggio). The whole
+3572-byte scene record is mapped block by block in `params::scene`, so the fields above are a
+selection rather than the limit. It retains every zone's raw MSB/LSB/PC address and resolves
+bundled names for ZEN-Core,
 Drum, SN-A, SN-AP, SN-EP, VTW, V-Piano, MODEL, and ACB USER sounds. Factory references whose
 names are not serialized remain visible by engine, bank, and program number.
 

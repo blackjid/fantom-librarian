@@ -11,24 +11,51 @@ pub struct Scene {
     pub name: String,
     /// Free-text scene comment/memo (empty when unset).
     pub comment: String,
+    /// Scene tempo in hundredths of a BPM, as stored: `12000` is 120.00.
+    pub tempo: u16,
+    /// Scene level (0..127).
+    pub level: u8,
     pub zones: Vec<Zone>,
 }
 
-/// One of a scene's 16 zone slots: the tone it plays, its key range, and level.
+impl Scene {
+    /// Scene tempo in BPM.
+    pub fn bpm(&self) -> f32 {
+        self.tempo as f32 / 100.0
+    }
+}
+
+/// One of a scene's 16 zone slots: the tone it plays, its key range, and how it is set up.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Zone {
     /// 0-based index within the scene (0..16).
     pub number: u8,
-    /// Whether the zone is switched on.
+    /// Whether the zone is switched on — the panel's KBD switch.
     pub enabled: bool,
+    /// Whether the zone is muted. Distinct from [`Zone::enabled`]: a muted zone still receives.
+    pub muted: bool,
     /// The tone this zone plays.
     pub tone: ToneRef,
     /// Key-range lower bound (MIDI note, 0..127).
     pub key_low: u8,
     /// Key-range upper bound (MIDI note, 0..127).
     pub key_high: u8,
+    /// Velocity-range lower bound (1..127).
+    pub velocity_low: u8,
+    /// Velocity-range upper bound (1..127).
+    pub velocity_high: u8,
     /// Zone level (0..127).
     pub level: u8,
+    /// Zone pan, zero-centred: −64 is hard left, +63 hard right.
+    pub pan: i8,
+    /// Transpose in semitones (−48..48).
+    pub transpose: i8,
+    /// Octave shift (−3..3).
+    pub octave: i8,
+    /// MIDI receive channel, 0-based.
+    pub midi_channel: u8,
+    /// Whether the arpeggiator is on for this zone.
+    pub arpeggio: bool,
 }
 
 /// The raw MIDI bank/program address stored by a scene.

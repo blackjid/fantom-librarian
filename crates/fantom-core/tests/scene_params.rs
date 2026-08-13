@@ -179,6 +179,70 @@ fn the_newly_placed_blocks_hold_values_in_range() {
     }
 }
 
+/// "Africa Main" is the scene `docs/FORMAT.md` records panel ground truth for. The fields the
+/// model gained from the parameter table must agree with it, and the signed ones must come back
+/// signed — an unbiased read would show pan L16 as 240.
+#[test]
+fn africa_main_matches_the_panel() {
+    let Some(raw) = open("backup/ROLAND/SOUND/NARF/FANTOM.SVD") else {
+        return;
+    };
+    let scenes = codec::read_scenes(&raw).expect("decodes");
+    let s = scenes
+        .iter()
+        .find(|s| s.name == "Africa Main")
+        .expect("NARF has Africa Main");
+
+    assert_eq!(s.tempo, 12000, "120.00 BPM");
+    assert_eq!(s.bpm(), 120.0);
+
+    let z: Vec<_> = s.zones.iter().filter(|z| z.enabled).collect();
+    assert_eq!(z.len(), 4);
+    // Levels and key ranges as the panel shows them.
+    assert_eq!(
+        z.iter().map(|z| z.level).collect::<Vec<_>>(),
+        [107, 107, 100, 82]
+    );
+    assert_eq!(
+        z.iter()
+            .map(|z| (z.key_low, z.key_high))
+            .collect::<Vec<_>>(),
+        [(0, 71), (73, 127), (72, 72), (0, 71)]
+    );
+    // Pan is stored zero-centred; two of these are negative and must survive as such.
+    assert_eq!(
+        z.iter().map(|z| z.pan).collect::<Vec<_>>(),
+        [-16, 17, 0, 25]
+    );
+    // Zones default to receiving on their own channel.
+    assert_eq!(
+        z.iter().map(|z| z.midi_channel).collect::<Vec<_>>(),
+        [0, 1, 2, 3]
+    );
+}
+
+/// Every signed field must read back inside the range Roland declares for it. Reading one
+/// unsigned would put a negative value up near 255 and fail here.
+#[test]
+fn signed_fields_stay_inside_their_declared_range() {
+    let Some(raw) = open("backup/ROLAND/SOUND/NARF/FANTOM.SVD") else {
+        return;
+    };
+    for s in codec::read_scenes(&raw).expect("decodes") {
+        for z in &s.zones {
+            assert!((-64..=63).contains(&z.pan), "pan {} out of range", z.pan);
+            assert!(
+                (-48..=48).contains(&z.transpose),
+                "transpose {} out of range",
+                z.transpose
+            );
+            assert!((-3..=3).contains(&z.octave), "octave {}", z.octave);
+            assert!(z.midi_channel < 16);
+            assert!(z.velocity_low >= 1 && z.velocity_high <= 127);
+        }
+    }
+}
+
 /// The scene name and memo are the two fields the librarian already reads and writes. Reading
 /// them through the parameter table must give the same bytes.
 #[test]
