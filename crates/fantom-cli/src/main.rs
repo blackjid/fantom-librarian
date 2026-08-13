@@ -727,11 +727,11 @@ fn sample_warning(output: &Raw, source: &Raw) -> String {
 
 /// Say what the sample list above cannot cover.
 ///
-/// Three kinds of dependency a scene bank can hold that its samples list does not show. Two are
-/// visible but uncarryable — a multisample, and a wave from an installed expansion — and the third
-/// is invisible: a bundled drum kit's sample references are not decoded, so a kit that plays one
-/// contributes nothing. Silence here would read as "no dependency" when the honest claim is "none
-/// that can be seen".
+/// Two kinds of dependency a scene bank can hold that its samples list does not show, both visible
+/// but uncarryable: a user multisample, and a wave from an installed expansion.
+///
+/// A bundled drum kit's samples used to belong on this list too, as a dependency that could not
+/// even be seen. They are now decoded and appear in the samples list itself.
 fn other_dependencies(output: &Raw) -> String {
     let mut out = String::new();
 
@@ -784,14 +784,6 @@ fn other_dependencies(output: &Raw) -> String {
         }
     }
 
-    if let kits @ 1.. = drum_kits(output) {
-        let _ = write!(
-            out,
-            "note: this bank also bundles {kits} drum kit{}. Whether a kit plays a user sample\n\
-             \x20     cannot be read, so any such dependency is missing from the lists above.\n",
-            if kits == 1 { "" } else { "s" }
-        );
-    }
     out
 }
 
@@ -879,18 +871,10 @@ fn carry_scene_samples(
 ) -> fantom_core::Result<(Raw, String)> {
     let slots = fantom_core::repackage::referenced_sample_slots(extracted)?;
     if slots.is_empty() {
-        // "No samples" and "no samples we can see" are different claims, and only one of them is
-        // ours to make: a bundled drum kit's sample references are not decoded.
-        let note = match drum_kits(extracted) {
-            0 => "note: these scenes play no user samples, so there is nothing to carry\n".to_string(),
-            kits => format!(
-                "note: no user samples found to carry — but this bank bundles {kits} drum kit{},\n\
-                 \x20     and whether a kit plays a user sample cannot be read, so one would not\n\
-                 \x20     appear here. See docs/FORMAT.md.\n",
-                if kits == 1 { "" } else { "s" }
-            ),
-        };
-        return Ok((extracted.clone(), note));
+        return Ok((
+            extracted.clone(),
+            "note: these scenes play no user samples, so there is nothing to carry\n".to_string(),
+        ));
     }
 
     let base = base.unwrap_or(1);
@@ -940,28 +924,7 @@ fn carry_scene_samples(
     }
     let _ = writeln!(out);
 
-    // A drum kit can play user samples too, and nothing decoded says which — so those references
-    // cannot be moved with the rest, and a silent partial rebase would be worse than saying so.
-    if drum_kits(extracted) > 0 {
-        out.push_str(
-            "warning: this bank bundles drum kits, whose sample references are not decoded.\n\
-             \x20        If any kit plays a user sample, its reference was left pointing at the\n\
-             \x20        original slot.\n",
-        );
-    }
     Ok((rebased, out))
-}
-
-/// Whether a bank bundles drum kits, whose sample references cannot be rebased.
-fn drum_kits(raw: &Raw) -> usize {
-    let Ok(svd) = fantom_core::container::Svd::parse(raw) else {
-        return 0;
-    };
-    fantom_core::container::RecordTable::from_svd(raw, &svd, b"RHYa")
-        .ok()
-        .flatten()
-        .map(|table| table.len())
-        .unwrap_or(0)
 }
 
 fn run_extract(

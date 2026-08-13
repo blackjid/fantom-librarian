@@ -545,18 +545,24 @@ fn read_u32(bytes: &[u8], at: usize, tag: &str) -> Result<u32> {
     Ok(u32::from_le_bytes(value.try_into().unwrap()))
 }
 
-/// The user-sample slots this bank's bundled ZEN-Core tones play: 1-based, sorted, deduplicated.
+/// Areas of a scene bank whose records name user samples: ZEN-Core tones, and the instrument sets
+/// of the drum kits bundled beside them.
+const SAMPLE_REF_AREAS: &[&[u8; 4]] = &[b"PATa", b"INSa"];
+
+/// The user-sample slots this bank's bundled sounds play: 1-based, sorted, deduplicated.
 ///
 /// These are **panel slot numbers**, and they are what makes a sampled scene bank incomplete
 /// elsewhere: the destination has to hold this audio at these numbers.
 pub fn referenced_sample_slots(raw: &Raw) -> Result<Vec<u16>> {
     let svd = Svd::parse(raw)?;
-    let Some(table) = RecordTable::from_svd(raw, &svd, b"PATa")? else {
-        return Ok(Vec::new());
-    };
     let mut slots = BTreeSet::new();
-    for record in table.records() {
-        slots.extend(crate::container::sample_slots(record));
+    for tag in SAMPLE_REF_AREAS {
+        let Some(table) = RecordTable::from_svd(raw, &svd, tag)? else {
+            continue;
+        };
+        for record in table.records() {
+            slots.extend(crate::container::sample_slots_of(tag, record));
+        }
     }
     Ok(slots.into_iter().collect())
 }
@@ -583,24 +589,27 @@ pub fn rebase_sample_slots(raw: &Raw, remap: &BTreeMap<u16, u16>) -> Result<Raw>
     }
 
     let mut bytes = raw.bytes().to_vec();
-    let Some(table) = RecordTable::from_svd(raw, &svd, b"PATa")? else {
-        return Ok(Raw::from_bytes(bytes));
-    };
-    if table.info_stride() != 0 {
-        // No SVD5 area stores per-record checksums, so this cannot happen — but rewriting records
-        // without refreshing them would hand the instrument a file that fails its own check.
-        return Err(Error::Unrecognized(
-            "PATa carries per-record checksums; rebasing would invalidate them".into(),
-        ));
-    }
-    let record_size = table.record_size;
-    let offsets: Vec<usize> = (0..table.len()).map(|i| table.record_offset(i)).collect();
-
-    for at in offsets {
-        let Some(record) = bytes.get_mut(at..at + record_size) else {
-            break;
+    for tag in SAMPLE_REF_AREAS {
+        let Some(table) = RecordTable::from_svd(raw, &svd, tag)? else {
+            continue;
         };
-        crate::container::remap_sample_slots(record, remap);
+        if table.info_stride() != 0 {
+            // No SVD5 area stores per-record checksums, so this cannot happen — but rewriting
+            // records without refreshing them would hand the instrument a file failing its own check.
+            return Err(Error::Unrecognized(format!(
+                "{} carries per-record checksums; rebasing would invalidate them",
+                String::from_utf8_lossy(tag.as_slice())
+            )));
+        }
+        let record_size = table.record_size;
+        let offsets: Vec<usize> = (0..table.len()).map(|i| table.record_offset(i)).collect();
+
+        for at in offsets {
+            let Some(record) = bytes.get_mut(at..at + record_size) else {
+                break;
+            };
+            crate::container::remap_sample_slots_of(tag, record, remap);
+        }
     }
 
     let out = Raw::from_bytes(bytes);
