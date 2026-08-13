@@ -79,9 +79,29 @@ settle the group field.
 **In a scene bank, user samples do not travel** — and that is Roland's own behaviour, not a
 limitation here: the instrument's scene exports carry sample *slot references* and no audio. A tone
 references a sample by slot (wave group 2 on a partial, see `docs/FORMAT.md`), so `extract` names
-the exact slots a destination must already hold. To move a sampled sound between instruments, export
-it as `.svz`. References to installed factory/model/expansion banks are preserved but require the
-same content on the destination.
+the exact slots a destination must already hold.
+
+**`--samples` makes them travel anyway**, as a second file, because that is the only shape the
+instrument will read audio from:
+
+```sh
+cargo run -p fantom-cli -- extract backup/FANTOM.SVD 401 -o out/FANTOM.SVD \
+    --samples out/samples.svz --samples-at 101
+```
+
+That writes the scene bank *and* a sample-only `.svz` holding just the samples those scenes play —
+one sample, 1 MB, not the backup's 23 — then rewrites the bank's references so they point wherever
+you import it. Load the `.svz` through **MENU → IMPORT SAMPLE** at slot 101 and the numbers agree.
+Without `--samples-at` the run starts at slot 1. The alternative, which is what commercial packs
+have to tell their buyers, is to delete whatever you keep in slots 1–50 and load theirs there.
+
+The companion is built from a full backup, since only a backup holds the audio, and the builder is
+tested by reproducing a commercially shipped sample pack from one: all 23,427,900 bytes, differing
+only in a format-revision byte. Drum kits are the exception — their sample references are not
+decoded, so they cannot be rebased, and the CLI says so when a bank bundles any.
+
+References to installed factory/model/expansion banks are preserved but require the same content on
+the destination.
 
 ## Usage
 
@@ -123,6 +143,10 @@ cargo run -p fantom-cli -- comment path/to/FANTOM.SVD 44 "split at B4" -o out.sv
 
 # Build a smaller bank from scenes 44 and 3, in that order, with their referenced user tones.
 cargo run -p fantom-cli -- extract path/to/FANTOM.SVD 44 3 -o extracted/FANTOM.SVD
+
+# The same, plus a companion sample file, with the bank repointed at slots 101+.
+cargo run -p fantom-cli -- extract path/to/BACKUP.SVD 401 -o out/FANTOM.SVD \
+    --samples out/samples.svz --samples-at 101
 
 # Build a one-scene hardware-test bank with visible CNY scene/tone names.
 cargo run -p fantom-cli -- canary path/to/FANTOM.SVD 44 -o canary/FANTOM.SVD

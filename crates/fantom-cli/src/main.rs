@@ -139,6 +139,15 @@ enum Command {
         /// Write the extracted bank here.
         #[arg(short, long)]
         output: PathBuf,
+        /// Also write a companion `.svz` carrying the user samples these scenes play, for
+        /// MENU -> IMPORT SAMPLE. Requires a full backup as the source, since only a backup holds
+        /// the audio.
+        #[arg(long, value_name = "FILE")]
+        samples: Option<PathBuf>,
+        /// Panel slot the companion's first sample will be imported to, 1-based; the bank's
+        /// references are rewritten to match. Defaults to 1 alongside --samples.
+        #[arg(long, value_name = "SLOT")]
+        samples_at: Option<u16>,
     },
 
     /// Extract one scene with visible canary names for hardware tone-bundle validation.
@@ -206,7 +215,9 @@ fn main() -> ExitCode {
             file,
             scenes,
             output,
-        } => run_extract(&file, &scenes, &output),
+            samples,
+            samples_at,
+        } => run_extract(&file, &scenes, &output, samples.as_ref(), samples_at),
         Command::Canary {
             file,
             scene,
@@ -784,7 +795,92 @@ fn is_tone_bank(raw: &Raw) -> bool {
         .unwrap_or(false)
 }
 
-fn run_extract(file: &PathBuf, scenes: &[usize], output: &PathBuf) -> fantom_core::Result<String> {
+/// Write a companion sample file and/or repoint the bank's references at where it will land.
+///
+/// A scene bank names user samples by absolute panel slot, so on any other instrument it plays
+/// only if that audio sits at those exact numbers. Two files fix that between them: an `.svz` the
+/// destination imports as one contiguous run, and this bank rewritten to point at that run.
+fn carry_scene_samples(
+    source: &Raw,
+    extracted: &Raw,
+    companion: Option<&PathBuf>,
+    base: Option<u16>,
+) -> fantom_core::Result<(Raw, String)> {
+    let slots = fantom_core::repackage::referenced_sample_slots(extracted)?;
+    if slots.is_empty() {
+        return Ok((
+            extracted.clone(),
+            "note: these scenes play no user samples, so there is nothing to carry\n".to_string(),
+        ));
+    }
+
+    let base = base.unwrap_or(1);
+    let remap = fantom_core::repackage::contiguous_remap(&slots, base);
+    let rebased = fantom_core::repackage::rebase_sample_slots(extracted, &remap)?;
+
+    let mut out = String::new();
+    if let Some(path) = companion {
+        let indexes: Vec<usize> = slots.iter().map(|&slot| slot as usize - 1).collect();
+        let bank = fantom_core::samplebank::export_samples(source, &indexes)?;
+        bank.save(path)?;
+        let _ = writeln!(
+            out,
+            "wrote {} sample{} to {}",
+            slots.len(),
+            if slots.len() == 1 { "" } else { "s" },
+            path.display()
+        );
+    }
+
+    let last = base as usize + slots.len() - 1;
+    let _ = writeln!(
+        out,
+        "import {} to slot{} {}{} — the bank now refers to them there (was {})",
+        if companion.is_some() {
+            "that file's samples"
+        } else {
+            "the samples"
+        },
+        if slots.len() == 1 { "" } else { "s" },
+        base,
+        if slots.len() == 1 {
+            String::new()
+        } else {
+            format!("–{last}")
+        },
+        slots
+            .iter()
+            .map(u16::to_string)
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+
+    // A drum kit can play user samples too, and nothing decoded says which — so those references
+    // cannot be moved with the rest, and a silent partial rebase would be worse than saying so.
+    if has_drum_kits(extracted) {
+        out.push_str(
+            "warning: this bank bundles drum kits, whose sample references are not decoded.\n\
+             \x20        If any kit plays a user sample, its reference was left pointing at the\n\
+             \x20        original slot.\n",
+        );
+    }
+    Ok((rebased, out))
+}
+
+/// Whether a bank bundles drum kits, whose sample references cannot be rebased.
+fn has_drum_kits(raw: &Raw) -> bool {
+    fantom_core::container::Svd::parse(raw)
+        .map(|svd| svd.area(b"RHYa").is_some())
+        .unwrap_or(false)
+}
+
+fn run_extract(
+    file: &PathBuf,
+    scenes: &[usize],
+    output: &PathBuf,
+    samples: Option<&PathBuf>,
+    samples_at: Option<u16>,
+) -> fantom_core::Result<String> {
     let raw = Raw::open(file)?;
     if is_tone_bank(&raw) {
         let extracted = fantom_core::tonebank::extract_tones(&raw, scenes)?;
@@ -815,10 +911,22 @@ fn run_extract(file: &PathBuf, scenes: &[usize], output: &PathBuf) -> fantom_cor
         return Ok(out);
     }
     let extracted = fantom_core::repackage::extract_scenes(&raw, scenes)?;
-    extracted.save(output)?;
+
+    // Without --samples/--samples-at the bank keeps its original slot references, and the warning
+    // names what the destination must already hold. With either, the samples are made to travel.
+    let (final_bank, note) = match (samples, samples_at) {
+        (None, None) => (extracted, String::new()),
+        (companion, base) => carry_scene_samples(&raw, &extracted, companion, base)?,
+    };
+    let note = if note.is_empty() {
+        sample_warning(&final_bank, &raw)
+    } else {
+        note
+    };
+
+    final_bank.save(output)?;
     Ok(format!(
-        "{}extracted {} scene{} to {}\n",
-        sample_warning(&extracted, &raw),
+        "{note}extracted {} scene{} to {}\n",
         scenes.len(),
         if scenes.len() == 1 { "" } else { "s" },
         output.display()

@@ -358,6 +358,44 @@ fn building_a_sample_svz_from_a_backup_reproduces_a_shipped_one() {
     );
 }
 
+/// The whole sampled-scene workflow, on a real scene that really plays a user sample.
+///
+/// Scene 401 of the NARFSOUNDS backup is `Beat It`, whose `Beat It Gong` tone plays panel sample
+/// slot 1. Extracting it gives a bank that is silent anywhere slot 1 holds something else. The two
+/// pieces together fix that: a companion `.svz` holding just that one sample — 1 MB, not the
+/// backup's 23 — and the bank repointed at wherever the companion is imported.
+#[test]
+fn a_sampled_scene_travels_as_a_bank_plus_a_companion_sample_file() {
+    let Some(backup) = open("backup/ROLAND/FANTOM/BACKUP/Black NARFSOUNDS/FANTOM.SVD") else {
+        return;
+    };
+    let extracted = fantom_core::repackage::extract_scenes(&backup, &[401]).unwrap();
+    let slots = fantom_core::repackage::referenced_sample_slots(&extracted).unwrap();
+    assert_eq!(slots, [1], "this scene plays panel sample slot 1");
+
+    // The companion carries only what the scene needs, numbered densely from 0.
+    let indexes: Vec<usize> = slots.iter().map(|&s| s as usize - 1).collect();
+    let companion = fantom_core::samplebank::export_samples(&backup, &indexes).unwrap();
+    let svd = fantom_core::container::Svd::parse(&companion).unwrap();
+    let carried = fantom_core::container::read_samples(&companion, &svd).unwrap();
+    assert_eq!(carried.slots.len(), 1);
+    assert_eq!(carried.slots[0].name, "1 Beat It - C2");
+    assert!(
+        companion.bytes().len() < backup.bytes().len() / 10,
+        "the companion must carry one sample, not the whole bank"
+    );
+
+    // With the companion landing at slot 101, the bank has to say 101.
+    let remap = fantom_core::repackage::contiguous_remap(&slots, 101);
+    let rebased = fantom_core::repackage::rebase_sample_slots(&extracted, &remap).unwrap();
+    assert_eq!(
+        fantom_core::repackage::referenced_sample_slots(&rebased).unwrap(),
+        [101]
+    );
+    assert!(fantom_core::verify::check(&rebased).unwrap().is_ok());
+    assert!(fantom_core::verify::check(&companion).unwrap().is_ok());
+}
+
 /// A file with no user samples cannot be a source, and must say so rather than emit an empty bank.
 #[test]
 fn a_scene_export_cannot_source_sample_audio() {

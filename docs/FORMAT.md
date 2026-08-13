@@ -296,8 +296,15 @@ to re-reference your User samples to your User Tones". That last line is the aut
 the outside that the instrument does not fix references up on import.
 
 Only two things can make the numbers agree: move the samples to where the tones point (what the pack
-does), or rewrite the tones to point where the samples land (a byte edit this tool can already
-make — see `remap_sample_slots`).
+does), or rewrite the tones to point where the samples land. **The tool now does the second.**
+`extract --samples out.svz --samples-at 101` writes the scene bank plus a sample-only `.svz` holding
+exactly the samples those scenes play, and rewrites the bank's references onto the contiguous run
+starting at 101 — the run the instrument produces when that file is imported there. The audio can
+then land on free slots instead of overwriting whatever the destination keeps at 1–50.
+
+Two caveats, both structural. A drum kit's sample references cannot be rebased, because they are not
+decoded (see `INSa` above), so a bank bundling kits gets a warning. And the companion has to be
+built from a **full backup** — a scene export has no audio to copy.
 
 > **This is untestable by ear on the source instrument.** Re-importing a canary there sounds
 > correct because its slots still hold the audio the tone points at. Confirmed on a FANTOM-6:
