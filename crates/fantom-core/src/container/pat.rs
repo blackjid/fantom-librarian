@@ -54,7 +54,9 @@ const PARTIAL_COUNT: usize = 4;
 /// relative to `BASE = 0xde` because that keeps the arithmetic in one place; the absolute offsets
 /// for partial 0 are the familiar `0xdf` group and `0xe2` wave number, plus `0xe4` for the second.
 ///
-/// What a byte-level survey could not show is that there are **two** wave numbers, one per channel.
+/// What a byte-level survey could not show is that there are **two** wave numbers. For a ROM wave
+/// they are a stereo pair of waves; for a user sample the panel exposes only the left one, but the
+/// right still has to be read, because the instrument's own dependency scan reads it.
 /// (A drum kit's `INSa` instrument stores the same four fields as a real 28-byte `WMT` array at
 /// `+0x1c`; a tone keeps them inline.)
 mod wave {
@@ -85,12 +87,17 @@ mod wave {
 /// partials across its 2048 tones resolve to a populated slot in 1..50, with names matching
 /// (`IML Whoa 1` → slot 3 `3 IML Whoa 1`, `Relax Bass` → slots 7 and 8, and so on).
 ///
-/// **Both numbers count.** A partial can name a different slot per channel — `Beat It Gong` plays
-/// slot 1 `1 Beat It - C2` on the left and slot 22 `doh duh 2` on the right — and 25 of that
-/// backup's 93 sampled partials have a right slot. Reading only the left one silently halves a
-/// stereo-split sound: `Z-Core_20260623.svz` has exactly one sampled tone, whose two numbers are 2
-/// and 1, and the instrument carried **two** samples into that export. It carries only what its
-/// tones reference, so the right number is a live dependency, not a leftover. A zero means "none".
+/// **Both numbers count, as dependencies.** 25 of that backup's 93 sampled partials name a right
+/// slot as well as a left one — `Beat It Gong` holds 1 `1 Beat It - C2` and 22 `doh duh 2`. The
+/// panel offers no `Wave No. R` field for a sampled partial, so that second number is not a stereo
+/// half a player chose (a sample slot already holds both channels); it is most likely left over
+/// from when the partial selected a ROM wave, where `L`/`R` are two waves.
+///
+/// It still has to be followed. `Z-Core_20260623.svz` has exactly one sampled tone, whose numbers
+/// are 2 and 1, and the instrument carried **two** samples into that export — its dependency scan
+/// reads the right number even though its editor hides it. Reading only the left one drops a sample
+/// the FANTOM would have carried, and renumbering only the left one leaves the right pointing at
+/// whatever takes over the old slot. A zero means "none".
 ///
 /// This is what makes user samples a *dependency*: the reference is a slot number, so a tone
 /// carries no audio with it. The instrument's own scene exports behave the same way — NARF holds
@@ -361,8 +368,9 @@ mod tests {
         assert!(sample_slots(&[0u8; 32]).is_empty());
     }
 
-    /// A partial names a slot per channel. `Beat It Gong` really does play slot 1 on the left and
-    /// slot 22 on the right, and reading only the left half loses the sound's other half.
+    /// A sampled partial can hold a second wave number the panel never shows. `Beat It Gong` holds
+    /// 1 and 22, and the instrument'''s own export follows both — so reading only the left one drops
+    /// a sample the FANTOM would have carried.
     #[test]
     fn a_partial_can_name_a_different_sample_per_channel() {
         assert_eq!(sample_slots(&tone_with_partials(&[(2, 1, 22)])), [1, 22]);

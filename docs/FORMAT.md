@@ -316,14 +316,26 @@ The group id is *not* the displayed bank number — id 1005 shows as `EXZ005` bu
 > That is a property of the fixture, not of the format, and it means a populated `MLSa` capture is
 > still needed to decode the record itself.
 
-**Both numbers are live references.** 25 of `Black NARFSOUNDS`'s 93 sampled partials name a right
-slot, and it is frequently a *different* sample: `Beat It Gong` plays slot 1 `1 Beat It - C2` on the
-left and slot 22 `doh duh 2` on the right. The decisive case is `Z-Core_20260623.svz`, which has
-exactly **one** sampled tone — `MyPolySyn1`, left 2 and right 1 — and which the instrument wrote
-with **two** samples in it. An export carries only what its tones reference (`EXPORT_Z-Core2.svz`
-carries one sample for one tone, not the machine's whole bank), so the right number is a dependency,
-not a leftover. Following only the left one halves a stereo-split sound and, when repackaging
-renumbers, leaves the other channel pointing at whatever now occupies the old slot.
+**Both numbers must be followed — though not for the reason first assumed.** 25 of
+`Black NARFSOUNDS`'s 93 sampled partials name a right slot, often a *different* sample:
+`Beat It Gong` holds left 1 `1 Beat It - C2` and right 22 `doh duh 2`.
+
+> **Correction.** An earlier revision called that a stereo split and said the tone "plays slot 1 on
+> the left and slot 22 on the right". The panel says otherwise: a group-2 partial offers **no
+> `Wave No. R` field at all**, only `Wave No. L/Mono`. A player cannot set a right slot for a user
+> sample, and would have no reason to — a sample slot already holds both channels (see the `SMPd`
+> layout above, two channel blocks per section). The right number on a sampled partial is therefore
+> not a second channel; it is most likely left over from when the partial selected a ROM wave, where
+> `L`/`R` really are two waves and a stereo pair is consecutive (`481`/`482` in a drum kit).
+
+It is still a **transfer dependency**, which is why it must be read and renumbered.
+`Z-Core_20260623.svz` has exactly one sampled tone — `MyPolySyn1`, numbers 2 and 1 — and the
+instrument wrote **two** samples into that export. An export carries only what its tones reference
+(`EXPORT_Z-Core2.svz` carries one sample for one tone, not the machine's whole bank), so Roland's own
+dependency scan follows the right number even where its editor does not expose it. Following it too
+is what keeps this tool's output matching the instrument's; ignoring it drops a sample the FANTOM
+would have carried, and renumbering only the left one leaves the other pointing at whatever takes
+over the old slot.
 
 Evidence, from `Black NARFSOUNDS` (2048 tones × 4 partials = 8192 partials):
 
