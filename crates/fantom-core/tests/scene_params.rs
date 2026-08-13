@@ -5,25 +5,12 @@
 //! what needs checking, and only real records can check it. Like `fixtures.rs`, every test here
 //! skips when its fixture is missing.
 
-use std::path::{Path, PathBuf};
-
 use fantom_core::codec;
 use fantom_core::container::{Raw, RecordTable, Svd};
 use fantom_core::params::{scene, Instance};
 
-fn fixtures() -> Option<PathBuf> {
-    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures");
-    dir.is_dir().then_some(dir)
-}
-
-fn open(relative: &str) -> Option<Raw> {
-    let path = fixtures()?.join(relative);
-    if !path.is_file() {
-        eprintln!("skipping: {} not present", path.display());
-        return None;
-    }
-    Some(Raw::open(&path).expect("fixture is readable"))
-}
+mod support;
+use support::{private, public};
 
 /// Every scene record in a file, as raw bytes.
 fn records(raw: &Raw) -> Vec<Vec<u8>> {
@@ -55,10 +42,7 @@ fn control(n: usize) -> &'static Instance {
 /// by one deliberate panel change each, so they pin the fields the table now claims to hold.
 #[test]
 fn the_controlled_edits_read_back_through_the_table() {
-    let Some(raw) = open("tests/TEST 1/FANTOM.SVD") else {
-        return;
-    };
-    let recs = records(&raw);
+    let recs = records(&public("tests/TEST 1/FANTOM.SVD"));
     let r = &recs[0];
     let common = block("Scene Common", 0);
 
@@ -68,10 +52,7 @@ fn the_controlled_edits_read_back_through_the_table() {
     assert_eq!(common.read(r, "Current_Zone"), Some(0));
 
     // TEST 3 set zone 1's key range to C4-C5 and its level to 50.
-    let Some(raw3) = open("tests/TEST 3/FANTOM.SVD") else {
-        return;
-    };
-    let recs3 = records(&raw3);
+    let recs3 = records(&public("tests/TEST 3/FANTOM.SVD"));
     let r3 = &recs3[0];
     assert_eq!(zone(0).read(r3, "Zone_Level"), Some(50));
     assert_eq!(
@@ -86,10 +67,8 @@ fn the_controlled_edits_read_back_through_the_table() {
     );
 
     // TEST 2 is the same scene before the level edit.
-    let Some(raw2) = open("tests/TEST 2/FANTOM.SVD") else {
-        return;
-    };
-    assert_eq!(zone(0).read(&records(&raw2)[0], "Zone_Level"), Some(100));
+    let recs2 = records(&public("tests/TEST 2/FANTOM.SVD"));
+    assert_eq!(zone(0).read(&recs2[0], "Zone_Level"), Some(100));
 }
 
 /// The table must reproduce, for every zone of every scene, exactly what the existing decoder
@@ -97,7 +76,7 @@ fn the_controlled_edits_read_back_through_the_table() {
 /// hundreds of scenes is what turns a derived map into a checked one.
 #[test]
 fn agrees_with_the_decoder_across_a_whole_backup() {
-    let Some(raw) = open("backup/ROLAND/SOUND/NARF/FANTOM.SVD") else {
+    let Some(raw) = private("backup/ROLAND/SOUND/NARF/FANTOM.SVD") else {
         return;
     };
     let scenes = codec::read_scenes(&raw).expect("decodes");
@@ -147,7 +126,7 @@ fn agrees_with_the_decoder_across_a_whole_backup() {
 /// band frequencies in range, Q one of six values — which a misplaced block would not.
 #[test]
 fn the_newly_placed_blocks_hold_values_in_range() {
-    let Some(raw) = open("backup/ROLAND/SOUND/NARF/FANTOM.SVD") else {
+    let Some(raw) = private("backup/ROLAND/SOUND/NARF/FANTOM.SVD") else {
         return;
     };
     for r in &records(&raw) {
@@ -184,7 +163,7 @@ fn the_newly_placed_blocks_hold_values_in_range() {
 /// signed — an unbiased read would show pan L16 as 240.
 #[test]
 fn africa_main_matches_the_panel() {
-    let Some(raw) = open("backup/ROLAND/SOUND/NARF/FANTOM.SVD") else {
+    let Some(raw) = private("backup/ROLAND/SOUND/NARF/FANTOM.SVD") else {
         return;
     };
     let scenes = codec::read_scenes(&raw).expect("decodes");
@@ -225,7 +204,7 @@ fn africa_main_matches_the_panel() {
 /// unsigned would put a negative value up near 255 and fail here.
 #[test]
 fn signed_fields_stay_inside_their_declared_range() {
-    let Some(raw) = open("backup/ROLAND/SOUND/NARF/FANTOM.SVD") else {
+    let Some(raw) = private("backup/ROLAND/SOUND/NARF/FANTOM.SVD") else {
         return;
     };
     for s in codec::read_scenes(&raw).expect("decodes") {
@@ -247,7 +226,7 @@ fn signed_fields_stay_inside_their_declared_range() {
 /// them through the parameter table must give the same bytes.
 #[test]
 fn name_and_memo_agree_with_the_codec() {
-    let Some(raw) = open("backup/ROLAND/SOUND/NARF/FANTOM.SVD") else {
+    let Some(raw) = private("backup/ROLAND/SOUND/NARF/FANTOM.SVD") else {
         return;
     };
     let scenes = codec::read_scenes(&raw).expect("decodes");

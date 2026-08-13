@@ -1,6 +1,8 @@
 /target
 
-# Real synth backups may be personal — keep sample files out of git by default.
-# Track specific redistributable fixtures by force-adding them.
-/fixtures/*
-!/fixtures/.gitkeep
+# The private fixture corpus: full instrument backups, Roland documentation, and content
+# from purchased sound packs — none of it redistributable. See fixtures/README.md.
+# Override the location with FANTOM_FIXTURES_DIR to keep it outside the repo entirely.
+/fixtures-local/
+
+.DS_Store

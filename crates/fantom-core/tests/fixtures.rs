@@ -7,26 +7,11 @@
 //! assert against files the instrument actually wrote.
 
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
 
-use fantom_core::container::Raw;
 use fantom_core::model::Scene;
 
-/// The repository's `fixtures/` directory, if it exists.
-fn fixtures() -> Option<PathBuf> {
-    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures");
-    dir.is_dir().then_some(dir)
-}
-
-/// Open a fixture, or return `None` so the caller can skip.
-fn open(relative: &str) -> Option<Raw> {
-    let path = fixtures()?.join(relative);
-    if !path.is_file() {
-        eprintln!("skipping: {} not present", path.display());
-        return None;
-    }
-    Some(Raw::open(&path).expect("fixture is readable"))
-}
+mod support;
+use support::{private, public};
 
 /// Every scene-export bank paired with the full backup it was exported from.
 const EXPORT_BACKUP_PAIRS: [(&str, &str); 3] = [
@@ -62,7 +47,7 @@ fn by_name(scenes: &[Scene]) -> HashMap<&str, &Scene> {
 fn exports_and_backups_resolve_the_same_tone_names() {
     let mut checked = 0;
     for (export_path, backup_path) in EXPORT_BACKUP_PAIRS {
-        let (Some(export), Some(backup)) = (open(export_path), open(backup_path)) else {
+        let (Some(export), Some(backup)) = (private(export_path), private(backup_path)) else {
             continue;
         };
         let export_scenes = fantom_core::codec::read_scenes(&export).unwrap();
@@ -111,7 +96,7 @@ fn exports_and_backups_resolve_the_same_tone_names() {
 /// agreement test above only if the export were equally blank, so assert coverage directly.
 #[test]
 fn a_backup_names_the_user_tones_its_scenes_reference() {
-    let Some(backup) = open("backup/ROLAND/FANTOM/BACKUP/Black NARFSOUNDS/FANTOM.SVD") else {
+    let Some(backup) = private("backup/ROLAND/FANTOM/BACKUP/Black NARFSOUNDS/FANTOM.SVD") else {
         return;
     };
     let scenes = fantom_core::codec::read_scenes(&backup).unwrap();
@@ -146,7 +131,7 @@ fn a_backup_names_the_user_tones_its_scenes_reference() {
 fn extracting_a_scene_from_a_backup_matches_extracting_it_from_the_export() {
     let mut compared = 0;
     for (export_path, backup_path) in EXPORT_BACKUP_PAIRS {
-        let (Some(export), Some(backup)) = (open(export_path), open(backup_path)) else {
+        let (Some(export), Some(backup)) = (private(export_path), private(backup_path)) else {
             continue;
         };
         let export_scenes = fantom_core::codec::read_scenes(&export).unwrap();
@@ -230,7 +215,7 @@ fn playable(scene: &Scene) -> Vec<String> {
 #[test]
 fn extracting_every_scene_of_an_export_reproduces_it() {
     for path in OPAQUE_ENGINE_EXPORTS {
-        let Some(raw) = open(path) else { continue };
+        let Some(raw) = private(path) else { continue };
         let scenes = fantom_core::codec::read_scenes(&raw).unwrap();
         let all: Vec<_> = (1..=scenes.len()).collect();
 
@@ -269,7 +254,7 @@ fn hardware_validated_banks_still_decode() {
         ("MERGE_TEST_MODEL/FANTOM.SVD", "MODEL", "INITIAL TONE"),
         ("MERGE_TEST_VP/FANTOM.SVD", "VPiano", "Stage Grand3"),
     ] {
-        let Some(raw) = open(path) else { continue };
+        let Some(raw) = private(path) else { continue };
         let scenes = fantom_core::codec::read_scenes(&raw).unwrap();
         assert_eq!(scenes.len(), 3, "{path}: expected a three-scene merge result");
         assert_eq!(
@@ -284,7 +269,7 @@ fn hardware_validated_banks_still_decode() {
 /// `SMPa` slots, the `USDa` waveform directory, and `MLSa` read consistently against each other.
 #[test]
 fn the_sample_bank_agrees_with_its_waveform_directory() {
-    let Some(backup) = open("backup/ROLAND/FANTOM/BACKUP/2023.4.8+topandprisma/FANTOM.SVD") else {
+    let Some(backup) = private("backup/ROLAND/FANTOM/BACKUP/2023.4.8+topandprisma/FANTOM.SVD") else {
         return;
     };
     let svd = fantom_core::container::Svd::parse(&backup).unwrap();
@@ -306,7 +291,7 @@ fn the_sample_bank_agrees_with_its_waveform_directory() {
     assert_eq!(audio.frames(), first.end);
 
     // A scene export carries no sampling at all.
-    let Some(export) = open("backup/ROLAND/SOUND/NARF/FANTOM.SVD") else {
+    let Some(export) = private("backup/ROLAND/SOUND/NARF/FANTOM.SVD") else {
         return;
     };
     let svd = fantom_core::container::Svd::parse(&export).unwrap();
@@ -335,7 +320,7 @@ const SAMPLED_BACKUP: &str = "backup/ROLAND/FANTOM/BACKUP/2023.4.8+topandprisma/
 /// that is what this emits.
 #[test]
 fn building_a_sample_svz_from_a_backup_reproduces_a_shipped_one() {
-    let (Some(backup), Some(shipped)) = (open(SAMPLED_BACKUP), open(FFC_SAMPLES)) else {
+    let (Some(backup), Some(shipped)) = (private(SAMPLED_BACKUP), private(FFC_SAMPLES)) else {
         return;
     };
     let slots: Vec<usize> = (0..50).collect();
@@ -369,7 +354,7 @@ fn building_a_sample_svz_from_a_backup_reproduces_a_shipped_one() {
 /// a companion missing `doh duh 2` and a bank still pointing at slot 22 on the destination.
 #[test]
 fn a_sampled_scene_travels_as_a_bank_plus_a_companion_sample_file() {
-    let Some(backup) = open("backup/ROLAND/FANTOM/BACKUP/Black NARFSOUNDS/FANTOM.SVD") else {
+    let Some(backup) = private("backup/ROLAND/FANTOM/BACKUP/Black NARFSOUNDS/FANTOM.SVD") else {
         return;
     };
     let extracted = fantom_core::repackage::extract_scenes(&backup, &[401]).unwrap();
@@ -409,8 +394,8 @@ fn a_sampled_scene_travels_as_a_bank_plus_a_companion_sample_file() {
 #[test]
 fn a_bank_round_tripped_through_the_instrument_comes_back_unchanged() {
     let (Some(sent), Some(back)) = (
-        open("hwtest/T3_BANK/FANTOM.SVD"),
-        open("hwtest_back/T6_BACK/FANTOM.SVD"),
+        private("hwtest/T3_BANK/FANTOM.SVD"),
+        private("hwtest_back/T6_BACK/FANTOM.SVD"),
     ) else {
         return;
     };
@@ -448,7 +433,7 @@ fn a_bank_round_tripped_through_the_instrument_comes_back_unchanged() {
 /// though its editor never displays one for a sampled partial. Following it is not optional.
 #[test]
 fn an_instrument_export_carries_the_right_wave_numbers_sample_too() {
-    let Some(raw) = open("hwtest_back/T6_TONE.svz") else {
+    let Some(raw) = private("hwtest_back/T6_TONE.svz") else {
         return;
     };
     let svd = fantom_core::container::Svd::parse(&raw).unwrap();
@@ -477,8 +462,8 @@ fn an_instrument_export_carries_the_right_wave_numbers_sample_too() {
 #[test]
 fn a_drum_kit_that_plays_a_user_sample_is_read_from_the_capture() {
     let (Some(before), Some(after)) = (
-        open("hwtest_back/DRUM_BEFORE.svz"),
-        open("hwtest_back/DRUM_AFTER.svz"),
+        private("hwtest_back/DRUM_BEFORE.svz"),
+        private("hwtest_back/DRUM_AFTER.svz"),
     ) else {
         return;
     };
@@ -526,7 +511,7 @@ fn a_drum_kit_that_plays_a_user_sample_is_read_from_the_capture() {
 /// and would not know it.
 #[test]
 fn a_multisamples_samples_are_reached_through_it() {
-    let Some(raw) = open("hwtest_back/T8_MSMP_TONE.svz") else {
+    let Some(raw) = private("hwtest_back/T8_MSMP_TONE.svz") else {
         return;
     };
     assert_eq!(
@@ -565,7 +550,7 @@ fn a_multisamples_samples_are_reached_through_it() {
 /// three samples present.
 #[test]
 fn extracting_a_multisampled_tone_carries_and_renumbers_the_whole_chain() {
-    let Some(raw) = open("hwtest_back/T8_MSMP_TONE.svz") else {
+    let Some(raw) = private("hwtest_back/T8_MSMP_TONE.svz") else {
         return;
     };
     let tones = fantom_core::codec::read_bundled_tones(&raw).unwrap();
@@ -616,8 +601,8 @@ fn extracting_a_multisampled_tone_carries_and_renumbers_the_whole_chain() {
 #[test]
 fn extracting_a_multisampled_tone_matches_the_instrument_byte_for_byte() {
     let (Some(source), Some(theirs)) = (
-        open("hwtest_back/T8_MSMP_TONE.svz"),
-        open("hwtest_back/T9_BACK.svz"),
+        private("hwtest_back/T8_MSMP_TONE.svz"),
+        private("hwtest_back/T9_BACK.svz"),
     ) else {
         return;
     };
@@ -648,7 +633,7 @@ fn extracting_a_multisampled_tone_matches_the_instrument_byte_for_byte() {
 /// group says "internal".
 #[test]
 fn a_pcm_sync_partials_internal_wave_is_not_a_sample() {
-    let Some(raw) = open("hwtest_back/T10_BACK.svz") else {
+    let Some(raw) = private("hwtest_back/T10_BACK.svz") else {
         return;
     };
     let svd = fantom_core::container::Svd::parse(&raw).unwrap();
@@ -667,7 +652,7 @@ fn a_pcm_sync_partials_internal_wave_is_not_a_sample() {
 /// The captured multisample's key map, read from the backup that holds it.
 #[test]
 fn a_multisample_maps_key_ranges_onto_panel_sample_slots() {
-    let Some(raw) = open("hwtest_back/T8_MSMP_BACKUP/FANTOM.SVD") else {
+    let Some(raw) = private("hwtest_back/T8_MSMP_BACKUP/FANTOM.SVD") else {
         return;
     };
     let svd = fantom_core::container::Svd::parse(&raw).unwrap();
@@ -697,7 +682,7 @@ fn a_multisample_maps_key_ranges_onto_panel_sample_slots() {
 /// A file with no user samples cannot be a source, and must say so rather than emit an empty bank.
 #[test]
 fn a_scene_export_cannot_source_sample_audio() {
-    let Some(raw) = open("backup/ROLAND/SOUND/NARF/FANTOM.SVD") else {
+    let Some(raw) = private("backup/ROLAND/SOUND/NARF/FANTOM.SVD") else {
         return;
     };
     let error = fantom_core::samplebank::export_samples(&raw, &[0])
@@ -722,7 +707,7 @@ const TONE_BANKS: [&str; 4] = [
 #[test]
 fn extracting_every_tone_of_an_svz_reproduces_it() {
     for path in TONE_BANKS {
-        let Some(raw) = open(path) else { continue };
+        let Some(raw) = private(path) else { continue };
         let before = fantom_core::codec::read_bundled_tones(&raw).unwrap();
         let all: Vec<usize> = (0..before.len()).collect();
 
@@ -743,7 +728,7 @@ fn extracting_every_tone_of_an_svz_reproduces_it() {
 /// this; a wrong `info_length` or a recomputed word can still decode fine.
 #[test]
 fn rebuilding_an_instrument_written_sampled_export_is_byte_identical() {
-    let Some(raw) = open("EXPORT_Z-Core2.svz") else {
+    let Some(raw) = private("EXPORT_Z-Core2.svz") else {
         return;
     };
     let rebuilt = fantom_core::tonebank::extract_tones(&raw, &[0]).unwrap();
@@ -763,7 +748,7 @@ fn rebuilding_an_instrument_written_sampled_export_is_byte_identical() {
 /// bank this tool builds and one the FANTOM builds address their samples the same way.
 #[test]
 fn an_instrument_export_numbers_its_sample_reference_from_one() {
-    let Some(raw) = open("EXPORT_Z-Core2.svz") else {
+    let Some(raw) = private("EXPORT_Z-Core2.svz") else {
         return;
     };
     let svd = fantom_core::container::Svd::parse(&raw).unwrap();
@@ -786,7 +771,7 @@ fn an_instrument_export_numbers_its_sample_reference_from_one() {
 /// wave fields name regardless, and so does this.
 #[test]
 fn extracting_a_sampled_tone_carries_its_waveform() {
-    let Some(raw) = open("Z-Core_20260623.svz") else {
+    let Some(raw) = private("Z-Core_20260623.svz") else {
         return;
     };
     let svd = fantom_core::container::Svd::parse(&raw).unwrap();
@@ -856,7 +841,7 @@ fn extracting_a_sampled_tone_carries_its_waveform() {
 /// A drum kit is `RHYa` plus its 88 instruments in `INSa`; the two must stay index-locked.
 #[test]
 fn extracting_drum_kits_keeps_their_instrument_sets_paired() {
-    let Some(raw) = open("DRUM_20260623.svz") else {
+    let Some(raw) = private("DRUM_20260623.svz") else {
         return;
     };
     let extracted = fantom_core::tonebank::extract_tones(&raw, &[0, 5]).unwrap();
@@ -884,14 +869,18 @@ fn extracting_drum_kits_keeps_their_instrument_sets_paired() {
 /// wrong, not the file.
 #[test]
 fn files_written_by_the_instrument_verify_clean() {
+    // The committed file first, unconditionally. The loop below `continue`s past anything
+    // absent, so on its own it would report `ok` having checked nothing at all.
+    let report = fantom_core::verify::check(&public("tests/TEST 1/FANTOM.SVD")).unwrap();
+    assert!(report.is_ok(), "TEST 1: {:?}", report.problems);
+
     for path in TONE_BANKS.iter().chain(&[
         "backup/ROLAND/SOUND/NARF/FANTOM.SVD",
         "backup/ROLAND/SOUND/PRISMA/FANTOM.SVD",
         "backup/ROLAND/FANTOM/BACKUP/Black NARFSOUNDS/FANTOM.SVD",
         "TONEMAP9_ACB/FANTOM.SVD",
-        "tests/TEST 1/FANTOM.SVD",
     ]) {
-        let Some(raw) = open(path) else { continue };
+        let Some(raw) = private(path) else { continue };
         let report = fantom_core::verify::check(&raw).unwrap();
         assert!(report.is_ok(), "{path}: {:?}", report.problems);
     }
@@ -900,7 +889,7 @@ fn files_written_by_the_instrument_verify_clean() {
 /// And so must everything we write, including the sample-carrying path that edits a record.
 #[test]
 fn repackaged_tone_banks_verify_clean() {
-    let Some(raw) = open("Z-Core_20260623.svz") else {
+    let Some(raw) = private("Z-Core_20260623.svz") else {
         return;
     };
     let tones = fantom_core::codec::read_bundled_tones(&raw).unwrap();
@@ -923,7 +912,7 @@ fn repackaged_tone_banks_verify_clean() {
 /// Panel ground truth for one scene, transcribed from the instrument's own display.
 #[test]
 fn africa_main_decodes_to_the_panel_display() {
-    let Some(backup) = open("backup/ROLAND/FANTOM/BACKUP/Black NARFSOUNDS/FANTOM.SVD") else {
+    let Some(backup) = private("backup/ROLAND/FANTOM/BACKUP/Black NARFSOUNDS/FANTOM.SVD") else {
         return;
     };
     let scenes = fantom_core::codec::read_scenes(&backup).unwrap();
