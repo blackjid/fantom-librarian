@@ -639,6 +639,31 @@ fn extracting_a_multisampled_tone_matches_the_instrument_byte_for_byte() {
     );
 }
 
+/// A PCM-Sync partial's internal sync wave is not a sample dependency, and must not become one.
+///
+/// `PCMSYNC SAMP` was built on a FANTOM-6 to probe this: partial 1 is PCM Sync with an internal
+/// wave (panel 20, stored `SYNC_WAV_NUM=19`, wave group 0), while partial 2 separately plays a user
+/// sample. The instrument carried exactly one sample, so the sync wave contributed nothing — and
+/// this tool must reach the same count rather than inventing a second dependency from a field whose
+/// group says "internal".
+#[test]
+fn a_pcm_sync_partials_internal_wave_is_not_a_sample() {
+    let Some(raw) = open("hwtest_back/T10_BACK.svz") else {
+        return;
+    };
+    let svd = fantom_core::container::Svd::parse(&raw).unwrap();
+    let bank = fantom_core::container::read_samples(&raw, &svd).unwrap();
+    assert_eq!(bank.slots.len(), 1, "the instrument carried one sample");
+    assert_eq!(bank.slots[0].name, "1 Beat It - C2");
+
+    let tones = fantom_core::container::PatArea::from_svd(&raw, &svd).unwrap();
+    assert_eq!(
+        tones.get(0).unwrap().samples,
+        [1],
+        "one dependency, from the SAMP partial only"
+    );
+}
+
 /// The captured multisample's key map, read from the backup that holds it.
 #[test]
 fn a_multisample_maps_key_ranges_onto_panel_sample_slots() {

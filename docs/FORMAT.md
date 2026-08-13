@@ -339,6 +339,47 @@ wave selection is four consecutive fields 23 bytes in:
 > right, but stopping there hid a field: **there are two wave numbers, one per channel**, and only
 > the left was being read.
 
+### A partial's oscillator type — and when the wave fields mean nothing
+
+A ZEN-Core partial is not always a PCM oscillator. `OSC_TYPE` sits at **`1488 + 36 × partial`**
+(`PCMS_PTL.OSC_TYPE`, the last block of the 1632-byte record) and takes five values, of which three
+are confirmed against the panel:
+
+| Value | Panel | Confirmed by | Plays a wave? |
+|-------|-------|--------------|---------------|
+| `0` | PCM | most partials | yes, via `WAV_NUM_L` |
+| `1` | VA | `Africa Brass` partial 1 | no — synthesised |
+| `2` | PCM Sync | `Human Pad 1` partial 1 | yes, via **`SYNC_WAV_NUM`** |
+| `3` | ? | — | unknown |
+| `4` | ? | — | unknown |
+
+`3` and `4` are presumably SuperSAW and Noise in some order; neither example tone existed on the
+instrument to check. Across one backup the split is 7348 / 640 / 5 / 136 / 62.
+
+**A PCM-Sync partial names its wave somewhere else.** `Human Pad 1` reads on the panel as partial 1
+= PCM Sync wave **32**, partial 2 = Int bank a wave **324**. In the bytes, partial 2 is
+`group 0, L=324` — an exact match — while partial 1 is `SYNC_WAV_NUM=31` with `WAV_NUM_L=1`, a
+placeholder. So for `OSC_TYPE 2` the panel's wave number is `SYNC_WAV_NUM`, displayed **one higher
+than stored**, and the `WMT` wave number is not the wave.
+
+Confirmed twice, on two different instruments' worth of data: `Human Pad 1` panel 32 ↔ stored 31,
+and `PCMSYNC SAMP` — built for this — panel 20 ↔ stored 19. A ROM wave selected the ordinary way
+shows no such offset (`324` reads as `324`), so the shift belongs to the sync field, not to the
+display.
+
+**None of this changes what a sample dependency is, so far.** Every group-2 partial in the corpus is
+`OSC_TYPE 0` — 93 of 93 in `Black NARFSOUNDS`, 68 of 68 in the FFC bank — so no VA or Noise partial
+is contributing a phantom sample reference to any list this tool prints. The one exception is
+`MyPolySyn1` partial 3, which is `OSC_TYPE 3` with `group 2`; the instrument carried both its samples
+anyway, which suggests Roland's own dependency scan reads the wave fields without consulting
+`OSC_TYPE` — exactly what this tool does.
+
+> **Open:** whether a PCM-Sync partial's wave can be a *user sample*, and if so whether the slot
+> lands in `SYNC_WAV_NUM` rather than `WAV_NUM_L`. `PCMSYNC SAMP` was captured to test this but its
+> PCM-Sync partial kept an internal wave (`group 0, SYNC_WAV_NUM=19`) while a *different* partial
+> carried the user sample, so it does not settle the question. If a sync wave can be a sample, this
+> tool would miss it — the one remaining way a dependency could hide.
+
 **All four group types — CONFIRMED against the panel.** Tones whose bytes were known were opened in
 the FANTOM-6's tone editor and the wave group field read off directly:
 
