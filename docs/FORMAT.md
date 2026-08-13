@@ -374,11 +374,17 @@ is contributing a phantom sample reference to any list this tool prints. The one
 anyway, which suggests Roland's own dependency scan reads the wave fields without consulting
 `OSC_TYPE` — exactly what this tool does.
 
-> **Open:** whether a PCM-Sync partial's wave can be a *user sample*, and if so whether the slot
-> lands in `SYNC_WAV_NUM` rather than `WAV_NUM_L`. `PCMSYNC SAMP` was captured to test this but its
-> PCM-Sync partial kept an internal wave (`group 0, SYNC_WAV_NUM=19`) while a *different* partial
-> carried the user sample, so it does not settle the question. If a sync wave can be a sample, this
-> tool would miss it — the one remaining way a dependency could hide.
+**A sync wave can never be a user sample — CONFIRMED at the panel.** The obvious worry was that a
+PCM-Sync partial might point `SYNC_WAV_NUM` at a user sample, in which case this tool would miss the
+dependency entirely, since it reads only `WAV_NUM_L` and `WAV_NUM_R`. It cannot: the editor offers
+only a **fixed set of waves specific to PCM Sync** for that field — not user samples, and not even
+the ordinary internal or expansion waves. The small stored values seen across the corpus (`17`,
+`19`, `31`) are consistent with a short dedicated list.
+
+So `SYNC_WAV_NUM` never carries a dependency, and reading it would only manufacture phantom ones.
+That closes the last route by which a sample reference could hide from this tool: everything a tone
+can depend on is a `PATa` partial's own wave numbers, the multisample those numbers can reach, an
+`INSa` instrument's wave numbers, or an installed expansion — all of which are read.
 
 **All four group types — CONFIRMED against the panel.** Tones whose bytes were known were opened in
 the FANTOM-6's tone editor and the wave group field read off directly:

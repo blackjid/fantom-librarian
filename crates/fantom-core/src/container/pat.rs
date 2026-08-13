@@ -100,6 +100,11 @@ mod wave {
 /// carries, and renumbering only the left one leaves the right pointing at whatever takes over the
 /// old slot. A zero means "none".
 ///
+/// These two numbers, plus the multisample a group-3 partial reaches, are the *whole* set of sample
+/// references a tone can hold. A PCM-Sync partial names its wave in `SYNC_WAV_NUM` instead, but that
+/// field offers only waves specific to PCM Sync — not user samples, not even ordinary internal ones
+/// — so it can never carry a dependency and is deliberately not read.
+///
 /// This is what makes user samples a *dependency*: the reference is a slot number, so a tone
 /// carries no audio with it. The instrument's own scene exports behave the same way — NARF holds
 /// 68 such references and no sample areas at all — so samples must be transferred separately.
