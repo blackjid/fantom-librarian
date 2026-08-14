@@ -185,14 +185,46 @@ fn scene_record_offset(raw: &Raw, scene_number: usize) -> Result<usize> {
 /// Rename scene `scene_number` (1-based) in place. The 16-byte name field is overwritten and
 /// space-padded; call [`Raw::save`] to persist. Only the name bytes change (see `docs/FORMAT.md`).
 pub fn set_scene_name(raw: &mut Raw, scene_number: usize, name: &str) -> Result<()> {
+    let name = check_name(name)?;
     let at = scene_record_offset(raw, scene_number)?;
     raw.patch_ascii(at, NAME_LEN, name);
     Ok(())
 }
 
+/// Check a name against what the instrument's name fields can hold, returning it trimmed.
+///
+/// The field is a fixed run of 7-bit ASCII, space-padded. Writing goes through [`Raw::patch_ascii`],
+/// which copies bytes and pads — so without this check a too-long name is silently cut mid-word and
+/// a non-ASCII one has its UTF-8 bytes written verbatim, putting `café` on the panel as `cafÃ©`.
+/// Refusing beats writing something the device will render as garbage.
+pub fn check_name(name: &str) -> Result<&str> {
+    check_ascii_field(name, NAME_LEN, "name")
+}
+
+/// The same check for a scene's longer free-text memo.
+pub fn check_comment(comment: &str) -> Result<&str> {
+    check_ascii_field(comment, COMMENT_LEN, "comment")
+}
+
+fn check_ascii_field<'a>(text: &'a str, limit: usize, what: &str) -> Result<&'a str> {
+    let text = text.trim_end();
+    if let Some(bad) = text.chars().find(|c| !(' '..='~').contains(c)) {
+        return Err(Error::Unrecognized(format!(
+            "a Fantom {what} cannot contain {bad:?}; only printable ASCII"
+        )));
+    }
+    if text.len() > limit {
+        return Err(Error::Unrecognized(format!(
+            "a Fantom {what} is at most {limit} characters, got {}",
+            text.len()
+        )));
+    }
+    Ok(text)
+}
 
 /// Set scene `scene_number`'s (1-based) 64-byte comment/memo in place; call [`Raw::save`] to persist.
 pub fn set_scene_comment(raw: &mut Raw, scene_number: usize, comment: &str) -> Result<()> {
+    let comment = check_comment(comment)?;
     let at = scene_record_offset(raw, scene_number)?;
     raw.patch_ascii(at + COMMENT_OFFSET, COMMENT_LEN, comment);
     Ok(())
@@ -369,6 +401,19 @@ fn read_u32(bytes: &[u8], at: usize) -> Result<u32> {
 #[cfg(test)]
 mod name_tests {
     use super::*;
+
+    #[test]
+    fn a_name_is_checked_against_what_the_field_can_hold() {
+        assert_eq!(check_name("Ballad Rhodes").unwrap(), "Ballad Rhodes");
+        // Exactly the field width is fine; one more is not.
+        assert!(check_name("0123456789abcdef").is_ok());
+        assert!(check_name("0123456789abcdefg").is_err());
+        // `patch_ascii` would write the UTF-8 bytes verbatim, so non-ASCII has to be refused.
+        assert!(check_name("café").is_err());
+        assert!(check_name("tab\there").is_err());
+        // Trailing space is how the field pads, so trimming it is not a rejection.
+        assert_eq!(check_name("Pad   ").unwrap(), "Pad");
+    }
 
     #[test]
     fn the_placeholder_rule_matches_the_factory_convention() {
@@ -804,6 +849,12 @@ mod tests {
         let mut raw = raw0.clone();
         set_scene_name(&mut raw, 1, "New Name").unwrap();
         set_scene_comment(&mut raw, 1, "new comment").unwrap();
+
+        // A name the field cannot hold is refused rather than written badly, and nothing changes.
+        let mut rejected = raw.clone();
+        assert!(set_scene_name(&mut rejected, 1, "a name far longer than sixteen").is_err());
+        assert!(set_scene_name(&mut rejected, 1, "café").is_err());
+        assert_eq!(rejected.bytes(), raw.bytes());
 
         // Re-parsing shows the edits, and scene 2 is untouched.
         let scenes = read_scenes(&raw).unwrap();
