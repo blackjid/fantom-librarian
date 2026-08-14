@@ -1,0 +1,6 @@
+# esbuild ships a per-platform binary its postinstall script puts in place; without this pnpm
+# skips that script and vite has nothing to bundle with.
+allowBuilds:
+  esbuild: true
+onlyBuiltDependencies:
+  - esbuild
