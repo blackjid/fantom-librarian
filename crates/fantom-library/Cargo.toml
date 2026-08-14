@@ -1,0 +1,18 @@
+[package]
+name = "fantom-library"
+description = "Workspace, catalog, and import pipeline for the Fantom librarian."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+fantom-core = { workspace = true, features = ["serde"] }
+rusqlite.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
