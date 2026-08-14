@@ -365,7 +365,13 @@ fn scene_detail(scene: &Scene) -> SceneDetail {
     for zone in &scene.zones {
         let tone = &zone.tone;
         let engine = tone.tone_type().label().to_string();
-        if zone.enabled {
+        let state = scene.zone_state(zone);
+        let groups = scene.groups_containing(zone.number + 1);
+
+        // A zone switched off today may be one pad press from sounding, so its tone is still a
+        // dependency. Only a zone nobody ever configured is not — it still points at the factory
+        // default it was born with.
+        if state.is_played() {
             if !engines.contains(&engine) {
                 engines.push(engine.clone());
             }
@@ -389,6 +395,8 @@ fn scene_detail(scene: &Scene) -> SceneDetail {
             number: zone.number + 1,
             enabled: zone.enabled,
             muted: zone.muted,
+            state: state.as_str().to_string(),
+            groups,
             engine,
             bank: tone.bank().unwrap_or("raw").to_string(),
             tone: tone.name().unwrap_or("—").to_string(),
@@ -414,6 +422,14 @@ fn scene_detail(scene: &Scene) -> SceneDetail {
         active_zones: scene.zones.iter().filter(|z| z.enabled).count(),
         zones,
         engines,
+        groups: scene
+            .groups
+            .iter()
+            .map(|group| KeyboardGroupDetail {
+                number: group.number,
+                zones: group.zones.clone(),
+            })
+            .collect(),
         user_tones,
         external_refs: external.into_iter().collect(),
     }

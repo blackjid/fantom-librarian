@@ -179,12 +179,22 @@ pub struct SceneDetail {
     /// Zones with their KBD switch on.
     pub active_zones: usize,
     pub zones: Vec<ZoneDetail>,
-    /// Distinct engines the scene's enabled zones call for.
+    /// Distinct engines the scene's playing zones call for.
     pub engines: Vec<String>,
+    /// Keyboard switch groups this scene configures; empty when it leaves them at the default.
+    pub groups: Vec<KeyboardGroupDetail>,
     /// Bundled user tones this scene needs, by resolved name.
     pub user_tones: Vec<String>,
     /// Zones pointing at factory, expansion, or model content the app never substitutes.
     pub external_refs: Vec<String>,
+}
+
+/// A saved set of zone switches the player recalls from a pad.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct KeyboardGroupDetail {
+    pub number: u8,
+    /// 1-based zone numbers this group switches on.
+    pub zones: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -192,6 +202,10 @@ pub struct ZoneDetail {
     pub number: u8,
     pub enabled: bool,
     pub muted: bool,
+    /// Why this zone sounds or does not: `on`, `muted`, `grouped`, `off`, or `unused`.
+    pub state: String,
+    /// Keyboard groups that switch this zone on, if any.
+    pub groups: Vec<u8>,
     pub engine: String,
     pub bank: String,
     pub tone: String,

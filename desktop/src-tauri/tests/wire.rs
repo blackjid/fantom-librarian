@@ -42,6 +42,7 @@ fn an_asset_serialises_with_the_fields_the_front_end_reads() {
             active_zones: 4,
             zones: Vec::new(),
             engines: vec!["ZEN-Core".into()],
+            groups: Vec::new(),
             user_tones: vec!["Mk1 Rhodes".into()],
             external_refs: Vec::new(),
         }),
@@ -251,4 +252,70 @@ fn a_query_can_scope_to_a_single_file() {
     .unwrap();
     assert_eq!(query.file_id, Some(7));
     assert_eq!(query.source_id, None);
+}
+
+/// The zone table keys an icon, a colour, and a tooltip off each state, so every variant has to
+/// serialise to the string its `ZoneState` union in `api.ts` lists.
+#[test]
+fn every_zone_state_serialises_to_its_front_end_name() {
+    use fantom_core::model::ZoneState;
+    for (state, expected) in [
+        (ZoneState::On, "on"),
+        (ZoneState::Muted, "muted"),
+        (ZoneState::Grouped, "grouped"),
+        (ZoneState::Off, "off"),
+        (ZoneState::Unused, "unused"),
+    ] {
+        assert_eq!(state.as_str(), expected);
+    }
+}
+
+/// A zone's group membership travels with the zone, and the scene's groups with the scene, so the
+/// table can colour a row without cross-referencing.
+#[test]
+fn a_scene_detail_carries_its_keyboard_groups() {
+    let detail = SceneDetail {
+        bpm: 120.0,
+        level: 100,
+        active_zones: 2,
+        zones: vec![ZoneDetail {
+            number: 3,
+            enabled: false,
+            muted: false,
+            state: "grouped".into(),
+            groups: vec![2, 5],
+            engine: "ZEN-Core".into(),
+            bank: "USER".into(),
+            tone: "Sub Bass".into(),
+            msb: 87,
+            lsb: 0,
+            pc: 8,
+            key_low: 0,
+            key_high: 57,
+            velocity_low: 1,
+            velocity_high: 127,
+            level: 85,
+            pan: 0,
+            transpose: 0,
+            octave: 0,
+            midi_channel: 3,
+            arpeggio: false,
+        }],
+        engines: vec!["ZEN-Core".into()],
+        groups: vec![KeyboardGroupDetail {
+            number: 2,
+            zones: vec![3, 4],
+        }],
+        user_tones: vec!["Sub Bass".into()],
+        external_refs: Vec::new(),
+    };
+
+    let json = serde_json::to_value(&detail).unwrap();
+    assert_eq!(json["groups"][0]["number"], 2);
+    assert_eq!(json["groups"][0]["zones"][1], 4);
+    assert_eq!(json["zones"][0]["state"], "grouped");
+    assert_eq!(json["zones"][0]["groups"][0], 2);
+    // A grouped zone is switched off, and still counts as a dependency.
+    assert_eq!(json["zones"][0]["enabled"], false);
+    assert_eq!(json["user_tones"][0], "Sub Bass");
 }
