@@ -55,10 +55,51 @@ pub struct BundledTone {
     pub name: String,
 }
 
+/// Whether a record's name is the factory's placeholder for an unused slot.
+///
+/// Roland names an empty slot `INITIAL` plus its engine — `INITIAL TONE`, `INITIAL ORGAN`,
+/// `INITIAL PIANO`, `INITIAL KIT` — so the prefix is the rule rather than the four seen so far.
+/// One FANTOM backup carries over four thousand such records against a few hundred real sounds,
+/// which is why anything listing a bundle's contents needs to be able to tell them apart.
+///
+/// This only reports what a name *is*; whether to skip such a record is the caller's decision.
+pub fn is_placeholder_name(name: &str) -> bool {
+    let name = name.trim();
+    if name.is_empty() {
+        return true;
+    }
+    let lower = name.to_ascii_lowercase();
+    lower == "initial"
+        || lower.starts_with("initial ")
+        || lower == "init"
+        || lower.starts_with("init ")
+        || matches!(lower.as_str(), "inittone" | "initscene" | "----" | "---")
+}
+
 /// Decode every named user-tone record bundled in an SVD.
 pub fn read_bundled_tones(raw: &Raw) -> Result<Vec<BundledTone>> {
     let svd = Svd::parse(raw)?;
     Ok(bundled_tones_from_svd(raw, &svd))
+}
+
+/// The raw bytes of each scene record, in the same order and numbering as [`read_scenes`].
+///
+/// Lets a caller identify a scene by its stored bytes rather than by the decoded subset.
+pub fn read_scene_records(raw: &Raw) -> Result<Vec<&[u8]>> {
+    let svd = Svd::parse(raw)?;
+    let prfa = svd
+        .area(PRFA)
+        .ok_or_else(|| Error::Unrecognized("no PRFa (performance) area in file".into()))?;
+    let area = svd.area_bytes(raw, prfa)?;
+    let declared = read_u32(area, AREA_COUNT_OFFSET)? as usize;
+    let record_size = read_u32(area, AREA_RECORD_SIZE_OFFSET)? as usize;
+    if record_size == 0 {
+        return Err(Error::Unrecognized("PRFa record size is zero".into()));
+    }
+    Ok(scene_records(area, declared, record_size)
+        .into_iter()
+        .map(|(_, record)| record)
+        .collect())
 }
 
 /// Decode every scene in an SVD file — name, comment, and 16 zones (switch, key range, level, and
@@ -148,6 +189,7 @@ pub fn set_scene_name(raw: &mut Raw, scene_number: usize, name: &str) -> Result<
     raw.patch_ascii(at, NAME_LEN, name);
     Ok(())
 }
+
 
 /// Set scene `scene_number`'s (1-based) 64-byte comment/memo in place; call [`Raw::save`] to persist.
 pub fn set_scene_comment(raw: &mut Raw, scene_number: usize, comment: &str) -> Result<()> {
@@ -322,6 +364,37 @@ fn read_u32(bytes: &[u8], at: usize) -> Result<u32> {
         .get(at..at + 4)
         .ok_or_else(|| Error::Unrecognized(format!("PRFa area truncated at offset {at}")))?;
     Ok(u32::from_le_bytes(slice.try_into().unwrap()))
+}
+
+#[cfg(test)]
+mod name_tests {
+    use super::*;
+
+    #[test]
+    fn the_placeholder_rule_matches_the_factory_convention() {
+        for blank in [
+            "",
+            "   ",
+            "INITIAL TONE",
+            "INITIAL ORGAN",
+            "INITIAL PIANO",
+            "INITIAL KIT",
+            "initial",
+            "INIT TONE",
+            "----",
+        ] {
+            assert!(is_placeholder_name(blank), "{blank:?} should read as blank");
+        }
+        for real in [
+            "Mk1 Rhodes",
+            "Initials",
+            "INITIATE",
+            "24k Logic I",
+            "Init'l",
+        ] {
+            assert!(!is_placeholder_name(real), "{real:?} is a real name");
+        }
+    }
 }
 
 #[cfg(test)]
