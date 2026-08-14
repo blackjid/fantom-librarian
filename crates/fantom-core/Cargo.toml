@@ -6,8 +6,15 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+default = []
+# Derives `Serialize`/`Deserialize` on the handful of types a front end sends over a wire.
+# Off by default: the CLI and a WASM build have no use for it.
+serde = ["dep:serde"]
+
 [dependencies]
 binrw.workspace = true
+serde = { workspace = true, optional = true }
 thiserror.workspace = true
 
 [dev-dependencies]

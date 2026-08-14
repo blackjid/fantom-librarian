@@ -15,3 +15,4 @@ clap = { version = "4", features = ["derive"] }
 insta = "1"
 fantom-core = { path = "crates/fantom-core" }
 midir = "0.10"
+serde = { version = "1", features = ["derive"] }

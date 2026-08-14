@@ -50,6 +50,21 @@ pub fn remap_sample_slots_of(
         _ => {}
     }
 }
+/// The areas holding the user sample bank: `SMPa` the slot directory, `MLSa` multisamples, and
+/// `USDa` the waveform payload.
+///
+/// Only a whole-instrument backup carries them. The instrument's own scene exports never do — a
+/// scene bank's sample references are absolute panel slots precisely *because* there is no table
+/// here for an index to point into. That makes their presence a statement about a file's **scope**
+/// rather than its content: a backup of an instrument holding no user audio still writes all three.
+pub const SAMPLE_BANK_AREAS: [&[u8; 4]; 3] = [b"SMPa", b"MLSa", b"USDa"];
+
+/// Areas every `SVD5` carries whatever its scope — system settings and the difference table.
+///
+/// Because a one-scene export has them just as a full backup does, they say nothing about what a
+/// file is for, and repackaging copies them through untouched.
+pub const COMMON_AREAS: [&[u8; 4]; 2] = [b"SYSa", b"DIFa"];
+
 pub use msmp::{key_map as multisample_key_map, KeyMap};
 pub use raw::Raw;
 pub use records::RecordTable;

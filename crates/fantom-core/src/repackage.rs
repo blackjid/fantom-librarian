@@ -22,20 +22,19 @@ const COUNT_OFFSET: usize = 0;
 const RECORD_SIZE_OFFSET: usize = 4;
 const NAME_LEN: usize = address::NAME_LEN;
 
-/// Areas carried into the output unchanged.
-const PRESERVED: [&[u8; 4]; 2] = [b"SYSa", b"DIFa"];
+/// Areas carried into the output unchanged: they belong to every SVD whatever its scope.
+const PRESERVED: [&[u8; 4]; 2] = crate::container::COMMON_AREAS;
 
-/// Areas we recognise but deliberately leave behind.
+/// Areas we recognise but deliberately leave behind — the user sample bank (23 MB in a full
+/// backup).
 ///
-/// These hold the user sample bank: `SMPa` the slot directory, `MLSa` multisamples, `USDa` the
-/// waveform payload (23 MB in a full backup). Dropping them is not a limitation but a match for
-/// what the instrument does — its own scene exports carry no sample area either, and nothing in the
-/// scene-import path reads one. A scene bank's sample references are absolute panel slots precisely
-/// *because* there is no table here for an index to point into.
+/// Dropping them is not a limitation but a match for what the instrument does: its own scene
+/// exports carry no sample area either, and nothing in the scene-import path reads one. See
+/// [`crate::container::SAMPLE_BANK_AREAS`] for why that is a fact about a file's scope.
 ///
 /// The audio still travels, in the container built for it: [`crate::samplebank`] writes a companion
 /// `.svz`, and [`rebase_sample_slots`] repoints this bank at wherever that companion is imported.
-const DROPPED: [&[u8; 4]; 3] = [b"SMPa", b"MLSa", b"USDa"];
+const DROPPED: [&[u8; 4]; 3] = crate::container::SAMPLE_BANK_AREAS;
 
 struct RecordArea {
     header: [u8; HEADER_LEN],
