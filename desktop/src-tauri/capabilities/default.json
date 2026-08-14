@@ -1,0 +1,13 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "What the librarian window is allowed to do: pick folders and files to import, and reveal a workspace or export in the system file manager.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "dialog:allow-open",
+    "dialog:allow-message",
+    "dialog:allow-confirm",
+    "opener:allow-reveal-item-in-dir"
+  ]
+}

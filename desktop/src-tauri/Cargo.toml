@@ -1,0 +1,24 @@
+[package]
+name = "fantom-desktop"
+description = "The FANTOM Librarian desktop app."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+# Tauri builds the app as a library on mobile targets; the binary is a thin wrapper over it.
+name = "fantom_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build.workspace = true
+
+[dependencies]
+fantom-core.workspace = true
+fantom-library.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tauri.workspace = true
+tauri-plugin-dialog.workspace = true
+tauri-plugin-opener.workspace = true

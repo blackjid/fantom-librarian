@@ -1,0 +1,5 @@
+node_modules/
+dist/
+
+# Tauri writes its permission and capability schemas here on every build.
+src-tauri/gen/
