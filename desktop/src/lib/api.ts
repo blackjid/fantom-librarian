@@ -16,10 +16,23 @@ export type FileStatus = "ok" | "invalid";
  */
 export type Role = "backup" | "scene-bank" | "tone-bank" | "sample-bank" | "unknown";
 
+/** Why a zone sounds, or does not. */
+export type ZoneState = "on" | "muted" | "grouped" | "off" | "unused";
+
+/** A saved set of zone switches the player recalls from a pad. */
+export interface KeyboardGroup {
+  number: number;
+  /** 1-based zone numbers this group switches on. */
+  zones: number[];
+}
+
 export interface ZoneDetail {
   number: number;
   enabled: boolean;
   muted: boolean;
+  state: ZoneState;
+  /** Keyboard groups that switch this zone on, if any. */
+  groups: number[];
   engine: string;
   bank: string;
   tone: string;
@@ -45,6 +58,8 @@ export interface SceneDetail {
   active_zones: number;
   zones: ZoneDetail[];
   engines: string[];
+  /** Empty when the scene leaves its keyboard groups at the factory default. */
+  groups: KeyboardGroup[];
   user_tones: string[];
   external_refs: string[];
 }

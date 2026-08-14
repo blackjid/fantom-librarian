@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, Archive, Check, Package, Pencil, Plus, Tag as TagIcon, X } from "lucide-react";
-import { api, message, type Asset } from "@/lib/api";
+import { api, message, type Asset, type SceneDetail, type ZoneState } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -53,7 +53,7 @@ export function AssetDetail({
 
           {asset.detail.kind === "scene" && (
             <TabsContent value="zones" className="m-0 p-4">
-              <Zones zones={asset.detail.zones} />
+              <Zones detail={asset.detail} />
             </TabsContent>
           )}
 
@@ -218,11 +218,11 @@ function Overview({
         <>
           <Block
             title="User tones it needs"
-            hint="Included automatically when this scene goes into a package."
+            hint="Included automatically when this scene goes into a package. Counted from every zone that can sound — muted, switched off, or recalled by a keyboard group — never from one left at the factory default."
           >
             {asset.detail.user_tones.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                None — every enabled zone plays factory or expansion content.
+                None — every zone that can sound plays factory or expansion content.
               </p>
             ) : (
               <ul className="flex flex-col gap-1">
@@ -378,13 +378,62 @@ function Note({
   );
 }
 
-function Zones({ zones }: { zones: NonNullable<Extract<Asset["detail"], { kind: "scene" }>>["zones"] }) {
+/** How each zone state reads, and what it means for a package. */
+const ZONE_STATE: Record<ZoneState, { label: string; hint: string; className: string }> = {
+  on: { label: "on", hint: "Switched on and sounding.", className: "text-scene" },
+  muted: { label: "mute", hint: "Switched on but muted.", className: "text-scene/70" },
+  grouped: {
+    label: "group",
+    hint: "Switched off now, but a keyboard group switches it on.",
+    className: "text-tone",
+  },
+  off: {
+    label: "off",
+    hint: "Set up and then switched off — silent, but still part of the scene.",
+    className: "",
+  },
+  unused: {
+    label: "—",
+    hint: "Never configured: still exactly as the factory left it.",
+    className: "opacity-40",
+  },
+};
+
+function Zones({ detail }: { detail: SceneDetail }) {
+  const { zones, groups } = detail;
   return (
-    <div className="overflow-x-auto rounded-md border" data-selectable>
+    <div className="flex flex-col gap-4">
+      {groups.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <div className="flex flex-col gap-0.5">
+            <h3 className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
+              Keyboard groups
+            </h3>
+            <p className="text-xs text-muted-foreground/70">
+              Each pad recalls one set of zone switches, so this scene holds several arrangements.
+              A zone below marked <span className="text-tone">group</span> is off right now and
+              plays when its group is selected.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {groups.map((group) => (
+              <span
+                key={group.number}
+                className="inline-flex items-center gap-1.5 rounded-md border px-2 py-1 font-mono text-xs"
+              >
+                <span className="text-muted-foreground">G{group.number}</span>
+                <span>{group.zones.join(" ")}</span>
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <div className="overflow-x-auto rounded-md border" data-selectable>
       <table className="w-full text-xs">
         <thead className="bg-muted/50 text-muted-foreground">
           <tr>
-            {["#", "on", "engine", "bank", "tone", "key", "vel", "lvl", "pan", "tr", "oct", "ch", "arp"].map(
+            {["#", "state", "grp", "engine", "bank", "tone", "key", "vel", "lvl", "pan", "tr", "oct", "ch", "arp"].map(
               (head) => (
                 <th key={head} className="px-2 py-1.5 text-left font-medium whitespace-nowrap">
                   {head}
@@ -399,12 +448,18 @@ function Zones({ zones }: { zones: NonNullable<Extract<Asset["detail"], { kind: 
               key={zone.number}
               className={cn(
                 "border-t",
-                zone.enabled ? "text-foreground" : "text-muted-foreground/50",
+                zone.state === "unused" ? "text-muted-foreground/40" : "text-foreground",
               )}
             >
               <td className="px-2 py-1 tabular-nums">{zone.number}</td>
-              <td className={cn("px-2 py-1", zone.enabled && !zone.muted && "text-scene")}>
-                {zone.enabled ? (zone.muted ? "mute" : "on") : "off"}
+              <td
+                className={cn("px-2 py-1", ZONE_STATE[zone.state].className)}
+                title={ZONE_STATE[zone.state].hint}
+              >
+                {ZONE_STATE[zone.state].label}
+              </td>
+              <td className="px-2 py-1 whitespace-nowrap text-tone">
+                {zone.groups.length > 0 ? zone.groups.join(",") : ""}
               </td>
               <td className="px-2 py-1 whitespace-nowrap">{zone.engine}</td>
               <td className={cn("px-2 py-1 whitespace-nowrap", zone.bank === "USER" && "text-tone")}>
@@ -428,7 +483,8 @@ function Zones({ zones }: { zones: NonNullable<Extract<Asset["detail"], { kind: 
             </tr>
           ))}
         </tbody>
-      </table>
+        </table>
+      </div>
     </div>
   );
 }
