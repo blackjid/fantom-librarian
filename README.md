@@ -3,32 +3,65 @@
 A modular librarian for the Roland Fantom synthesizer — read Fantom data files, manage Scenes,
 edit metadata, and package/organize. It does **not** create or edit synthesis parameters.
 
-Written in Rust as a Cargo workspace so the parsing core stays reusable across a CLI now and a
-GUI or WASM web UI later.
+Written in Rust as a Cargo workspace so the parsing core stays reusable across a CLI, a desktop
+app, and a WASM web UI.
 
 ## Layout
 
 ```
 crates/
-  fantom-core/   # pure library: bytes -> typed model (no I/O policy)
-    container/   # SVD/SVZ framing (area table, record tables, zone/tone/sample areas)
-    model/       # domain types: Scene, Zone, ToneRef, metadata
-    address.rs   # the one table: which area a tone address indexes, and at which record
-    codec/       # maps container bytes onto the model
-    repackage.rs # extract / canary / merge — rebundling and renumbering dependencies
-    diff.rs      # compares two files by area and record; how new offsets get found
-    presets.rs   # factory ZEN-Core preset tone name lookup (bundled sound list)
-    params/      # Roland's parameter map — file bytes against SysEx addresses
-                 #   tone.rs  a 1632-byte ZEN-Core tone; scene.rs  a 3572-byte scene
-    tests/       # tests against real files; each skips when its fixture is absent
-  fantom-cli/    # the `fantom` binary — first consumer of the library
-    render.rs    # value labels and table layout; presentation only, no I/O
-  fantom-midi/   # SysEx transport; reads the parameter map from fantom-core
-tools/           # gen_params.py / gen_scene_params.py — regenerate the parameter tables
-docs/FORMAT.md   # reverse-engineering notebook for the on-disk layout
-fixtures/        # committed test files — see fixtures/README.md for what may go here
-fixtures-local/  # private corpus: backups, docs, purchased packs (gitignored)
+  fantom-core/    # pure library: bytes -> typed model (no I/O policy)
+    container/    # SVD/SVZ framing (area table, record tables, zone/tone/sample areas)
+    model/        # domain types: Scene, Zone, ToneRef, metadata
+    address.rs    # the one table: which area a tone address indexes, and at which record
+    codec/        # maps container bytes onto the model
+    repackage.rs  # extract / canary / merge — rebundling and renumbering dependencies
+    diff.rs       # compares two files by area and record; how new offsets get found
+    presets.rs    # factory ZEN-Core preset tone name lookup (bundled sound list)
+    params/       # Roland's parameter map — file bytes against SysEx addresses
+                  #   tone.rs  a 1632-byte ZEN-Core tone; scene.rs  a 3572-byte scene
+    tests/        # tests against real files; each skips when its fixture is absent
+  fantom-library/ # the librarian above the parser: workspace, catalog, imports
+    workspace.rs  # the portable folder: marker, managed originals, exports, catalog
+    import.rs     # validate, copy, catalogue, report — one source group per import
+    catalog.rs    # browse, search, tag, relate to songs
+    schema.sql    # the catalog's tables, with why each one is shaped that way
+  fantom-cli/     # the `fantom` binary — first consumer of the library
+    render.rs     # value labels and table layout; presentation only, no I/O
+  fantom-midi/    # SysEx transport; reads the parameter map from fantom-core
+desktop/          # the FANTOM Librarian app: Tauri v2 + React
+  src-tauri/      # the command layer over fantom-library; decides nothing itself
+  src/            # React front end — lib/api.ts is the only place that calls invoke
+tools/            # gen_params.py / gen_scene_params.py — regenerate the parameter tables
+docs/FORMAT.md    # reverse-engineering notebook for the on-disk layout
+docs/LIBRARIAN_PLAN.md # what the app is for, and what v1 deliberately leaves out
+fixtures/         # committed test files — see fixtures/README.md for what may go here
+fixtures-local/   # private corpus: backups, docs, purchased packs (gitignored)
 ```
+
+## The desktop app
+
+```sh
+cd desktop
+pnpm install
+pnpm app          # dev: vite + a debug build of the Rust side
+pnpm app:build    # a bundled .app / .dmg
+```
+
+The app manages one **workspace** folder — the library, and ordinary user data you can copy and
+back up:
+
+```
+My FANTOM Library/
+  fantom-library.json   # the marker that makes this folder a workspace
+  library.db            # the catalog
+  originals/            # content-addressed copies of everything imported
+  exports/              # generated deployment folders
+```
+
+Imports are copied, never moved or edited. Identical records consolidate into one library item
+that remembers every source it came from, so re-importing an overlapping pack grows provenance
+rather than duplicates.
 
 ## Status
 
