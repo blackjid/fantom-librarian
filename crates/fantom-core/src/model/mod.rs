@@ -16,12 +16,99 @@ pub struct Scene {
     /// Scene level (0..127).
     pub level: u8,
     pub zones: Vec<Zone>,
+    /// Keyboard switch groups the scene actually configures.
+    ///
+    /// Empty when it leaves them at the factory default, where group *n* holds only zone *n* and
+    /// so says nothing. See [`KeyboardGroup`].
+    pub groups: Vec<KeyboardGroup>,
 }
 
 impl Scene {
     /// Scene tempo in BPM.
     pub fn bpm(&self) -> f32 {
         self.tempo as f32 / 100.0
+    }
+
+    /// The configured groups that switch `zone_number` (1-based) on.
+    pub fn groups_containing(&self, zone_number: u8) -> Vec<u8> {
+        self.groups
+            .iter()
+            .filter(|group| group.zones.contains(&zone_number))
+            .map(|group| group.number)
+            .collect()
+    }
+
+    /// How a zone stands in this scene: playing, silent by choice, or never used.
+    ///
+    /// The distinction matters for packaging. A zone that is off *now* but belongs to a keyboard
+    /// group is one pad press from sounding, so the tone it plays is still a dependency of the
+    /// scene; a zone that was never configured is not.
+    pub fn zone_state(&self, zone: &Zone) -> ZoneState {
+        if zone.enabled {
+            return if zone.muted {
+                ZoneState::Muted
+            } else {
+                ZoneState::On
+            };
+        }
+        if !self.groups_containing(zone.number + 1).is_empty() {
+            return ZoneState::Grouped;
+        }
+        if zone.is_at_factory_default() {
+            ZoneState::Unused
+        } else {
+            ZoneState::Off
+        }
+    }
+}
+
+/// A saved set of zone keyboard switches, recalled from a pad.
+///
+/// The FANTOM stores sixteen of them, each a 16-bit mask over the scene's zones (`Pad_Mode` has a
+/// `KBD SW GROUP` setting that maps the pads to them). Selecting a group sets every zone's KBD
+/// switch to that group's mask, which is how one scene holds several playable arrangements — and
+/// why a zone can be switched off in the saved state yet still be part of the performance.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KeyboardGroup {
+    /// 1-based group number, as the panel shows it.
+    pub number: u8,
+    /// 1-based zone numbers this group switches on.
+    pub zones: Vec<u8>,
+}
+
+/// Why a zone sounds, or does not.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ZoneState {
+    /// Switched on and audible.
+    On,
+    /// Switched on, but muted.
+    Muted,
+    /// Switched off, and a keyboard group switches it on — part of the performance.
+    Grouped,
+    /// Switched off with settings of its own: configured, then deliberately silenced.
+    Off,
+    /// Switched off and never configured — still exactly as the factory left it.
+    Unused,
+}
+
+impl ZoneState {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::On => "on",
+            Self::Muted => "muted",
+            Self::Grouped => "grouped",
+            Self::Off => "off",
+            Self::Unused => "unused",
+        }
+    }
+
+    /// Whether the tone this zone plays is a dependency of the scene.
+    ///
+    /// Everything but an untouched zone counts. A muted or switched-off zone is one control away
+    /// from sounding, and a package that dropped its tone would be quietly broken; an unused zone
+    /// still points at the factory default it was born with, which is not a dependency at all.
+    pub fn is_played(self) -> bool {
+        self != Self::Unused
     }
 }
 
@@ -56,6 +143,29 @@ pub struct Zone {
     pub midi_channel: u8,
     /// Whether the arpeggiator is on for this zone.
     pub arpeggio: bool,
+}
+
+impl Zone {
+    /// Whether every setting still holds the value the panel gives a fresh zone.
+    ///
+    /// A scene always stores all sixteen zones, so most of them in most scenes were never touched.
+    /// This is what tells those apart from a zone somebody set up and then switched off — measured
+    /// across a corpus of backups and commercial packs, no *switched-on* zone matches this shape,
+    /// while it accounts for the majority of switched-off ones.
+    ///
+    /// The tone address is deliberately not part of the test: the factory default differs by slot
+    /// (zone 10 gets a drum kit, the rest a piano) and by instrument revision, so the settings are
+    /// the stable signal.
+    pub fn is_at_factory_default(&self) -> bool {
+        self.key_low == 0
+            && self.key_high == 127
+            && self.velocity_low == 1
+            && self.velocity_high == 127
+            && self.level == 100
+            && self.pan == 0
+            && self.transpose == 0
+            && self.octave == 0
+    }
 }
 
 /// The raw MIDI bank/program address stored by a scene.
@@ -196,6 +306,95 @@ impl ToneRef {
         } else {
             None
         }
+    }
+}
+
+#[cfg(test)]
+mod zone_state_tests {
+    use super::*;
+
+    fn zone(number: u8, enabled: bool) -> Zone {
+        Zone {
+            number,
+            enabled,
+            muted: false,
+            tone: ToneRef::new(87, 93, 60, None),
+            key_low: 0,
+            key_high: 127,
+            velocity_low: 1,
+            velocity_high: 127,
+            level: 100,
+            pan: 0,
+            transpose: 0,
+            octave: 0,
+            midi_channel: 0,
+            arpeggio: false,
+        }
+    }
+
+    fn scene(zones: Vec<Zone>, groups: Vec<KeyboardGroup>) -> Scene {
+        Scene {
+            name: "Test".into(),
+            comment: String::new(),
+            tempo: 12000,
+            level: 100,
+            zones,
+            groups,
+        }
+    }
+
+    #[test]
+    fn an_untouched_zone_is_told_from_one_that_was_silenced() {
+        let untouched = zone(0, false);
+        assert!(untouched.is_at_factory_default());
+
+        // One setting away from the default is enough: somebody configured this and switched it off.
+        let mut silenced = zone(1, false);
+        silenced.key_high = 71;
+        assert!(!silenced.is_at_factory_default());
+
+        let scene = scene(vec![untouched, silenced], Vec::new());
+        assert_eq!(scene.zone_state(&scene.zones[0]), ZoneState::Unused);
+        assert_eq!(scene.zone_state(&scene.zones[1]), ZoneState::Off);
+    }
+
+    #[test]
+    fn a_grouped_zone_is_part_of_the_performance_though_switched_off() {
+        let mut split = zone(2, false);
+        split.key_low = 60;
+        let scene = scene(
+            vec![zone(0, true), zone(1, false), split],
+            vec![KeyboardGroup {
+                number: 2,
+                zones: vec![1, 3],
+            }],
+        );
+
+        assert_eq!(scene.zone_state(&scene.zones[0]), ZoneState::On);
+        // Zone 2 is in no group and never configured.
+        assert_eq!(scene.zone_state(&scene.zones[1]), ZoneState::Unused);
+        // Zone 3 is off now, but group 2 switches it on.
+        assert_eq!(scene.zone_state(&scene.zones[2]), ZoneState::Grouped);
+        assert_eq!(scene.groups_containing(3), vec![2]);
+        assert!(scene.groups_containing(2).is_empty());
+    }
+
+    #[test]
+    fn only_an_unused_zone_is_left_out_of_a_package() {
+        // Everything a control can bring back has to travel with the scene.
+        assert!(ZoneState::On.is_played());
+        assert!(ZoneState::Muted.is_played());
+        assert!(ZoneState::Grouped.is_played());
+        assert!(ZoneState::Off.is_played());
+        assert!(!ZoneState::Unused.is_played());
+    }
+
+    #[test]
+    fn a_muted_zone_is_still_switched_on() {
+        let mut muted = zone(0, true);
+        muted.muted = true;
+        let scene = scene(vec![muted], Vec::new());
+        assert_eq!(scene.zone_state(&scene.zones[0]), ZoneState::Muted);
     }
 }
 

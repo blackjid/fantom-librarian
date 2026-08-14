@@ -14,7 +14,7 @@ use binrw::BinRead as _;
 
 use crate::address::{self, AreaSpec};
 use crate::container::{ascii_trim, Raw, RawZone, RecordTable, Svd, ZoneSettings};
-use crate::model::{Scene, ToneRef, ToneType, Zone};
+use crate::model::{KeyboardGroup, Scene, ToneRef, ToneType, Zone};
 use crate::params;
 use crate::{Error, Result};
 
@@ -137,9 +137,68 @@ pub fn read_scenes(raw: &Raw) -> Result<Vec<Scene>> {
                     .and_then(|b| b.read(record, "Scene_Level"))
                     .unwrap_or(0) as u8,
                 zones: read_zones(record, Some(&resolver))?,
+                groups: read_keyboard_groups(record),
             })
         })
         .collect()
+}
+
+/// How many keyboard switch groups a scene stores, one per pad.
+const KEYBOARD_GROUPS: u8 = 16;
+
+/// The keyboard switch groups a scene actually configures.
+///
+/// Each group is a 16-bit mask over the scene's zones. The factory leaves group *n* holding only
+/// zone *n*, which says nothing — pressing that pad simply plays that zone alone. Such a group is
+/// dropped, **individually**: a scene that sets up group 1 as a four-zone split leaves the other
+/// fifteen at their defaults, and reading those as configured would mark a dozen untouched zones
+/// as part of the performance.
+///
+/// A group a user deliberately sets to a single zone is indistinguishable from the default and
+/// reads as unconfigured. That costs nothing: it selects the same zone either way.
+///
+/// Four scenes in five across a corpus of backups and commercial packs configure no group at all;
+/// the fifth uses them to hold several arrangements in one scene.
+fn read_keyboard_groups(record: &[u8]) -> Vec<KeyboardGroup> {
+    let Some(controller) = SCENE_INSTANCE_CONTROLLER.get_or_init(find_controller) else {
+        return Vec::new();
+    };
+
+    let mut groups = Vec::new();
+    for index in 0..KEYBOARD_GROUPS {
+        let id = format!("Keyboard_Switch_Group{}", index + 1);
+        let Some(param) = controller.block.param(&id) else {
+            return Vec::new();
+        };
+        let at = controller.byte_offset as usize + param.byte_offset as usize;
+        let Some(bytes) = record.get(at..at + 2) else {
+            return Vec::new();
+        };
+        let mask = u16::from_le_bytes([bytes[0], bytes[1]]);
+
+        // Empty, or holding exactly its own zone: the default, and no information either way.
+        if mask == 0 || mask == 1u16 << index {
+            continue;
+        }
+        groups.push(KeyboardGroup {
+            number: index + 1,
+            zones: (0..ZONE_COUNT as u8)
+                .filter(|zone| mask & (1u16 << zone) != 0)
+                .map(|zone| zone + 1)
+                .collect(),
+        });
+    }
+    groups
+}
+
+/// The scene-level controller block, looked up once by name rather than by a hard-coded offset.
+static SCENE_INSTANCE_CONTROLLER: std::sync::OnceLock<Option<&'static params::Instance>> =
+    std::sync::OnceLock::new();
+
+fn find_controller() -> Option<&'static params::Instance> {
+    params::scene::SCENE
+        .iter()
+        .find(|instance| instance.block.name == "Scene Controller")
 }
 
 /// Area-relative offset and byte slice of each non-empty scene record in the PRFa `area`, in file
@@ -396,6 +455,75 @@ fn read_u32(bytes: &[u8], at: usize) -> Result<u32> {
         .get(at..at + 4)
         .ok_or_else(|| Error::Unrecognized(format!("PRFa area truncated at offset {at}")))?;
     Ok(u32::from_le_bytes(slice.try_into().unwrap()))
+}
+
+#[cfg(test)]
+mod keyboard_group_tests {
+    use super::*;
+
+    /// A scene record with the given group masks written into the controller block.
+    fn record_with(masks: &[(u8, u16)]) -> Vec<u8> {
+        let controller = find_controller().expect("Scene Controller instance");
+        let mut record = vec![0u8; 3572];
+        // Start every group at its default so only the listed ones differ.
+        for index in 0..KEYBOARD_GROUPS {
+            write_group(&mut record, controller, index, 1u16 << index);
+        }
+        for (number, mask) in masks {
+            write_group(&mut record, controller, number - 1, *mask);
+        }
+        record
+    }
+
+    fn write_group(record: &mut [u8], controller: &params::Instance, index: u8, mask: u16) {
+        let id = format!("Keyboard_Switch_Group{}", index + 1);
+        let param = controller.block.param(&id).expect("group param");
+        let at = controller.byte_offset as usize + param.byte_offset as usize;
+        record[at..at + 2].copy_from_slice(&mask.to_le_bytes());
+    }
+
+    #[test]
+    fn a_scene_at_the_factory_default_reports_no_groups() {
+        assert!(read_keyboard_groups(&record_with(&[])).is_empty());
+    }
+
+    /// The bug this guards: one configured group used to make the other fifteen — still at their
+    /// defaults — read as configured too, which marked a dozen untouched zones as part of the
+    /// performance and dragged the factory piano into the scene's dependency list.
+    #[test]
+    fn a_default_group_is_dropped_even_beside_a_configured_one() {
+        // Group 1 becomes a four-zone split; groups 2..16 keep holding only their own zone.
+        let groups = read_keyboard_groups(&record_with(&[(1, 0b1111)]));
+        assert_eq!(
+            groups.len(),
+            1,
+            "only the configured group counts: {groups:?}"
+        );
+        assert_eq!(groups[0].number, 1);
+        assert_eq!(groups[0].zones, vec![1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn several_configured_groups_are_all_reported() {
+        let groups = read_keyboard_groups(&record_with(&[
+            (1, 0b0000_0001_0000_1111),
+            (2, 0b1100_0010),
+        ]));
+        assert_eq!(groups.len(), 2);
+        assert_eq!(groups[0].zones, vec![1, 2, 3, 4, 9]);
+        assert_eq!(groups[1].zones, vec![2, 7, 8]);
+    }
+
+    #[test]
+    fn an_empty_group_says_nothing() {
+        let groups = read_keyboard_groups(&record_with(&[(3, 0)]));
+        assert!(groups.is_empty());
+    }
+
+    #[test]
+    fn a_truncated_record_yields_no_groups_rather_than_panicking() {
+        assert!(read_keyboard_groups(&[0u8; 16]).is_empty());
+    }
 }
 
 #[cfg(test)]
