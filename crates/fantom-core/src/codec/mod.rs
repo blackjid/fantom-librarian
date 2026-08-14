@@ -143,6 +143,59 @@ pub fn read_scenes(raw: &Raw) -> Result<Vec<Scene>> {
         .collect()
 }
 
+/// The bytes that decide whether two scenes are the same performance.
+///
+/// A scene stores each user tone as a **slot number** into its file's engine banks, and
+/// repackaging renumbers those slots densely (see [`crate::repackage`]). So the same scene
+/// imported from two backups differs in bytes while being the same scene — the tones simply landed
+/// somewhere else. Comparing records directly reports those as different material.
+///
+/// This substitutes the *referenced record* for the slot number: identical output means the same
+/// performance playing the same tones, wherever they happen to sit. A factory reference is left
+/// exactly as it is, because its address is absolute and names a sound inside the instrument.
+///
+/// Substituting the tone's bytes rather than its name is deliberate. Names collide — a corpus of
+/// backups and commercial packs holds 17 cases of two genuinely different tones sharing a name
+/// inside one bank — and matching on one would merge scenes that are not the same.
+///
+/// The result is meant for hashing or equality, not for reading; its layout is not a file format.
+pub fn scene_fingerprint(raw: &Raw, record: &[u8]) -> Vec<u8> {
+    let mut normalised = record.to_vec();
+    let mut dependencies: Vec<u8> = Vec::new();
+    let svd = Svd::parse(raw).ok();
+
+    for slot in 0..ZONE_COUNT {
+        let at = ZoneSettings::TABLE_OFFSET + slot * ZoneSettings::LEN;
+        let Some(addr) = record.get(at..at + 3) else {
+            continue;
+        };
+        let Some((spec, index)) = address::resolve(addr[0], addr[1], addr[2]) else {
+            // Factory, expansion, or unrecognised: the address means the same thing everywhere.
+            continue;
+        };
+
+        // Blank the slot number so where the tone landed cannot affect the result.
+        normalised[at..at + 3].fill(0);
+
+        // Fold in what it pointed at, never where it sat.
+        dependencies.extend_from_slice(&spec.tag);
+        match svd
+            .as_ref()
+            .and_then(|svd| RecordTable::from_svd(raw, svd, &spec.tag).ok().flatten())
+            .and_then(|table| table.record(index).map(<[u8]>::to_vec))
+        {
+            Some(bytes) => dependencies.extend_from_slice(&bytes),
+            // The bundle is missing the record. There is nothing to compare, so fall back to the
+            // index — it keeps two different dangling references apart, which is the best that can
+            // be said about either of them.
+            None => dependencies.extend_from_slice(&(index as u32).to_le_bytes()),
+        }
+    }
+
+    normalised.extend_from_slice(&dependencies);
+    normalised
+}
+
 /// How many keyboard switch groups a scene stores, one per pad.
 const KEYBOARD_GROUPS: u8 = 16;
 
@@ -455,6 +508,132 @@ fn read_u32(bytes: &[u8], at: usize) -> Result<u32> {
         .get(at..at + 4)
         .ok_or_else(|| Error::Unrecognized(format!("PRFa area truncated at offset {at}")))?;
     Ok(u32::from_le_bytes(slice.try_into().unwrap()))
+}
+
+#[cfg(test)]
+mod fingerprint_tests {
+    use super::tests::build_svd;
+    use super::*;
+
+    /// A `PATa` bank whose records differ only in the name they carry.
+    fn tone_bank(names: &[&str]) -> Vec<u8> {
+        let record_size = 1632;
+        let mut area = Vec::new();
+        area.extend_from_slice(&(names.len() as u32).to_le_bytes());
+        area.extend_from_slice(&(record_size as u32).to_le_bytes());
+        area.extend_from_slice(&[0u8; 8]);
+        for name in names {
+            let mut record = vec![0u8; record_size];
+            let bytes = name.as_bytes();
+            record[..bytes.len()].copy_from_slice(bytes);
+            area.extend_from_slice(&record);
+        }
+        area
+    }
+
+    /// A scene record whose zone 1 points at `pc` in the ZEN-Core user bank.
+    fn scene_pointing_at(pc: u8) -> Vec<u8> {
+        let mut record = vec![0u8; 3572];
+        // An unnamed slot is padding, and `scene_records` skips it.
+        record[..9].copy_from_slice(b"Dont You ");
+        let at = ZoneSettings::TABLE_OFFSET;
+        record[at] = ZEN_CORE_MSB;
+        record[at + 1] = 0;
+        record[at + 2] = pc;
+        record
+    }
+
+    fn svd_with(bank: &[u8], scene: &[u8]) -> Raw {
+        let mut prfa = Vec::new();
+        prfa.extend_from_slice(&1u32.to_le_bytes());
+        prfa.extend_from_slice(&(scene.len() as u32).to_le_bytes());
+        prfa.extend_from_slice(&[0u8; 8]);
+        prfa.extend_from_slice(scene);
+        build_svd(&[
+            (b"PRFa", b"KY19", prfa.as_slice()),
+            (b"PATa", b"KY19", bank),
+        ])
+    }
+
+    /// The point of the whole exercise: repackaging renumbers a scene's user tones, and the same
+    /// scene from two backups must still read as one library item.
+    #[test]
+    fn a_renumbered_dependency_does_not_change_the_fingerprint() {
+        // The same tone sits at index 2 in one file and index 5 in the other.
+        let a = svd_with(
+            &tone_bank(&["x", "x", "Dont You Pad"]),
+            &scene_pointing_at(2),
+        );
+        let b = svd_with(
+            &tone_bank(&["y", "y", "y", "y", "y", "Dont You Pad"]),
+            &scene_pointing_at(5),
+        );
+
+        let ra = read_scene_records(&a).unwrap()[0];
+        let rb = read_scene_records(&b).unwrap()[0];
+        assert_ne!(ra, rb, "the stored records differ, which is the problem");
+        assert_eq!(
+            scene_fingerprint(&a, ra),
+            scene_fingerprint(&b, rb),
+            "the same scene playing the same tone must fingerprint alike"
+        );
+    }
+
+    /// The safeguard: two tones can share a name, so the referenced *bytes* decide, not the label.
+    #[test]
+    fn a_different_tone_under_the_same_name_still_differs() {
+        let mut same_name_other_tone = tone_bank(&["x", "x", "Dont You Pad"]);
+        // Change the sound without changing the name.
+        let last = same_name_other_tone.len() - 1;
+        same_name_other_tone[last] = 0x7f;
+
+        let a = svd_with(
+            &tone_bank(&["x", "x", "Dont You Pad"]),
+            &scene_pointing_at(2),
+        );
+        let b = svd_with(&same_name_other_tone, &scene_pointing_at(2));
+
+        assert_ne!(
+            scene_fingerprint(&a, read_scene_records(&a).unwrap()[0]),
+            scene_fingerprint(&b, read_scene_records(&b).unwrap()[0]),
+        );
+    }
+
+    /// Anything that is not a dependency slot still counts, or the fingerprint would merge scenes
+    /// that genuinely sound different.
+    #[test]
+    fn an_edited_setting_still_changes_the_fingerprint() {
+        let bank = tone_bank(&["x", "x", "Dont You Pad"]);
+        let quiet = scene_pointing_at(2);
+        let mut loud = quiet.clone();
+        // Zone 1's level lives in its settings record, well away from the tone address.
+        loud[ZoneSettings::TABLE_OFFSET + 7] = 0x7f;
+
+        let a = svd_with(&bank, &quiet);
+        let b = svd_with(&bank, &loud);
+        assert_ne!(
+            scene_fingerprint(&a, read_scene_records(&a).unwrap()[0]),
+            scene_fingerprint(&b, read_scene_records(&b).unwrap()[0]),
+        );
+    }
+
+    /// A factory address means the same sound on every instrument, so it is left alone.
+    #[test]
+    fn a_factory_reference_is_kept_verbatim() {
+        let bank = tone_bank(&["x"]);
+        let mut preset = vec![0u8; 3572];
+        preset[..9].copy_from_slice(b"Dont You ");
+        let at = ZoneSettings::TABLE_OFFSET;
+        preset[at] = ZEN_CORE_MSB;
+        preset[at + 1] = address::FIRST_PRESET_LSB;
+        preset[at + 2] = 7;
+
+        let raw = svd_with(&bank, &preset);
+        let fingerprint = scene_fingerprint(&raw, read_scene_records(&raw).unwrap()[0]);
+        // The address survives into the fingerprint rather than being blanked.
+        assert_eq!(fingerprint[at + 1], address::FIRST_PRESET_LSB);
+        assert_eq!(fingerprint[at + 2], 7);
+    }
 }
 
 #[cfg(test)]
@@ -782,7 +961,7 @@ mod tests {
 
     /// Lay out `areas` (tag, format, body) as a full SVD5 file: header, area table, then bodies
     /// back to back. Mirrors the confirmed FANTOM-6 envelope (see `container::svd`).
-    fn build_svd(areas: &[(&[u8; 4], &[u8; 4], &[u8])]) -> Raw {
+    pub(super) fn build_svd(areas: &[(&[u8; 4], &[u8; 4], &[u8])]) -> Raw {
         let table_len = areas.len() * 16;
         let header_size = 14 + table_len as u16;
 

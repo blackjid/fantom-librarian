@@ -187,7 +187,9 @@ fn catalogue(
             let detail = scene_detail(scene);
             let candidate = Candidate {
                 kind: AssetKind::Scene,
-                identity: identity_hash("scene", b"PRFa", record),
+                // Fingerprinted rather than hashed raw: a scene whose user tones were renumbered
+                // by repackaging is still the same scene.
+                identity: identity_hash("scene", b"PRFa", &codec::scene_fingerprint(raw, record)),
                 name: scene.name.clone(),
                 memo: scene.comment.clone(),
                 engine: detail
