@@ -168,8 +168,14 @@ export default function App() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
+      {/*
+        `deep` rather than a bare attribute: bare means only a click landing on the header element
+        *itself* drags, so a drag starting on the workspace name hit a span and did nothing — the
+        window appeared draggable only while in the background, where macOS moves it for us.
+        Clickable children still block the drag, so the menu button remains a button.
+      */}
       <header
-        data-tauri-drag-region
+        data-tauri-drag-region="deep"
         className="flex h-11 shrink-0 items-center gap-3 border-b pr-3 pl-20"
       >
         <span className="text-sm font-medium">{workspace.name}</span>
