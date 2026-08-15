@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
+import { open } from "@tauri-apps/plugin-dialog";
 import { FolderOpen, Settings2 } from "lucide-react";
 import {
   api,
   message,
+  onMenu,
   type Asset,
   type ImportReport,
   type KindCounts,
@@ -48,10 +50,58 @@ export default function App() {
   const [selected, setSelected] = useState<Asset | null>(null);
   const [selectedSong, setSelectedSong] = useState<number | null>(null);
 
+  const searchRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [report, setReport] = useState<ImportReport | null>(null);
+
+  const pickWorkspace = useCallback(async () => {
+    const picked = await open({ directory: true, multiple: false, title: "Open a library" });
+    if (typeof picked !== "string") return;
+    try {
+      setWorkspace(await api.openWorkspace(picked, !(await api.isWorkspace(picked))));
+      setSelected(null);
+      setScope({ view: "library" });
+    } catch (e) {
+      setError(message(e));
+    }
+  }, []);
+
+  const closeWorkspace = useCallback(async () => {
+    await api.closeWorkspace();
+    setWorkspace(null);
+    setSelected(null);
+    setAssets([]);
+  }, []);
+
+  // Menu items do nothing of their own; they reach the same handlers the window uses.
+  useEffect(() => {
+    const unlisten = onMenu((action) => {
+      switch (action) {
+        case "import":
+          setImporting(true);
+          break;
+        case "open-library":
+          void pickWorkspace();
+          break;
+        case "close-library":
+          void closeWorkspace();
+          break;
+        case "reveal-library":
+          if (workspace) void revealItemInDir(workspace.path);
+          break;
+        case "find":
+          setScope((current) => (current.view === "songs" ? { view: "library" } : current));
+          searchRef.current?.focus();
+          searchRef.current?.select();
+          break;
+      }
+    });
+    return () => {
+      void unlisten.then((off) => off());
+    };
+  }, [pickWorkspace, closeWorkspace, workspace?.path]);
 
   // Reopen last session's library, so the app lands where it was left.
   useEffect(() => {
@@ -202,14 +252,7 @@ export default function App() {
                   <FolderOpen />
                   Reveal library folder
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={async () => {
-                    await api.closeWorkspace();
-                    setWorkspace(null);
-                    setSelected(null);
-                    setAssets([]);
-                  }}
-                >
+                <DropdownMenuItem onSelect={() => void closeWorkspace()}>
                   Close library
                 </DropdownMenuItem>
               </DropdownMenuGroup>
@@ -267,6 +310,7 @@ export default function App() {
               onClearTag={(tag) => setActiveTags((c) => c.filter((t) => t !== tag))}
               title={heading.title}
               subtitle={heading.subtitle}
+              searchRef={searchRef}
             />
             {selected ? (
               <AssetDetail asset={selected} onChanged={onChanged} />

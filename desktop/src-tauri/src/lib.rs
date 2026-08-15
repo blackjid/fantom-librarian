@@ -13,6 +13,8 @@ use fantom_library::{workspace, Workspace};
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
 
+mod menu;
+
 /// The single open workspace, or none before one is chosen.
 #[derive(Default)]
 struct AppState {
@@ -320,9 +322,30 @@ fn recent(app: &tauri::AppHandle) -> Option<PathBuf> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+
+    // A second copy of the app would open the same SQLite catalog behind the first one's back, so
+    // a second launch raises the window that is already running instead.
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+        if let Some(window) = app.get_webview_window("main") {
+            let _ = window.unminimize();
+            let _ = window.set_focus();
+        }
+    }));
+
+    // Remember where the window was and how big, which every desktop app is expected to do.
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_window_state::Builder::default().build());
+
+    builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .setup(|app| {
+            app.set_menu(menu::build(app.handle())?)?;
+            Ok(())
+        })
+        .on_menu_event(|app, event| menu::on_event(app, event.id().as_ref()))
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
             open_workspace,

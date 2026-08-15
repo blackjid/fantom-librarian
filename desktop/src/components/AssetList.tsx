@@ -39,6 +39,7 @@ export function AssetList({
   onClearTag,
   title,
   subtitle,
+  searchRef,
 }: {
   assets: Asset[];
   loading: boolean;
@@ -53,6 +54,8 @@ export function AssetList({
   onClearTag: (tag: string) => void;
   title: string;
   subtitle?: string;
+  /** Lets the Find menu item put the caret in the search box. */
+  searchRef?: React.RefObject<HTMLInputElement | null>;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -133,6 +136,7 @@ export function AssetList({
         <div className="relative">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
+            ref={searchRef}
             value={search}
             onChange={(e) => onSearch(e.target.value)}
             placeholder="Search names and notes…"

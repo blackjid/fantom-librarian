@@ -6,6 +6,7 @@
  * shape changes there is exactly one file to fix.
  */
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 
 export type AssetKind = "scene" | "tone";
 export type FileStatus = "ok" | "invalid";
@@ -254,4 +255,22 @@ export function message(error: unknown): string {
   if (typeof error === "string") return error;
   if (error instanceof Error) return error.message;
   return String(error);
+}
+
+/** Menu items that stand in for something the window can already do. */
+export type MenuAction =
+  | "open-library"
+  | "close-library"
+  | "import"
+  | "reveal-library"
+  | "find";
+
+/**
+ * Run `handler` when a menu item is chosen.
+ *
+ * The menu emits rather than acting, so a shortcut and a button end up in the same code. Returns
+ * the unsubscribe function Tauri hands back.
+ */
+export function onMenu(handler: (action: MenuAction) => void) {
+  return listen<MenuAction>("menu", (event) => handler(event.payload));
 }
