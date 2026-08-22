@@ -15,6 +15,7 @@
 //! - [`role`] — what a file is *for*: a backup and a scene export are both `SVD5`.
 //! - [`requirements`] — the dependency closure as a value: what material needs from its destination.
 //! - [`tonebank`] — repackaging SVZ tone banks, which carry their samples.
+//! - [`convert`] — SVD to SVZ: lifting a user tone out of a backup with the audio it plays.
 //! - [`samplebank`] — building a sample-only SVZ, the one container that moves user audio.
 //! - [`checksum`] / [`verify`] — the CRC-32 Roland stores per record, and checking a file against it.
 //!
@@ -27,6 +28,7 @@ pub mod address;
 pub mod checksum;
 pub mod codec;
 pub mod container;
+pub mod convert;
 pub mod diff;
 pub mod model;
 pub mod params;

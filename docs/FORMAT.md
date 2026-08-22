@@ -743,9 +743,21 @@ dependencies. Verified against `EXPORT_Z-Core.svz` (10 ZEN-Core tones), `Z-Core_
 |-----|------|-------|-------|
 | 0x00 | 4 | magic | `SVZa` — no u16 length prefix, unlike SVD5 |
 | 0x04 | 1 | area count | 2, 3, 4 across the three fixtures, matching their area tables |
-| 0x05 | 1 | revision | 2 on the older export, 3 on both 2026 ones |
+| 0x05 | 1 | revision | the area count, less one when the file holds both tones and audio |
 | 0x06 | 6 | stamp | `KY019$` |
 | 0x0c | 4 | reserved | zeros |
+
+The revision byte tracks the file's shape, not a version anyone chose. Six instrument-written
+fixtures agree:
+
+| areas | count | revision |
+|-------|-------|----------|
+| `DIFa,PATa` | 2 | 2 |
+| `DIFa,RHYa,INSa` | 3 | 3 |
+| `DIFa,USPa,USDa` | 3 | 3 |
+| `DIFa,PATa,USPa,USDa` | 4 | 3 |
+| `DIFa,RHYa,INSa,USPa,USDa` | 5 | 4 |
+| `DIFa,PATa,USPa,MSPa,USDa` | 5 | 4 |
 
 The area table entries and the `format` stamp work as in SVD5, with `ZCOR` (ZEN-Core) in place of
 `KY19`. Areas seen: `DIFa`, `PATa`, `RHYa`+`INSa`, `USPa`, `USDa`.
@@ -913,6 +925,27 @@ because a reference that cannot be found cannot be rewritten. The CLI reports it
 banks that carry *different* samples is refused for the same reason: their slots collide and nothing
 can be repointed. The rule lives in `AreaSpec::sample_refs_decoded`, so decoding the `INSa` group
 field later is a one-line change to what the repackager is allowed to do.
+
+### SVD → SVZ: a tone leaves a backup — CONFIRMED
+
+**A tone record is the same bytes in both envelopes.** The only field that changes is a sample
+reference, which becomes the sample's position in the new file. `T8_MSMP_TONE.svz` and the backup
+from the same instrument hold `Beat It Gong` identically but for one byte: partial 0's right wave
+number, `22` in the backup and `2` in the export.
+
+**An `MSPa` record is an `MLSa` record**, same 1040 bytes, with the per-key sample numbers
+renumbered the same way. **`USPa`/`USDa` are built from `SMPa`/`SMPd` by the sample-file rules
+above** — a tone export's sample half is byte for byte what a sample-only export carries.
+
+So the conversion is: copy the records, renumber what travels (samples and multisamples densely
+from 1, in slot order), and lay out the envelope. `crate::convert` does that, and rebuilding three
+instrument-written exports from one backup reproduces each byte for byte apart from the `KY019$`
+stamp: `T8_MSMP_TONE.svz` (two tones, a multisample, 7 MB of audio), `T9_BACK.svz` (one multisampled
+tone), and `DRUM_BEFORE.svz` (a drum kit with no sample areas at all).
+
+It is limited to `PATa` and `RHYa`+`INSa` for the reason repackaging is: an engine whose sample
+references are undecoded cannot be carried without either dropping audio or copying a backup's
+entire sample bank.
 
 ## SysEx — CONFIRMED (FANTOM-6)
 

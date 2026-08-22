@@ -12,7 +12,8 @@
 //! `2023.4.8+topandprisma` backup hold the same 50 recordings, so the two shapes could be diffed
 //! field by field. All 50 agree.
 
-use crate::container::{Raw, RecordTable, Svd, PREAMBLE_LEN};
+use crate::container::{Raw, RecordTable, Svd};
+use crate::tonebank::BuiltArea;
 use crate::{Error, Result};
 
 /// `USPa` record length. `SMPa`'s is 84.
@@ -90,7 +91,29 @@ pub fn export_samples(source: &Raw, slots: &[usize]) -> Result<Raw> {
         ));
     }
     let svd = Svd::parse(source)?;
-    let samples = collect(source, &svd, slots)?;
+    let mut areas = vec![dif_area()];
+    areas.extend(sample_areas(source, &svd, slots)?);
+
+    let order: Vec<[u8; 4]> = areas.iter().map(|(tag, _, _)| *tag).collect();
+    crate::tonebank::assemble(&crate::tonebank::preamble(&order), &AREA_ORDER, areas)
+}
+
+/// `DIFa`, which every SVZ opens with.
+pub(crate) fn dif_area() -> BuiltArea {
+    (
+        *b"DIFa",
+        FORMAT,
+        crate::tonebank::record_area(&[&[0u8; DIF_LEN]], DIF_LEN),
+    )
+}
+
+/// The `USPa` slot table and `USDa` audio carrying `slots` out of a backup, numbered densely from
+/// zero in the order given.
+///
+/// This is the sample half of *any* SVZ built from a backup — on its own it is a sample companion,
+/// beside a tone area it is a self-contained tone export (see [`crate::convert`]).
+pub(crate) fn sample_areas(source: &Raw, svd: &Svd, slots: &[usize]) -> Result<Vec<BuiltArea>> {
+    let samples = collect(source, svd, slots)?;
 
     let usp: Vec<Vec<u8>> = samples.iter().map(|s| usp_record(s.smpa)).collect();
     let sections: Vec<(u32, Vec<u8>)> = samples
@@ -98,12 +121,14 @@ pub fn export_samples(source: &Raw, slots: &[usize]) -> Result<Raw> {
         .map(|s| Ok((section_id(s.section)?, svz_section(s.section)?)))
         .collect::<Result<_>>()?;
 
-    let areas = vec![
-        (*b"DIFa", FORMAT, record_area(&[&[0u8; DIF_LEN]], DIF_LEN)),
+    Ok(vec![
         (
             *b"USPa",
             FORMAT,
-            record_area(&usp.iter().map(Vec::as_slice).collect::<Vec<_>>(), USP_LEN),
+            crate::tonebank::record_area(
+                &usp.iter().map(Vec::as_slice).collect::<Vec<_>>(),
+                USP_LEN,
+            ),
         ),
         (
             *b"USDa",
@@ -115,8 +140,7 @@ pub fn export_samples(source: &Raw, slots: &[usize]) -> Result<Raw> {
                     .map(|(i, (id, bytes))| (i as u32, *id, bytes.as_slice())),
             )?,
         ),
-    ];
-    crate::tonebank::assemble(&preamble(areas.len()), &AREA_ORDER, areas)
+    ])
 }
 
 /// Look up each requested slot's `SMPa` record and `SMPd` section.
@@ -229,33 +253,6 @@ fn svz_section(section: &[u8]) -> Result<Vec<u8>> {
         .copy_from_slice(&section[smpd::backup::NAME..smpd::backup::NAME + NAME_LEN]);
     out[smpd::svz::AUDIO..].copy_from_slice(audio);
     Ok(out)
-}
-
-/// Lay out a fixed-stride area with a CRC-32 per record, the way every SVZ area is built.
-fn record_area(records: &[&[u8]], record_size: usize) -> Vec<u8> {
-    let info_len = RecordTable::HEADER_LEN + records.len() * 4;
-    let mut body = Vec::with_capacity(info_len + records.len() * record_size);
-    body.extend_from_slice(&(records.len() as u32).to_le_bytes());
-    body.extend_from_slice(&(record_size as u32).to_le_bytes());
-    body.extend_from_slice(&(info_len as u32).to_le_bytes());
-    body.extend_from_slice(&[0u8; 4]);
-    for record in records {
-        body.extend_from_slice(&crate::checksum::crc32(record).to_le_bytes());
-    }
-    for record in records {
-        body.extend_from_slice(record);
-    }
-    body
-}
-
-/// `SVZa`, the area count, revision 3, and the `KY019$` stamp the instrument writes.
-fn preamble(areas: usize) -> [u8; PREAMBLE_LEN] {
-    let mut out = [0u8; PREAMBLE_LEN];
-    out[..4].copy_from_slice(b"SVZa");
-    out[4] = areas as u8;
-    out[5] = 3;
-    out[6..12].copy_from_slice(b"KY019$");
-    out
 }
 
 fn read_u32(bytes: &[u8], at: usize) -> Result<u32> {

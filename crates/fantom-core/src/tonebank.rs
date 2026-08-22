@@ -31,6 +31,8 @@ const HEADER_LEN: usize = RecordTable::HEADER_LEN;
 const DIRECTORY_ENTRY: usize = 16;
 /// Byte at `0x04` of the preamble: how many areas the file has.
 const AREA_COUNT_BYTE: usize = 0x04;
+/// Byte at `0x05`: the shape revision. See [`preamble`].
+const REVISION_BYTE: usize = 0x05;
 /// A four-byte per-record info word is that record's CRC-32.
 const CHECKSUM_LEN: usize = 4;
 
@@ -700,6 +702,57 @@ pub(crate) fn build_waveform_area<'a>(
     Ok(body)
 }
 
+/// One area of a file being built: its tag, its `format` stamp, and its body.
+pub(crate) type BuiltArea = ([u8; 4], [u8; 4], Vec<u8>);
+
+/// Lay out a fixed-stride area with a CRC-32 per record, the way every SVZ area is built.
+pub(crate) fn record_area(records: &[&[u8]], record_size: usize) -> Vec<u8> {
+    let info_len = HEADER_LEN + records.len() * CHECKSUM_LEN;
+    let mut body = Vec::with_capacity(info_len + records.len() * record_size);
+    body.extend_from_slice(&(records.len() as u32).to_le_bytes());
+    body.extend_from_slice(&(record_size as u32).to_le_bytes());
+    body.extend_from_slice(&(info_len as u32).to_le_bytes());
+    body.extend_from_slice(&[0u8; 4]);
+    for record in records {
+        body.extend_from_slice(&crc32(record).to_le_bytes());
+    }
+    for record in records {
+        body.extend_from_slice(record);
+    }
+    body
+}
+
+/// The 16-byte preamble of an SVZ built from parts: magic, area count, revision, and the stamp.
+///
+/// The revision byte is not a version anyone chose — it tracks the file's *shape*, and every
+/// instrument-written fixture agrees on the same rule. Counting areas gets it right except when a
+/// bank carries both tones and their audio, where the audio counts with the slot table rather than
+/// on its own:
+///
+/// | areas | count | revision |
+/// |-------|-------|----------|
+/// | `DIFa,PATa` | 2 | 2 |
+/// | `DIFa,RHYa,INSa` | 3 | 3 |
+/// | `DIFa,USPa,USDa` | 3 | 3 |
+/// | `DIFa,PATa,USPa,USDa` | 4 | 3 |
+/// | `DIFa,RHYa,INSa,USPa,USDa` | 5 | 4 |
+/// | `DIFa,PATa,USPa,MSPa,USDa` | 5 | 4 |
+///
+/// The last stamp byte is an OS-era marker the instrument copies out of `SYSa` — `$` on every older
+/// fixture, `%` on the one that wrote it most recently. Files carrying `$` import and play (see
+/// `docs/FORMAT.md`), so this writes what it has always written.
+pub(crate) fn preamble(order: &[[u8; 4]]) -> [u8; PREAMBLE_LEN] {
+    let has = |tag: &[u8; 4]| order.contains(tag);
+    let sampled_tones = has(b"USDa") && crate::address::AREAS.iter().any(|spec| has(&spec.tag));
+
+    let mut out = [0u8; PREAMBLE_LEN];
+    out[..4].copy_from_slice(b"SVZa");
+    out[AREA_COUNT_BYTE] = order.len() as u8;
+    out[REVISION_BYTE] = (order.len() - usize::from(sampled_tones)) as u8;
+    out[6..12].copy_from_slice(b"KY019$");
+    out
+}
+
 /// Write the preamble, area table, and bodies of a new SVZ, keeping the source's area order.
 ///
 /// The result is checked before it is returned: every record must match the checksum written
@@ -709,7 +762,7 @@ pub(crate) fn build_waveform_area<'a>(
 pub(crate) fn assemble(
     preamble: &[u8; PREAMBLE_LEN],
     order: &[[u8; 4]],
-    mut areas: Vec<([u8; 4], [u8; 4], Vec<u8>)>,
+    mut areas: Vec<BuiltArea>,
 ) -> Result<Raw> {
     let rank = |tag: &[u8; 4]| order.iter().position(|t| t == tag).unwrap_or(usize::MAX);
     areas.sort_by_key(|(tag, _, _)| rank(tag));
