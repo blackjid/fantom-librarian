@@ -166,7 +166,7 @@ fn read_sections<'a>(raw: &'a Raw, svd: &Svd) -> Result<Vec<(usize, &'a [u8])>> 
     };
 
     let mut out = Vec::new();
-    for entry in body.chunks_exact(8) {
+    for entry in body.as_chunks::<8>().0 {
         let slot = u32::from_le_bytes(entry[..4].try_into().unwrap());
         let offset = u32::from_le_bytes(entry[4..].try_into().unwrap()) as usize;
         if slot == u32::MAX {
