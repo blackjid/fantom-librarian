@@ -5,6 +5,14 @@ on:
     branches: ["**"]
   pull_request:
 
+# A second push to the same branch makes the run already in flight irrelevant.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings
@@ -13,13 +21,10 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-
-      - uses: Swatinem/rust-cache@v2
+      # Channel and components come from rust-toolchain.toml. Caching is part of this action.
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
 
       # The desktop crate links against the system webview, and fantom-midi against ALSA. macOS is
       # the release target, but the workspace has to keep compiling here or the shared library
@@ -35,15 +40,16 @@ jobs:
       - name: Format
         run: cargo fmt --all --check
 
+      # `--locked` fails the run rather than resolving a dependency the lockfile does not name.
       - name: Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
       # Runs the committed fixtures in fixtures/ and every unit test. The private corpus
       # (fixtures-local/) is never available here and its tests skip by design — see
       # fixtures/README.md. Tests reaching for a committed fixture fail rather than skip,
       # so this job cannot pass by testing nothing.
       - name: Test
-        run: cargo test --workspace
+        run: cargo test --workspace --locked
 
   desktop:
     runs-on: ubuntu-latest
@@ -51,13 +57,14 @@ jobs:
       run:
         working-directory: desktop
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
+      # The pnpm version is the `packageManager` field of the manifest this points at.
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: desktop/package.json
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
