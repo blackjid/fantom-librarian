@@ -1,0 +1,41 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits",
+  ],
+  enabledManagers: [
+    "cargo",
+    "github-actions",
+    "npm",
+    "rust-toolchain",
+  ],
+  // `build(deps):`, which is the type the workspace already uses for dependency commits.
+  semanticCommitType: "build",
+  // Both lockfiles are committed, and CI reads them with `--locked` and `--frozen-lockfile`.
+  lockFileMaintenance: {
+    enabled: true,
+  },
+  packageRules: [
+    {
+      description: "One PR per ecosystem rather than one per crate",
+      matchManagers: ["cargo"],
+      groupName: "cargo",
+    },
+    {
+      description: "The desktop front end, lockfile included",
+      matchManagers: ["npm"],
+      groupName: "npm",
+    },
+    {
+      matchManagers: ["github-actions"],
+      groupName: "github actions",
+    },
+    {
+      description: "The channel in rust-toolchain.toml, which CI installs from",
+      matchManagers: ["rust-toolchain"],
+      commitMessageTopic: "the Rust toolchain",
+    },
+  ],
+}
