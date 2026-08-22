@@ -1,8 +1,10 @@
 name: CI
 
-# Pull requests only. A branch with a PR open would otherwise build twice for the one commit,
-# once for each event.
+# Pull requests, and main once the merge lands. Pushes to a branch are left to that branch's PR,
+# which would otherwise build the same commit twice.
 on:
+  push:
+    branches: [main]
   pull_request:
 
 # A second push to the same branch makes the run already in flight irrelevant.
