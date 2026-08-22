@@ -1,6 +1,7 @@
 //! What the catalog stores and the UI shows. Serialisable because the desktop app hands these
 //! straight to its front end.
 
+use fantom_core::requirements::Requirements;
 use serde::{Deserialize, Serialize};
 
 /// The two things the main library browses. Samples are first-class internally but live in their
@@ -187,6 +188,12 @@ pub struct SceneDetail {
     pub user_tones: Vec<String>,
     /// Zones pointing at factory, expansion, or model content the app never substitutes.
     pub external_refs: Vec<String>,
+    /// Everything this scene needs from wherever it is loaded, decided from the bytes.
+    ///
+    /// Defaulted so a catalog written before requirements existed still reads; those assets get
+    /// theirs the next time their source is imported.
+    #[serde(default)]
+    pub requirements: Requirements,
 }
 
 /// A saved set of zone switches the player recalls from a pad.
@@ -230,6 +237,9 @@ pub struct ToneDetail {
     /// Four-byte SVD area tag the record lives in.
     pub area: String,
     pub index: usize,
+    /// The samples, multisamples, and expansions this tone plays. See [`SceneDetail::requirements`].
+    #[serde(default)]
+    pub requirements: Requirements,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

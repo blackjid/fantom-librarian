@@ -52,6 +52,48 @@ export interface ZoneDetail {
   arpeggio: boolean;
 }
 
+/** One user sample or multisample slot an asset plays. Slots are 1-based panel numbers. */
+export interface SlotRequirement {
+  slot: number;
+  /** Null when the file that needs the slot does not carry the directory naming it. */
+  name: string | null;
+  /** Whether the file carries the content for the slot itself. */
+  carried: boolean;
+  /** Bundled tones that play it. */
+  played_by: string[];
+}
+
+export interface ToneRequirement {
+  area: string;
+  index: number;
+  engine: string;
+  name: string | null;
+  address: { msb: number; lsb: number; pc: number };
+  /** False when the file points at the slot but bundles no sound there. */
+  present: boolean;
+}
+
+export interface BankRequirement {
+  engine: string;
+  /** Bank label when confirmed — `EXZ007`, `JP8`, `PR-A`. Null leaves the raw address to speak. */
+  bank: string | null;
+  tone: string | null;
+  address: { msb: number; lsb: number; pc: number };
+}
+
+/** What an asset needs from wherever it is loaded. Mirrors `fantom_core::requirements`. */
+export interface Requirements {
+  engines: string[];
+  user_tones: ToneRequirement[];
+  banks: BankRequirement[];
+  samples: SlotRequirement[];
+  multisamples: SlotRequirement[];
+  /** Wave-group ids of installed expansions; the panel's own numbering is not decoded. */
+  wave_expansions: number[];
+  unclassified: { msb: number; lsb: number; pc: number }[];
+  carries_audio: boolean;
+}
+
 export interface SceneDetail {
   kind: "scene";
   bpm: number;
@@ -63,6 +105,7 @@ export interface SceneDetail {
   groups: KeyboardGroup[];
   user_tones: string[];
   external_refs: string[];
+  requirements: Requirements;
 }
 
 export interface ToneDetail {
@@ -70,6 +113,7 @@ export interface ToneDetail {
   engine: string;
   area: string;
   index: number;
+  requirements: Requirements;
 }
 
 export type AssetDetail = SceneDetail | ToneDetail;

@@ -182,6 +182,7 @@ fn row_to_asset(row: &Row<'_>) -> Asset {
             engine: String::new(),
             area: String::new(),
             index: 0,
+            requirements: Default::default(),
         }));
     Asset {
         id: row.get(0).unwrap_or_default(),

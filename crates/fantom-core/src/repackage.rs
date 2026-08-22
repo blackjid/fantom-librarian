@@ -547,10 +547,10 @@ fn read_u32(bytes: &[u8], at: usize, tag: &str) -> Result<u32> {
 
 /// Areas of a scene bank whose records name user samples: ZEN-Core tones, and the instrument sets
 /// of the drum kits bundled beside them.
-const SAMPLE_REF_AREAS: &[&[u8; 4]] = &[b"PATa", b"INSa"];
+pub(crate) const SAMPLE_REF_AREAS: [&[u8; 4]; 2] = [b"PATa", b"INSa"];
 
 /// Where a multisample record lives: `MLSa` in a backup, `MSPa` in an SVZ export.
-const MULTISAMPLE_AREAS: &[&[u8; 4]] = &[b"MLSa", b"MSPa"];
+pub(crate) const MULTISAMPLE_AREAS: [&[u8; 4]; 2] = [b"MLSa", b"MSPa"];
 
 /// The user-sample slots this bank's bundled sounds play: 1-based, sorted, deduplicated.
 ///
@@ -619,7 +619,7 @@ pub fn rebase_sample_slots(raw: &Raw, remap: &BTreeMap<u16, u16>) -> Result<Raw>
     }
 
     let mut bytes = raw.bytes().to_vec();
-    for tag in SAMPLE_REF_AREAS.iter().chain(MULTISAMPLE_AREAS) {
+    for tag in SAMPLE_REF_AREAS.iter().chain(MULTISAMPLE_AREAS.iter()) {
         let Some(table) = RecordTable::from_svd(raw, &svd, tag)? else {
             continue;
         };

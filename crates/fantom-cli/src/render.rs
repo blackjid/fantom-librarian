@@ -11,6 +11,7 @@
 use std::fmt::Write as _;
 
 use fantom_core::model::{ToneRef, ToneType, Zone};
+use fantom_core::requirements::{Requirements, SlotRequirement};
 
 /// Which way a column's cells sit against its width.
 #[derive(Clone, Copy, PartialEq)]
@@ -172,6 +173,236 @@ pub fn ascii(bytes: &[u8]) -> String {
             }
         })
         .collect()
+}
+
+/// What a file needs from wherever it is loaded, as the terminal says it.
+///
+/// One renderer behind every command that has to raise the subject — `check`, and the rebuild
+/// commands handing back a bank whose dependencies have just become somebody else's problem. It
+/// returns an empty string when nothing is required, so a caller can print it unconditionally.
+///
+/// The explanations are as long as they are on purpose. A missing sample or an uninstalled
+/// expansion produces no error on the instrument: the bank loads and plays the wrong sound, so the
+/// only place the user can learn what happened is here, before they carry the file across.
+pub fn requirements(needs: &Requirements) -> String {
+    let mut out = String::new();
+
+    let missing: Vec<_> = needs.missing_tones().collect();
+    if !missing.is_empty() {
+        let _ = writeln!(
+            out,
+            "warning: {} user tone{} {} referenced but not bundled. A zone pointing at an empty\n\
+             \x20        slot plays whatever the destination keeps there:",
+            missing.len(),
+            plural(missing.len()),
+            if missing.len() == 1 { "is" } else { "are" },
+        );
+        for tone in missing {
+            let _ = writeln!(
+                out,
+                "           {}[{}]  MSB {} LSB {} PC {:03}",
+                tone.area, tone.index, tone.address.msb, tone.address.lsb, tone.address.pc
+            );
+        }
+    }
+
+    let samples: Vec<_> = needs.missing_samples().collect();
+    if !samples.is_empty() {
+        let _ = writeln!(
+            out,
+            "warning: the tones play {} user sample{} this file does not carry — a tone references\n\
+             \x20        a sample *slot*, so the audio stays on the instrument. The destination\n\
+             \x20        needs these samples in these slots:",
+            samples.len(),
+            plural(samples.len()),
+        );
+        for sample in samples {
+            let _ = writeln!(out, "           {}", slot_line("slot", sample));
+        }
+    }
+
+    let multisamples: Vec<_> = needs.multisamples.iter().filter(|s| !s.carried).collect();
+    if !multisamples.is_empty() {
+        let _ = writeln!(
+            out,
+            "warning: the tones also play {} user multisample{}. The samples each one maps across\n\
+             \x20        the keyboard are in the list above, but the multisample itself cannot\n\
+             \x20        travel in a scene bank — the destination must hold it, or you must\n\
+             \x20        rebuild it over those slots:",
+            multisamples.len(),
+            plural(multisamples.len()),
+        );
+        for multisample in multisamples {
+            let _ = writeln!(out, "           {}", slot_line("multisample", multisample));
+        }
+    }
+
+    if needs.needs_installed_content() {
+        let _ = writeln!(
+            out,
+            "note: this material also plays content that lives in the instrument rather than in\n\
+             \x20     any file, and is never substituted. The destination must already have it:",
+        );
+        for bank in needs.expansions() {
+            let _ = writeln!(out, "        {}", bank.label());
+        }
+        for id in &needs.wave_expansions {
+            let _ = writeln!(out, "        wave expansion, group id {id}");
+        }
+        for address in &needs.unclassified {
+            let _ = writeln!(
+                out,
+                "        MSB {} LSB {} PC {:03}  (an address this version cannot classify)",
+                address.msb, address.lsb, address.pc
+            );
+        }
+    }
+
+    // Audio the file brings with it is not a requirement of the destination, but it is still the
+    // reason the file is 23 MB, and an export has to know the material is sampled at all.
+    let carried = needs.samples.len() - needs.missing_samples().count();
+    if carried > 0 {
+        let _ = writeln!(
+            out,
+            "note: plays {carried} user sample{} whose audio this file carries.",
+            plural(carried)
+        );
+    }
+
+    // Worth one line and no more: a factory sound is a dependency, but not one anybody has to act
+    // on — every FANTOM has it, so listing them would bury the ones that need installing.
+    let factory = needs.banks.len() - needs.expansions().count();
+    if factory > 0 {
+        let _ = writeln!(
+            out,
+            "note: also plays {factory} factory sound{}, which every FANTOM has.",
+            plural(factory)
+        );
+    }
+
+    out
+}
+
+/// One slot requirement: its number, what is in it, and which sound goes quiet without it.
+fn slot_line(kind: &str, slot: &SlotRequirement) -> String {
+    let name = slot.name.as_deref().unwrap_or("<not in this file>");
+    let played_by = match slot.played_by.as_slice() {
+        [] => String::new(),
+        players => format!(" (played by {})", quoted(players)),
+    };
+    format!("{kind} {:>3}  {name:<20}{played_by}", slot.slot)
+}
+
+fn quoted(names: &[String]) -> String {
+    names
+        .iter()
+        .map(|name| format!("{name:?}"))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+/// The `s` of a plural count. Every report here counts something.
+pub fn plural(n: usize) -> &'static str {
+    if n == 1 {
+        ""
+    } else {
+        "s"
+    }
+}
+
+#[cfg(test)]
+mod requirement_tests {
+    use super::*;
+    use fantom_core::model::{ToneAddress, ToneType};
+    use fantom_core::requirements::{BankRequirement, ToneRequirement};
+
+    #[test]
+    fn a_file_that_needs_nothing_prints_nothing() {
+        assert_eq!(requirements(&Requirements::default()), "");
+    }
+
+    /// A factory sound is a dependency nobody has to act on, so it gets a count and not a list.
+    #[test]
+    fn factory_sounds_are_counted_while_expansions_are_named() {
+        let bank = |label: &str| BankRequirement {
+            engine: ToneType::ZenCore,
+            bank: Some(label.into()),
+            tone: None,
+            address: ToneAddress {
+                msb: 87,
+                lsb: 64,
+                pc: 0,
+            },
+        };
+        let needs = Requirements {
+            banks: vec![bank("PR-A"), bank("PR-B"), bank("EXZ007")],
+            ..Requirements::default()
+        };
+        let report = requirements(&needs);
+        assert!(report.contains("ZEN-Core EXZ007 PC 000"));
+        assert!(report.contains("also plays 2 factory sounds"));
+        assert!(!report.contains("PR-A"));
+    }
+
+    /// Carried audio is not a requirement: an `.svz` brings its samples with it.
+    #[test]
+    fn only_what_the_file_cannot_supply_is_reported() {
+        let needs = Requirements {
+            samples: vec![
+                SlotRequirement {
+                    slot: 1,
+                    name: Some("Beat It Gong".into()),
+                    carried: true,
+                    played_by: vec!["Beat It".into()],
+                },
+                SlotRequirement {
+                    slot: 22,
+                    name: None,
+                    carried: false,
+                    played_by: vec!["Beat It".into()],
+                },
+            ],
+            ..Requirements::default()
+        };
+        let report = requirements(&needs);
+        assert!(report.contains("1 user sample this file does not carry"));
+        assert!(report.contains("slot  22  <not in this file>   (played by \"Beat It\")"));
+        assert!(!report.contains("Beat It Gong"));
+    }
+
+    #[test]
+    fn a_missing_tone_and_an_expansion_are_both_named() {
+        let needs = Requirements {
+            user_tones: vec![ToneRequirement {
+                area: "PATa".into(),
+                index: 443,
+                engine: ToneType::ZenCore,
+                name: None,
+                address: ToneAddress {
+                    msb: 87,
+                    lsb: 3,
+                    pc: 59,
+                },
+                present: false,
+            }],
+            banks: vec![BankRequirement {
+                engine: ToneType::Exz,
+                bank: Some("EXZ007".into()),
+                tone: None,
+                address: ToneAddress {
+                    msb: 93,
+                    lsb: 7,
+                    pc: 0,
+                },
+            }],
+            wave_expansions: vec![1005],
+            ..Requirements::default()
+        };
+        let report = requirements(&needs);
+        assert!(report.contains("PATa[443]  MSB 87 LSB 3 PC 059"));
+        assert!(report.contains("EXZ EXZ007 PC 000"));
+        assert!(report.contains("wave expansion, group id 1005"));
+    }
 }
 
 #[cfg(test)]

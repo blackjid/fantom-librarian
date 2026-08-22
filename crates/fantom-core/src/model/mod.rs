@@ -170,6 +170,7 @@ impl Zone {
 
 /// The raw MIDI bank/program address stored by a scene.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ToneAddress {
     pub msb: u8,
     pub lsb: u8,
@@ -179,6 +180,8 @@ pub struct ToneAddress {
 
 /// Sound-engine type selected by a tone address.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "kebab-case"))]
 pub enum ToneType {
     Drum,
     ZenCore,

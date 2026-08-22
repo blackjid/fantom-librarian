@@ -236,5 +236,20 @@ mod tests {
         .unwrap();
         assert!(scenes.iter().all(|a| a.kind == AssetKind::Scene));
         assert_eq!(scenes.len() + tones.len(), all.len());
+
+        // What each asset needs is decided at import and stored with it, so the library can
+        // answer "can I export this" without reopening the file it came from.
+        let requirements = scenes
+            .iter()
+            .filter_map(|asset| match &asset.detail {
+                model::AssetDetail::Scene(scene) => Some(&scene.requirements),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert!(!requirements.is_empty(), "no scenes to check");
+        assert!(
+            requirements.iter().all(|needs| !needs.engines.is_empty()),
+            "a scene was catalogued without knowing what engine it plays"
+        );
     }
 }

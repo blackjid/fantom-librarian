@@ -41,7 +41,7 @@ const TONE_AREAS: [&[u8; 4]; 8] = [
 const COMPANION_SAMPLE_AREAS: [&[u8; 4]; 2] = [b"USPa", b"MSPa"];
 
 /// What a readable Fantom file is for.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "kebab-case"))]
 pub enum Role {
@@ -53,7 +53,9 @@ pub enum Role {
     ToneBank,
     /// An `SVZa` holding user sampling and nothing else.
     SampleBank,
-    /// Readable, but not a shape this version recognises.
+    /// Readable, but not a shape this version recognises. The default, because assuming any
+    /// particular scope of a file we have not looked at is how a wrong answer starts.
+    #[default]
     Unknown,
 }
 

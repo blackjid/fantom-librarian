@@ -3,6 +3,8 @@
 //! `desktop/src/lib/api.ts` hand-mirrors these types. Nothing makes the two agree at compile
 //! time, so this pins the field names and tagging a renamed Rust field would silently break.
 
+use fantom_core::model::ToneType;
+use fantom_core::requirements::{Requirements, SlotRequirement};
 use fantom_core::role::Role;
 use fantom_library::catalog::Stats;
 use fantom_library::model::*;
@@ -45,6 +47,7 @@ fn an_asset_serialises_with_the_fields_the_front_end_reads() {
             groups: Vec::new(),
             user_tones: vec!["Mk1 Rhodes".into()],
             external_refs: Vec::new(),
+            requirements: Requirements::default(),
         }),
         created_at: 0,
         archived_at: None,
@@ -83,10 +86,62 @@ fn a_tone_detail_keeps_its_own_tag() {
         engine: "MODEL".into(),
         area: "MDLa".into(),
         index: 3,
+        requirements: Requirements::default(),
     });
     let json = serde_json::to_value(&detail).unwrap();
     assert_eq!(json["kind"], "tone");
     assert_eq!(json["area"], "MDLa");
+}
+
+/// What an asset needs travels with it, spelled the way the front end reads it.
+#[test]
+fn requirements_serialise_with_the_fields_the_front_end_reads() {
+    let requirements = Requirements {
+        engines: vec![ToneType::ZenCore],
+        samples: vec![SlotRequirement {
+            slot: 22,
+            name: Some("doh duh 2".into()),
+            carried: false,
+            played_by: vec!["Beat It Gong".into()],
+        }],
+        wave_expansions: vec![1005],
+        ..Requirements::default()
+    };
+    let json = serde_json::to_value(&requirements).unwrap();
+    assert_eq!(
+        keys(&json),
+        sorted([
+            "engines",
+            "user_tones",
+            "banks",
+            "samples",
+            "multisamples",
+            "wave_expansions",
+            "unclassified",
+            "carries_audio",
+        ])
+    );
+    // An engine is a name on the wire, not a number: the front end shows it as a label.
+    assert_eq!(json["engines"][0], "zen-core");
+    assert_eq!(
+        keys(&json["samples"][0]),
+        sorted(["slot", "name", "carried", "played_by"])
+    );
+    assert_eq!(json["samples"][0]["slot"], 22);
+
+    // Old catalog rows predate the field, and must still read.
+    let detail: SceneDetail = serde_json::from_value(json!({
+        "bpm": 120.0,
+        "level": 100,
+        "active_zones": 1,
+        "zones": [],
+        "engines": [],
+        "groups": [],
+        "user_tones": [],
+        "external_refs": [],
+    }))
+    .expect("a detail written before requirements existed must still deserialise");
+    assert!(detail.requirements.is_empty());
 }
 
 #[test]
@@ -275,6 +330,7 @@ fn every_zone_state_serialises_to_its_front_end_name() {
 #[test]
 fn a_scene_detail_carries_its_keyboard_groups() {
     let detail = SceneDetail {
+        requirements: Requirements::default(),
         bpm: 120.0,
         level: 100,
         active_zones: 2,

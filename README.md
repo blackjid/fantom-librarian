@@ -16,6 +16,7 @@ crates/
     address.rs    # the one table: which area a tone address indexes, and at which record
     codec/        # maps container bytes onto the model
     repackage.rs  # extract / canary / merge — rebundling and renumbering dependencies
+    requirements.rs # the dependency closure as a value: what material needs where it lands
     diff.rs       # compares two files by area and record; how new offsets get found
     presets.rs    # factory ZEN-Core preset tone name lookup (bundled sound list)
     params/       # Roland's parameter map — file bytes against SysEx addresses
@@ -152,6 +153,20 @@ decoded, so they cannot be rebased, and the CLI says so when a bank bundles any.
 References to installed factory/model/expansion banks are preserved but require the same content on
 the destination.
 
+**The dependency closure is a type, not a printout.** `fantom_core::requirements` answers what one
+file, one scene, or one tone needs from wherever it lands — user sample and multisample slots (with
+the tone that goes silent without each one), user tones a bank references but does not bundle,
+factory banks told apart from expansions that must be installed, and any address this version
+cannot classify, which is reported rather than dropped. It is serde-serialisable, `check`,
+`scenes show`, `extract`, `canary`, and `merge` all report from it, and the library stores it per
+asset at import.
+
+Against a second file it goes as far as the format allows and no further. Sample slots are checked
+one by one — reading NARF against the backup it came from resolves all 50 by name — while nothing
+in any file has been found to list an instrument's installed expansions, so those come back
+`unknown` with the requirement named, rather than as a guess. Derived from the bytes alone, NARF's
+closure is exactly user sample slots 1–50: the placement its printed instructions demand.
+
 ## Usage
 
 ```sh
@@ -180,6 +195,14 @@ cargo run -p fantom-cli -- samples list path/to/FANTOM.SVD
 
 # Check structure and record checksums. Exits non-zero on a problem, so it works as a gate.
 cargo run -p fantom-cli -- verify path/to/FANTOM.SVD
+
+# What a file needs from wherever it is loaded: user samples, multisamples, missing user
+# tones, and the expansions that must already be installed.
+cargo run -p fantom-cli -- check theirs/FANTOM.SVD
+
+# Weigh those requirements against a destination — a backup of the instrument you will load
+# onto. Unmet requirements exit non-zero, so this works as a preflight gate too.
+cargo run -p fantom-cli -- check theirs/FANTOM.SVD --against mine/FANTOM.SVD
 
 # SVZ tone banks use the same scene operations. Numbers are the indexes `tones list` prints.
 cargo run -p fantom-cli -- tones list path/to/Z-Core.svz

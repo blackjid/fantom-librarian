@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 
 use fantom_core::container::{Raw, Svd};
 use fantom_core::model::{Scene, ToneRef};
+use fantom_core::requirements::Reader;
 use fantom_core::{codec, container, verify};
 use rusqlite::params;
 use sha2::{Digest, Sha256};
@@ -176,6 +177,10 @@ fn catalogue(
 
     // A file legitimately holds no scenes — a tone bank or a sample companion has no PRFa area —
     // so a missing scene area is only worth reporting if nothing else turned up either.
+    // One reader for the whole file: every asset asks it what that asset needs, and it parses the
+    // area table and sample directory once instead of once per record.
+    let reader = Reader::open(raw).ok();
+
     if let (Ok(scenes), Ok(records)) = (codec::read_scenes(raw), codec::read_scene_records(raw)) {
         for (i, scene) in scenes.iter().enumerate() {
             if codec::is_placeholder_name(&scene.name) {
@@ -184,7 +189,7 @@ fn catalogue(
             let Some(record) = records.get(i) else {
                 continue;
             };
-            let detail = scene_detail(scene);
+            let detail = scene_detail(scene, reader.as_ref());
             let candidate = Candidate {
                 kind: AssetKind::Scene,
                 // Fingerprinted rather than hashed raw: a scene whose user tones were renumbered
@@ -240,6 +245,10 @@ fn catalogue(
                     engine: engine.clone(),
                     area: area.clone(),
                     index: tone.index,
+                    requirements: reader
+                        .as_ref()
+                        .and_then(|reader| reader.tone(&tone.area, tone.index).ok())
+                        .unwrap_or_default(),
                 }),
                 engine,
             };
@@ -358,7 +367,7 @@ fn link(
 }
 
 /// Everything the library shows about a scene without reopening its file.
-fn scene_detail(scene: &Scene) -> SceneDetail {
+fn scene_detail(scene: &Scene, reader: Option<&Reader<'_>>) -> SceneDetail {
     let mut engines: Vec<String> = Vec::new();
     let mut user_tones: Vec<String> = Vec::new();
     let mut external: BTreeSet<String> = BTreeSet::new();
@@ -434,6 +443,7 @@ fn scene_detail(scene: &Scene) -> SceneDetail {
             .collect(),
         user_tones,
         external_refs: external.into_iter().collect(),
+        requirements: reader.map(|reader| reader.scene(scene)).unwrap_or_default(),
     }
 }
 

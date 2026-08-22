@@ -35,10 +35,13 @@ pub(crate) enum Command {
         #[command(subcommand)]
         command: AreasCommand,
     },
-    /// Report bundled ACB, V-Piano, and Model dependencies.
-    Dependencies {
-        #[command(subcommand)]
-        command: DependenciesCommand,
+    /// Report what a file needs from its destination, and weigh it against another file.
+    Check {
+        /// Path to a `.svd` / `.svz` file.
+        file: PathBuf,
+        /// A destination to check against — a full backup of the instrument you will load onto.
+        #[arg(long, value_name = "FILE")]
+        against: Option<PathBuf>,
     },
     /// Inspect a file's envelope: size, magic, and a hexdump of its head.
     Inspect {
@@ -64,7 +67,7 @@ pub(crate) enum Command {
         #[arg(long, default_value_t = 0)]
         context: usize,
     },
-    /// Check a file's structure and record checksums.
+    /// Verify a file's structure and record checksums.
     Verify {
         /// Path to a `.svd` / `.svz` file.
         file: PathBuf,
@@ -145,11 +148,6 @@ pub(crate) enum SamplesCommand {
 
 #[derive(Subcommand)]
 pub(crate) enum AreasCommand {
-    List { file: PathBuf },
-}
-
-#[derive(Subcommand)]
-pub(crate) enum DependenciesCommand {
     List { file: PathBuf },
 }
 
