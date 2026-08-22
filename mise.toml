@@ -1,0 +1,10 @@
+# Every toolchain the workspace builds with, for a developer shell and for CI alike.
+#
+# mise exports RUSTUP_TOOLCHAIN, so cargo in this directory is the version below whatever rustup's
+# own default happens to be. That is also why the Rust pin lives here and not in a
+# rust-toolchain.toml: the environment variable wins over that file, so only one of them can be
+# the answer.
+[tools]
+node = "24.19.0"
+pnpm = "11.22.0"
+rust = { version = "1.98.0", components = "rustfmt,clippy" }

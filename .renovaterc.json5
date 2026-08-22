@@ -8,8 +8,8 @@
   enabledManagers: [
     "cargo",
     "github-actions",
+    "mise",
     "npm",
-    "rust-toolchain",
   ],
   // `build(deps):`, which is the type the workspace already uses for dependency commits.
   semanticCommitType: "build",
@@ -36,9 +36,9 @@
       groupName: "github actions",
     },
     {
-      description: "The channel in rust-toolchain.toml, which CI installs from",
-      matchManagers: ["rust-toolchain"],
-      commitMessageTopic: "the Rust toolchain",
+      description: "The toolchains in mise.toml, which CI installs from",
+      matchManagers: ["mise"],
+      groupName: "toolchains",
     },
   ],
 }

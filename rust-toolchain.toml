@@ -1,5 +1,0 @@
-# One toolchain for CI and for a local build. A new stable release can only turn the build red
-# in a commit that moves this line.
-[toolchain]
-channel = "1.98.0"
-components = ["rustfmt", "clippy"]
