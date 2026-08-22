@@ -128,10 +128,11 @@ way out but re-exporting it by hand on the instrument. `tones extract` builds on
 copied across, everything they play carried with them (samples, the samples a multisample maps
 across the keyboard, and the multisample itself), all renumbered to their new positions.
 
-The evidence is byte-level. From one FANTOM-6 backup, three exports that same instrument wrote are
+The evidence is byte-level. From one FANTOM-6 backup, four exports that same instrument wrote are
 reproduced **byte for byte**, differing only in the OS-era stamp byte documented in
 [`docs/FORMAT.md`](docs/FORMAT.md): a two-tone file with a multisample and 7 MB of audio, a single
-multisampled tone, and a drum kit with no sample areas at all. Engines whose sample references are
+multisampled tone, a drum kit with no sample areas at all, and one that plays a sample — every shape
+the instrument writes. Engines whose sample references are
 undecoded are refused rather than exported without their audio.
 
 **In a scene bank, user samples do not travel** — and that is Roland's own behaviour, not a

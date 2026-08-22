@@ -85,6 +85,22 @@ fn rebuilding_an_unsampled_drum_kit_export_is_byte_identical() {
     assert_same_but_the_stamp(&ours, &theirs, "DRUM_BEFORE.svz");
 }
 
+/// And a drum kit that *does* play a user sample: the paired shape with its audio.
+///
+/// The kit is `#TR-MIX`, which the backup holds three times over — one copy playing a sample and
+/// one not. Only the sampled copy rebuilds into the sampled export, which is a check on the
+/// `INSa` sample references as much as on the writer: reading them wrong would pick the wrong
+/// record, or carry no audio at all.
+#[test]
+fn rebuilding_a_sampled_drum_kit_export_is_byte_identical() {
+    let (Some(backup), Some(theirs)) = (private(BACKUP), private("hwtest_back/DRUM_AFTER.svz"))
+    else {
+        return;
+    };
+    let ours = export_tones(&backup, b"RHYa", &[4]).unwrap();
+    assert_same_but_the_stamp(&ours, &theirs, "DRUM_AFTER.svz");
+}
+
 /// What comes out is self-contained: it carries the audio, so it asks its destination for none.
 #[test]
 fn an_exported_tone_needs_nothing_from_the_destination() {

@@ -938,10 +938,11 @@ renumbered the same way. **`USPa`/`USDa` are built from `SMPa`/`SMPd` by the sam
 above** — a tone export's sample half is byte for byte what a sample-only export carries.
 
 So the conversion is: copy the records, renumber what travels (samples and multisamples densely
-from 1, in slot order), and lay out the envelope. `crate::convert` does that, and rebuilding three
+from 1, in slot order), and lay out the envelope. `crate::convert` does that, and rebuilding four
 instrument-written exports from one backup reproduces each byte for byte apart from the `KY019$`
 stamp: `T8_MSMP_TONE.svz` (two tones, a multisample, 7 MB of audio), `T9_BACK.svz` (one multisampled
-tone), and `DRUM_BEFORE.svz` (a drum kit with no sample areas at all).
+tone), `DRUM_BEFORE.svz` (a drum kit with no sample areas), and `DRUM_AFTER.svz` (a kit that plays
+one) — every shape the instrument writes.
 
 It is limited to `PATa` and `RHYa`+`INSa` for the reason repackaging is: an engine whose sample
 references are undecoded cannot be carried without either dropping audio or copying a backup's
