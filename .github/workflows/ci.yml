@@ -21,14 +21,16 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      # The desktop crate links against the system webview. macOS is the release target, but the
-      # workspace has to keep compiling here or the shared library layer drifts unnoticed.
+      # The desktop crate links against the system webview, and fantom-midi against ALSA. macOS is
+      # the release target, but the workspace has to keep compiling here or the shared library
+      # layer drifts unnoticed.
       - name: System dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf \
-            libgtk-3-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev
+            libgtk-3-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev \
+            libasound2-dev libdbus-1-dev
 
       - name: Format
         run: cargo fmt --all --check
