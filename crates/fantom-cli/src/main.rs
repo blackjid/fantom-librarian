@@ -33,6 +33,12 @@ fn main() -> ExitCode {
         Command::Check { file, against } => run_check(&file, against.as_ref()),
         Command::Tones { command } => match command {
             TonesCommand::List { file } => run_tones(&file),
+            TonesCommand::Extract {
+                file,
+                tones,
+                area,
+                write,
+            } => run_tone_extract(&file, &tones, &area, &write),
         },
         Command::Samples { command } => match command {
             SamplesCommand::List { file } => run_samples(&file),
@@ -553,6 +559,60 @@ fn run_tones(file: &PathBuf) -> fantom_core::Result<String> {
     Ok(out)
 }
 
+/// Lift tones out of a file into an `.svz`, the one envelope that carries user audio.
+///
+/// An `.svz` source is repackaged in place by [`fantom_core::tonebank`]; an SVD is converted, which
+/// is the only way a sampled user tone can leave a backup at all.
+fn run_tone_extract(
+    file: &PathBuf,
+    tones: &[usize],
+    area: &str,
+    write: &WriteOptions,
+) -> fantom_core::Result<String> {
+    let raw = Raw::open(file)?;
+    let exported = if is_tone_bank(&raw) {
+        fantom_core::tonebank::extract_tones(&raw, tones)?
+    } else {
+        fantom_core::convert::export_tones(&raw, &area_tag(area)?, tones)?
+    };
+    if write.should_write() {
+        exported.save(write.output())?;
+    }
+
+    let needs = fantom_core::requirements::requirements(&exported)?;
+    let mut out = String::new();
+    let _ = writeln!(
+        out,
+        "extracted {} tone{}{}{}",
+        tones.len(),
+        render::plural(tones.len()),
+        match needs.samples.len() {
+            0 => String::new(),
+            n => format!(
+                " with {n} sample{}{}",
+                render::plural(n),
+                match needs.multisamples.len() {
+                    0 => String::new(),
+                    m => format!(" and {m} multisample{}", render::plural(m)),
+                }
+            ),
+        },
+        write_destination(write),
+    );
+    // Whatever the audio could not cover: an expansion the destination has to have installed.
+    out.push_str(&render::requirements(&needs));
+    Ok(out)
+}
+
+/// A four-byte area tag from what the user typed.
+fn area_tag(area: &str) -> fantom_core::Result<[u8; 4]> {
+    area.as_bytes().try_into().map_err(|_| {
+        fantom_core::Error::Unrecognized(format!(
+            "{area:?} is not a four-character area tag (try PATa or RHYa)"
+        ))
+    })
+}
+
 fn run_samples(file: &PathBuf) -> fantom_core::Result<String> {
     let raw = Raw::open(file)?;
     let svd = fantom_core::container::Svd::parse(&raw)?;
@@ -978,6 +1038,25 @@ mod tests {
                 "--dry-run",
             ],
             &["fantom", "tones", "list", "bank.svd"],
+            &[
+                "fantom",
+                "tones",
+                "extract",
+                "backup.SVD",
+                "954",
+                "--dry-run",
+            ],
+            &[
+                "fantom",
+                "tones",
+                "extract",
+                "backup.SVD",
+                "1",
+                "--area",
+                "RHYa",
+                "-o",
+                "kit.svz",
+            ],
             &["fantom", "samples", "list", "bank.svd"],
             &["fantom", "areas", "list", "bank.svd"],
             &["fantom", "check", "bank.svd"],
@@ -1010,6 +1089,7 @@ mod tests {
             ["fantom", "scenes", "extract", "bank.svd", "1"].as_slice(),
             ["fantom", "scenes", "canary", "bank.svd", "1"].as_slice(),
             ["fantom", "scenes", "merge", "base.svd", "source.svd"].as_slice(),
+            ["fantom", "tones", "extract", "backup.SVD", "954"].as_slice(),
         ] {
             assert!(
                 Cli::try_parse_from(argv).is_err(),

@@ -138,7 +138,22 @@ pub(crate) enum ScenesCommand {
 
 #[derive(Subcommand)]
 pub(crate) enum TonesCommand {
-    List { file: PathBuf },
+    List {
+        file: PathBuf,
+    },
+    /// Build an `.svz` tone export carrying the selected tones and the samples they play.
+    Extract {
+        /// A backup or scene export to take the tones from, or an `.svz` to repackage.
+        file: PathBuf,
+        /// Tone record numbers, as `tones list` prints them, in the desired output order.
+        #[arg(required = true, num_args = 1..)]
+        tones: Vec<usize>,
+        /// Engine area to take them from: `PATa` for ZEN-Core, `RHYa` for drum kits.
+        #[arg(long, default_value = "PATa", value_name = "TAG")]
+        area: String,
+        #[command(flatten)]
+        write: WriteOptions,
+    },
 }
 
 #[derive(Subcommand)]
