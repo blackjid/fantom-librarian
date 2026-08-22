@@ -258,15 +258,26 @@ pub fn requirements(needs: &Requirements) -> String {
         }
     }
 
-    // Audio the file brings with it is not a requirement of the destination, but it is still the
-    // reason the file is 23 MB, and an export has to know the material is sampled at all.
-    let carried = needs.samples.len() - needs.missing_samples().count();
-    if carried > 0 {
-        let _ = writeln!(
-            out,
-            "note: plays {carried} user sample{} whose audio this file carries.",
-            plural(carried)
-        );
+    // Content the file brings with it is not a requirement of the destination, but it is still the
+    // reason the file is 90 MB, and a transfer is checked against what it says it carries.
+    let mut carried = Vec::new();
+    let samples = needs.samples.len() - needs.missing_samples().count();
+    if samples > 0 {
+        carried.push(format!("{samples} user sample{}", plural(samples)));
+    }
+    let multisamples = needs
+        .multisamples
+        .iter()
+        .filter(|slot| slot.carried)
+        .count();
+    if multisamples > 0 {
+        carried.push(format!(
+            "{multisamples} multisample{}",
+            plural(multisamples)
+        ));
+    }
+    if !carried.is_empty() {
+        let _ = writeln!(out, "note: carries the {} it plays.", carried.join(" and "));
     }
 
     // Worth one line and no more: a factory sound is a dependency, but not one anybody has to act

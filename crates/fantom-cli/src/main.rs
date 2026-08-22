@@ -636,7 +636,9 @@ fn run_samples(file: &PathBuf) -> fantom_core::Result<String> {
     for slot in &bank.slots {
         let data = bank.data.iter().find(|d| d.slot as usize == slot.index);
         table.row(vec![
-            slot.index.to_string(),
+            // Panel numbering: the instrument's first user sample is 1, and every other number
+            // this tool prints or takes — a tone's reference, `--samples-at` — counts the same way.
+            (slot.index + 1).to_string(),
             slot.name.clone(),
             slot.end.to_string(),
             format!("{:.2}", data.map(|d| d.seconds()).unwrap_or_default()),
@@ -651,7 +653,7 @@ fn run_samples(file: &PathBuf) -> fantom_core::Result<String> {
         let _ = writeln!(out, "\n{} multisamples:", bank.multisamples.len());
         let mut table = Table::new(vec![("SLOT", Align::Right), ("NAME", Align::Left)]);
         for ms in &bank.multisamples {
-            table.row(vec![ms.index.to_string(), ms.name.clone()]);
+            table.row(vec![(ms.index + 1).to_string(), ms.name.clone()]);
         }
         out.push_str(&table.render());
     }

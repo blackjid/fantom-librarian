@@ -92,6 +92,31 @@ fn exports_and_backups_resolve_the_same_tone_names() {
     }
 }
 
+/// A companion carries its multisamples in `MSPa`, not the `MLSa` a backup uses.
+///
+/// Reading only `MLSa` meant a file carrying a multisample reported none — indistinguishable from
+/// one that carries none at all, in the listing a player checks a transfer against.
+#[test]
+fn an_svz_reports_the_multisamples_it_carries() {
+    let Some(svz) = private("hwtest_back/T8_MSMP_TONE.svz") else {
+        return;
+    };
+    let svd = fantom_core::container::Svd::parse(&svz).unwrap();
+    let bank = fantom_core::container::read_samples(&svz, &svd).unwrap();
+    assert_eq!(bank.multisamples.len(), 1);
+    assert_eq!(bank.multisamples[0].name, "T8_MSAMP");
+
+    // And it is numbered the way the tone playing it refers to it.
+    let needs = fantom_core::requirements::requirements(&svz).unwrap();
+    assert_eq!(needs.multisamples.len(), 1);
+    assert_eq!(
+        needs.multisamples[0].slot,
+        bank.multisamples[0].index as u16 + 1
+    );
+    assert!(needs.multisamples[0].carried);
+    assert_eq!(needs.multisamples[0].name.as_deref(), Some("T8_MSAMP"));
+}
+
 /// A full backup must name the user tones its scenes reference. Naming *nothing* would pass the
 /// agreement test above only if the export were equally blank, so assert coverage directly.
 #[test]

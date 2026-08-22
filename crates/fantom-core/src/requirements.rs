@@ -494,24 +494,15 @@ impl<'a> Scan<'a> {
 
     /// The name of a multisample this file actually defines, if it does.
     ///
-    /// Two containers store them differently. A backup's `MLSa` is 128 records of which the
-    /// untouched ones are the factory `INITIAL MSMPL`, so [`container::read_samples`] has already
-    /// filtered those out; an `.svz` carries only the `MSPa` records it needs, so any record that
-    /// is there is real.
+    /// A backup's `MLSa` holds 128 records of which the untouched ones are the factory
+    /// `INITIAL MSMPL`; a companion's `MSPa` holds only what it carries. Both are filtered and
+    /// numbered by [`container::read_samples`], so this is a lookup rather than a second reader.
     fn held_multisample(&self, number: u16) -> Option<String> {
-        if let Some(held) = self
-            .bank
+        self.bank
             .multisamples
             .iter()
             .find(|held| held.index + 1 == number as usize)
-        {
-            return Some(held.name.clone());
-        }
-        let record = RecordTable::from_svd(self.raw, self.svd, b"MSPa")
-            .ok()
-            .flatten()
-            .and_then(|table| table.record(number as usize - 1))?;
-        Some(container::ascii_trim(&record[..16.min(record.len())]))
+            .map(|held| held.name.clone())
     }
 
     fn finish(self) -> Requirements {

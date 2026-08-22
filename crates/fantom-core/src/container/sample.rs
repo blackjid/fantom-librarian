@@ -118,13 +118,17 @@ impl SampleBank {
 
     /// Audio present in `USDa` with no matching `SMPa` slot, or a slot with no audio — either
     /// means the two areas disagree and the bank should not be trusted for copying.
+    ///
+    /// Slots are named by their panel number, one higher than the record index they sit at, so the
+    /// message points at what the player can actually look up.
     pub fn orphans(&self) -> Vec<String> {
         let mut out = Vec::new();
         for slot in &self.slots {
             if !self.data.iter().any(|d| d.slot as usize == slot.index) {
                 out.push(format!(
                     "slot {} {:?} has no waveform data",
-                    slot.index, slot.name
+                    slot.index + 1,
+                    slot.name
                 ));
             }
         }
@@ -132,7 +136,8 @@ impl SampleBank {
             if !self.slots.iter().any(|s| s.index == data.slot as usize) {
                 out.push(format!(
                     "waveform {:?} points at unused slot {}",
-                    data.name, data.slot
+                    data.name,
+                    data.slot + 1
                 ));
             }
         }
@@ -186,13 +191,13 @@ pub fn read(raw: &Raw, svd: &Svd) -> Result<SampleBank> {
         return Ok(SampleBank {
             slots: read_svz_slots(raw, svd)?,
             data: read_svz_data(raw, svd)?,
-            multisamples: Vec::new(),
+            multisamples: read_multisamples(raw, svd, b"MSPa")?,
         });
     }
     Ok(SampleBank {
         slots: read_slots(raw, svd)?,
         data: read_data(raw, svd)?,
-        multisamples: read_multisamples(raw, svd)?,
+        multisamples: read_multisamples(raw, svd, b"MLSa")?,
     })
 }
 
@@ -337,8 +342,13 @@ fn factory_multisample(record_size: usize) -> Vec<u8> {
     record
 }
 
-fn read_multisamples(raw: &Raw, svd: &Svd) -> Result<Vec<Multisample>> {
-    let Some(table) = RecordTable::from_svd(raw, svd, b"MLSa")? else {
+/// The multisamples a file defines, whichever area holds them.
+///
+/// A backup keeps all 128 in `MLSa`, most of them untouched; a companion carries only the `MSPa`
+/// records its tones reach, densely numbered. The same record layout either way, so the same reader
+/// serves both — and a file that carries one is not allowed to look like a file that carries none.
+fn read_multisamples(raw: &Raw, svd: &Svd, tag: &[u8; 4]) -> Result<Vec<Multisample>> {
+    let Some(table) = RecordTable::from_svd(raw, svd, tag)? else {
         return Ok(Vec::new());
     };
     // Compare against the known factory bytes rather than against this file's own record 0 —
@@ -489,7 +499,8 @@ mod tests {
         let orphans = bank.orphans();
         assert_eq!(orphans.len(), 2);
         assert!(orphans[0].contains("no waveform data"));
-        assert!(orphans[1].contains("unused slot 7"));
+        // Record 7 is the panel's slot 8: these messages name what a player can look up.
+        assert!(orphans[1].contains("unused slot 8"), "{}", orphans[1]);
     }
 
     fn multisample_area(records: &[Vec<u8>], record_size: usize) -> Vec<u8> {
