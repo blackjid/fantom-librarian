@@ -25,8 +25,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # Channel and components come from rust-toolchain.toml. Caching is part of this action.
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      # Toolchain versions come from mise.toml, the same file a developer shell reads.
+      - uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4.2.5
+
+      - uses: Swatinem/rust-cache@v2
 
       # The desktop crate links against the system webview, and fantom-midi against ALSA. macOS is
       # the release target, but the workspace has to keep compiling here or the shared library
@@ -61,16 +63,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # The pnpm version is the `packageManager` field of the manifest this points at.
-      - uses: pnpm/action-setup@v6
+      # Nothing here builds Rust, so leave that toolchain uninstalled.
+      - uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4.2.5
         with:
-          package_json_file: desktop/package.json
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: desktop/pnpm-lock.yaml
+          install_args: node pnpm
 
       - name: Install
         run: pnpm install --frozen-lockfile
