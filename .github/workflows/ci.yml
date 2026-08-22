@@ -1,8 +1,8 @@
 name: CI
 
+# Pull requests only. A branch with a PR open would otherwise build twice for the one commit,
+# once for each event.
 on:
-  push:
-    branches: ["**"]
   pull_request:
 
 # A second push to the same branch makes the run already in flight irrelevant.
