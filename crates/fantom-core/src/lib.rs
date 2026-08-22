@@ -13,6 +13,7 @@
 //! - [`presets`] — factory ZEN-Core preset tone name lookup (bundled sound list).
 //! - [`diff`] — compares two files by area and record; the tool that finds new offsets.
 //! - [`role`] — what a file is *for*: a backup and a scene export are both `SVD5`.
+//! - [`requirements`] — the dependency closure as a value: what material needs from its destination.
 //! - [`tonebank`] — repackaging SVZ tone banks, which carry their samples.
 //! - [`samplebank`] — building a sample-only SVZ, the one container that moves user audio.
 //! - [`checksum`] / [`verify`] — the CRC-32 Roland stores per record, and checking a file against it.
@@ -31,6 +32,7 @@ pub mod model;
 pub mod params;
 pub mod presets;
 pub mod repackage;
+pub mod requirements;
 pub mod role;
 pub mod samplebank;
 pub mod tonebank;
