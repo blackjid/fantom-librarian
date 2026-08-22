@@ -1115,8 +1115,10 @@ mod tests {
         let mut acb_record = vec![0u8; 9984];
         let name = b"Soft & Subtle3  ";
         for (source, target) in name
-            .chunks_exact(4)
-            .zip(acb_record[0x1c44..0x1c54].chunks_exact_mut(4))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(acb_record[0x1c44..0x1c54].as_chunks_mut::<4>().0)
         {
             target.copy_from_slice(&[source[3], source[2], source[1], source[0]]);
         }
