@@ -10,10 +10,7 @@ use fantom_core::params;
 
 mod cli;
 mod render;
-use cli::{
-    AreasCommand, Cli, Command, DependenciesCommand, SamplesCommand, ScenesCommand, TonesCommand,
-    WriteOptions,
-};
+use cli::{AreasCommand, Cli, Command, SamplesCommand, ScenesCommand, TonesCommand, WriteOptions};
 use render::{Align, Table};
 
 fn main() -> ExitCode {
@@ -33,9 +30,7 @@ fn main() -> ExitCode {
         Command::Areas { command } => match command {
             AreasCommand::List { file } => run_areas(&file),
         },
-        Command::Dependencies { command } => match command {
-            DependenciesCommand::List { file } => run_dependencies(&file),
-        },
+        Command::Check { file, against } => run_check(&file, against.as_ref()),
         Command::Tones { command } => match command {
             TonesCommand::List { file } => run_tones(&file),
         },
@@ -311,36 +306,101 @@ fn window(raw: &Raw, at: usize, len: usize) -> Vec<u8> {
         .to_vec()
 }
 
-fn run_dependencies(file: &PathBuf) -> fantom_core::Result<String> {
+/// Report what a file needs, and — given a destination — how much of it that destination has.
+///
+/// The dependency closure is the single most important fact about a file somebody hands you: a
+/// bank referencing EXZ007 or sample slot 7 loads on any instrument and quietly plays something
+/// else. Without `--against` this names the requirements; with it, each one is weighed against
+/// what the other file shows it holds, and anything unmet exits non-zero so it works as a gate.
+fn run_check(file: &PathBuf, against: Option<&PathBuf>) -> fantom_core::Result<String> {
     let raw = Raw::open(file)?;
-    let svd = fantom_core::container::Svd::parse(&raw)?;
-    let tones = fantom_core::codec::read_bundled_tones(&raw)?;
-    let mut table = Table::new(vec![
-        ("TAG", Align::Left),
-        ("FORMAT", Align::Left),
-        ("SIZE", Align::Right),
-        ("STATUS", Align::Left),
-    ]);
-    for tag in [b"ACBa", b"DCWa", b"MDLa"] {
-        match svd.area(tag) {
-            Some(area) => {
-                let count = tones.iter().filter(|tone| tone.area == *tag).count();
-                table.row(vec![
-                    area.tag_str(),
-                    area.format_str(),
-                    area.size.to_string(),
-                    format!("{count} tones; names decoded"),
-                ]);
-            }
-            None => table.row(vec![
-                render::area_tag(tag),
-                "-".to_string(),
-                "-".to_string(),
-                "absent".to_string(),
-            ]),
-        }
+    let needs = fantom_core::requirements::requirements(&raw)?;
+
+    let mut out = String::new();
+    let _ = writeln!(
+        out,
+        "file:  {} ({})",
+        file.display(),
+        fantom_core::role::of(&raw).as_str()
+    );
+    if !needs.engines.is_empty() {
+        let _ = writeln!(
+            out,
+            "plays: {}",
+            needs
+                .engines
+                .iter()
+                .map(|engine| engine.label())
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
     }
-    Ok(table.render())
+    let _ = writeln!(out);
+
+    let Some(destination) = against else {
+        match render::requirements(&needs) {
+            report if report.is_empty() => {
+                let _ = writeln!(out, "needs nothing from its destination");
+            }
+            report => out.push_str(&report),
+        }
+        return Ok(out);
+    };
+
+    let held = fantom_core::requirements::inventory(&Raw::open(destination)?)?;
+    let _ = writeln!(
+        out,
+        "against: {} ({})\n",
+        destination.display(),
+        held.role.as_str()
+    );
+
+    let findings = fantom_core::requirements::compare(&needs, &held);
+    if findings.is_empty() {
+        let _ = writeln!(
+            out,
+            "everything this file needs, that one has — as far as a file can say"
+        );
+        return Ok(out);
+    }
+
+    let mut table = Table::new(vec![
+        ("VERDICT", Align::Left),
+        ("REQUIREMENT", Align::Left),
+        ("THE DESTINATION", Align::Left),
+    ]);
+    for finding in &findings {
+        table.row(vec![
+            finding.verdict.as_str().to_string(),
+            finding.requirement.clone(),
+            finding.detail.clone(),
+        ]);
+    }
+    out.push_str(&table.render());
+
+    let problems = findings.iter().filter(|f| f.verdict.is_problem()).count();
+    let unknown = findings
+        .iter()
+        .filter(|f| f.verdict == fantom_core::requirements::Verdict::Unknown)
+        .count();
+    let _ = writeln!(out);
+    if unknown > 0 {
+        let _ = writeln!(
+            out,
+            "{unknown} requirement{} no file can answer: nothing in one lists the expansions an\n\
+             instrument has installed, and a bank naming no samples of its own cannot be matched\n\
+             by name against the slots it points at. Check those on the panel.",
+            render::plural(unknown)
+        );
+    }
+    if problems > 0 {
+        // Exit non-zero so this is usable as a preflight gate in a script.
+        return Err(fantom_core::Error::Unrecognized(format!(
+            "{out}{problems} requirement{} unmet",
+            render::plural(problems)
+        )));
+    }
+    Ok(out)
 }
 
 fn run_scenes(file: &PathBuf) -> fantom_core::Result<String> {
@@ -445,6 +505,16 @@ fn run_show(file: &PathBuf, scene: usize, all: bool) -> fantom_core::Result<Stri
         .collect();
     if !arps.is_empty() {
         let _ = writeln!(out, "arpeggio: zone {}", arps.join(", "));
+    }
+
+    // What this one scene needs, rather than what its whole file does: the zones above are only
+    // half the story if the sounds they play are not where this scene is going.
+    let needs = fantom_core::requirements::scene_requirements(&raw, scene)?;
+    let report =
+        render::requirements(&needs.named_from(&fantom_core::requirements::inventory(&raw)?));
+    if !report.is_empty() {
+        let _ = writeln!(out);
+        out.push_str(&report);
     }
     Ok(out)
 }
@@ -552,127 +622,21 @@ fn run_edit(
     Ok(out)
 }
 
-/// Name the user samples an output bank needs but cannot carry.
+/// What a rebuilt bank still needs from wherever it is loaded.
 ///
-/// A tone references a sample by *slot number*, so the audio never travels with it — the
-/// instrument's own scene exports work the same way. The output is therefore complete only if the
-/// destination already holds these samples in these slots, which is worth spelling out precisely:
-/// a bank that sounds right on the machine it came from can be silent everywhere else.
-fn sample_warning(output: &Raw, source: &Raw) -> String {
-    let (Ok(out_svd), Ok(src_svd)) = (
-        fantom_core::container::Svd::parse(output),
-        fantom_core::container::Svd::parse(source),
-    ) else {
+/// The output is the file the user will carry across, so it is the one whose requirements matter —
+/// but a scene bank has no slot table, so the source it was built from is where the sample names
+/// still live. A failure here is deliberately silent: a warning that cannot be computed must not
+/// stop a rebuild that succeeded.
+fn requirements_note(output: &Raw, source: &Raw) -> String {
+    let Ok(needs) = fantom_core::requirements::requirements(output) else {
         return String::new();
     };
-
-    let Ok(tones) = fantom_core::container::PatArea::from_svd(output, &out_svd) else {
-        return String::new();
+    let named = match fantom_core::requirements::inventory(source) {
+        Ok(held) => needs.named_from(&held),
+        Err(_) => needs,
     };
-    let mut needed: Vec<(u16, String)> = Vec::new();
-    for tone in tones.tones() {
-        for &slot in &tone.samples {
-            if !needed.iter().any(|(s, _)| *s == slot) {
-                needed.push((slot, tone.name.clone()));
-            }
-        }
-    }
-    if needed.is_empty() {
-        return other_dependencies(output);
-    }
-    needed.sort_by_key(|(slot, _)| *slot);
-
-    // Name the slots from the source, which is where the audio still lives.
-    let names = fantom_core::container::read_samples(source, &src_svd)
-        .map(|bank| bank.slots)
-        .unwrap_or_default();
-
-    let mut out = format!(
-        "warning: the extracted tones play {} user sample{}, which no scene export carries —\n\
-         \x20        a tone references a sample *slot*, so the audio stays on the instrument.\n\
-         \x20        The destination needs these samples in these slots:\n",
-        needed.len(),
-        if needed.len() == 1 { "" } else { "s" },
-    );
-    for (slot, tone) in &needed {
-        let name = names
-            .iter()
-            .find(|s| s.index + 1 == *slot as usize)
-            .map(|s| s.name.as_str())
-            .unwrap_or("<not in this file>");
-        let _ = writeln!(
-            out,
-            "           slot {slot:>3}  {name:<20} (played by {tone:?})"
-        );
-    }
-    out.push_str(&other_dependencies(output));
-    out
-}
-
-/// Say what the sample list above cannot cover.
-///
-/// Two kinds of dependency a scene bank can hold that its samples list does not show, both visible
-/// but uncarryable: a user multisample, and a wave from an installed expansion.
-///
-/// A bundled drum kit's samples used to belong on this list too, as a dependency that could not
-/// even be seen. They are now decoded and appear in the samples list itself.
-fn other_dependencies(output: &Raw) -> String {
-    let mut out = String::new();
-
-    if let Ok(svd) = fantom_core::container::Svd::parse(output) {
-        if let Ok(tones) = fantom_core::container::PatArea::from_svd(output, &svd) {
-            let mut multis: Vec<(u16, &str)> = Vec::new();
-            let mut banks: Vec<u16> = Vec::new();
-            for tone in tones.tones() {
-                for &slot in &tone.multisamples {
-                    if !multis.iter().any(|(s, _)| *s == slot) {
-                        multis.push((slot, tone.name.as_str()));
-                    }
-                }
-                for &id in &tone.expansions {
-                    if !banks.contains(&id) {
-                        banks.push(id);
-                    }
-                }
-            }
-            multis.sort_by_key(|(slot, _)| *slot);
-            banks.sort_unstable();
-
-            if !multis.is_empty() {
-                let _ = writeln!(
-                    out,
-                    "warning: the extracted tones also play {} user multisample{}. The samples each\n\
-                     \x20        one maps across the keyboard are included in the list above, but the\n\
-                     \x20        multisample itself cannot travel in a scene bank — the destination\n\
-                     \x20        must hold it, or you must rebuild it over those slots:",
-                    multis.len(),
-                    if multis.len() == 1 { "" } else { "s" },
-                );
-                for (slot, tone) in &multis {
-                    let _ = writeln!(
-                        out,
-                        "           multisample {slot:>3}  (played by {tone:?})"
-                    );
-                }
-            }
-            if !banks.is_empty() {
-                let list = banks
-                    .iter()
-                    .map(u16::to_string)
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                let _ = writeln!(
-                    out,
-                    "note: these tones play waves from installed expansion bank{} {list}. Like a\n\
-                     \x20     factory sound, that content lives in the instrument and must already\n\
-                     \x20     be installed on the destination.",
-                    if banks.len() == 1 { "" } else { "s" },
-                );
-            }
-        }
-    }
-
-    out
+    render::requirements(&named)
 }
 
 fn run_verify(file: &PathBuf) -> fantom_core::Result<String> {
@@ -872,7 +836,7 @@ fn run_extract(
         }
     };
     let note = if note.is_empty() {
-        sample_warning(&final_bank, &raw)
+        requirements_note(&final_bank, &raw)
     } else {
         note
     };
@@ -904,7 +868,7 @@ fn run_canary(file: &PathBuf, scene: usize, write: &WriteOptions) -> fantom_core
     }
     Ok(format!(
         "{}{} scene {scene} canary with marked dependencies{}\n",
-        sample_warning(&canary, &raw),
+        requirements_note(&canary, &raw),
         if write.should_write() {
             "wrote"
         } else {
@@ -943,7 +907,7 @@ fn run_merge(
     }
     Ok(format!(
         "{}appended {source_count} scene{} from {}{}\n",
-        sample_warning(&merged, &source_raw),
+        requirements_note(&merged, &source_raw),
         if source_count == 1 { "" } else { "s" },
         source.display(),
         write_destination(write),
@@ -1016,7 +980,8 @@ mod tests {
             &["fantom", "tones", "list", "bank.svd"],
             &["fantom", "samples", "list", "bank.svd"],
             &["fantom", "areas", "list", "bank.svd"],
-            &["fantom", "dependencies", "list", "bank.svd"],
+            &["fantom", "check", "bank.svd"],
+            &["fantom", "check", "theirs.svd", "--against", "mine.SVD"],
             &["fantom", "inspect", "bank.svd", "--length", "512"],
             &[
                 "fantom",
@@ -1074,6 +1039,9 @@ mod tests {
             ["fantom", "rename", "bank.svd", "1", "New name", "--dry-run"].as_slice(),
             ["fantom", "inspect", "bank.svd", "--len", "512"].as_slice(),
             ["fantom", "scenes", "show", "bank.svd", "1", "--all"].as_slice(),
+            // `dependencies list` reported a fraction of the closure as prose; `check` reports
+            // all of it, from `fantom_core::requirements`.
+            ["fantom", "dependencies", "list", "bank.svd"].as_slice(),
         ] {
             assert!(
                 Cli::try_parse_from(argv).is_err(),
