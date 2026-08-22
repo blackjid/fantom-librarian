@@ -13,6 +13,9 @@
   ],
   // `build(deps):`, which is the type the workspace already uses for dependency commits.
   semanticCommitType: "build",
+  // pnpm refuses to install a release under a day old, so anything younger than that produces a
+  // lockfile its own `--frozen-lockfile` check then rejects. Two days of margin over that.
+  minimumReleaseAge: "3 days",
   // Both lockfiles are committed, and CI reads them with `--locked` and `--frozen-lockfile`.
   lockFileMaintenance: {
     enabled: true,
