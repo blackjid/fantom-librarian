@@ -150,11 +150,11 @@ Drum kits load from **IMPORT DRUM**, not IMPORT TONE, which lists no kit at all 
 exports included.
 
 That session also found the failure no structural check can see, and it belongs to the instrument
-rather than to this tool: **a FANTOM can play a sample it cannot write into any file.** For the
-affected slots a backup stores the record in full and the waveform as zeros — and so does the
-instrument's *own* tone export, asked for the same sounds. So a tone built from such a backup
-imports perfectly and plays nothing, and no tool can do better; re-importing the sample is the only
-recovery. Nothing in a file marks the state, so `samples list` tells `<silent>` from
+rather than to this tool: **a FANTOM can play a sample that its own files do not carry.** For the
+affected slots a backup stores the record in full and the waveform as zeros — and so did a tone
+export the instrument itself wrote, asked for the same sounds, on a day when its export of another
+tone carried real audio. So a tone built from such a backup imports perfectly and plays nothing,
+and re-importing the sample is the only recovery known. Nothing in a file marks the state, so `samples list` tells `<silent>` from
 `<no waveform>` by reading the audio, and anything built from such a slot says so before it is
 written. See [`docs/FORMAT.md`](docs/FORMAT.md).
 
