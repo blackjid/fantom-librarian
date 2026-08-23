@@ -102,6 +102,7 @@ fn requirements_serialise_with_the_fields_the_front_end_reads() {
             slot: 22,
             name: Some("doh duh 2".into()),
             carried: false,
+            silent: false,
             played_by: vec!["Beat It Gong".into()],
         }],
         wave_expansions: vec![1005],
@@ -125,7 +126,7 @@ fn requirements_serialise_with_the_fields_the_front_end_reads() {
     assert_eq!(json["engines"][0], "zen-core");
     assert_eq!(
         keys(&json["samples"][0]),
-        sorted(["slot", "name", "carried", "played_by"])
+        sorted(["slot", "name", "carried", "silent", "played_by"])
     );
     assert_eq!(json["samples"][0]["slot"], 22);
 

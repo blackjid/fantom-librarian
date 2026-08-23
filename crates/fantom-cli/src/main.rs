@@ -643,8 +643,13 @@ fn run_samples(file: &PathBuf) -> fantom_core::Result<String> {
             slot.end.to_string(),
             format!("{:.2}", data.map(|d| d.seconds()).unwrap_or_default()),
             render::note(slot.original_key),
-            data.map(|d| d.name.clone())
-                .unwrap_or_else(|| "<no waveform>".to_string()),
+            // Three states, not two: audio, no section at all, and a section of silence — which
+            // is what a slot holds after its sample was deleted on the instrument.
+            match data {
+                Some(d) if d.silent => "<silent>".to_string(),
+                Some(d) => d.name.clone(),
+                None => "<no waveform>".to_string(),
+            },
         ]);
     }
     out.push_str(&table.render());

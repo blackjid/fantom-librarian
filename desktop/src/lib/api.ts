@@ -59,6 +59,8 @@ export interface SlotRequirement {
   name: string | null;
   /** Whether the file carries the content for the slot itself. */
   carried: boolean;
+  /** The file holds the slot's audio and it is silence — a deleted sample keeps its slot. */
+  silent: boolean;
   /** Bundled tones that play it. */
   played_by: string[];
 }

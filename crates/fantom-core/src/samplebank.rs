@@ -30,7 +30,7 @@ const USP_TAIL_AT: usize = 0x2c;
 const NAME_LEN: usize = 16;
 
 /// An `SMPd` section header, in each of its two layouts.
-mod smpd {
+pub(crate) mod smpd {
     /// Backup: flags `+0x04`, size `+0x08`, words `+0x0c`, name `+0x10`, rate `+0x20`, id `+0x24`.
     pub mod backup {
         pub const FLAGS: usize = 0x04;

@@ -128,6 +128,42 @@ fn an_exported_tone_needs_nothing_from_the_destination() {
     );
 }
 
+/// A deleted sample keeps its slot, so a file can carry a full-length sample that plays nothing.
+///
+/// This backup holds two such slots — panel 1 and 22, whose waveforms are zeros while their
+/// directory entries survive — and `Beat It Gong` at `PATa[542]` plays both. Exporting it produces
+/// a structurally perfect file that is silent, which nothing but the audio bytes can reveal.
+///
+/// Both sections must be caught. Measuring one byte too far runs into the next section's header
+/// and finds its non-zero bytes, which reported only the last of a run of wiped slots.
+#[test]
+fn audio_that_was_deleted_is_reported_as_silence() {
+    let Some(backup) = private(BACKUP) else {
+        return;
+    };
+    let needs = fantom_core::requirements::Reader::open(&backup)
+        .unwrap()
+        .tone(b"PATa", 542)
+        .unwrap();
+    assert_eq!(needs.samples.len(), 2);
+    assert_eq!(needs.silent_samples().count(), 2, "read from the backup");
+
+    let exported = export_tones(&backup, b"PATa", &[542]).unwrap();
+    let carried = fantom_core::requirements::requirements(&exported).unwrap();
+    assert_eq!(carried.samples.len(), 2);
+    assert_eq!(carried.silent_samples().count(), 2, "read from the export");
+
+    // And a tone whose audio survives is not maligned.
+    let sounding = export_tones(&backup, b"PATa", &[556]).unwrap();
+    assert_eq!(
+        fantom_core::requirements::requirements(&sounding)
+            .unwrap()
+            .silent_samples()
+            .count(),
+        0
+    );
+}
+
 /// A scene bank can still give up a tone — but only one whose sound it holds all of.
 ///
 /// A tone record crosses envelopes unchanged, so an unsampled tone converts out of a scene export

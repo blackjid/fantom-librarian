@@ -21,6 +21,7 @@
 //! samples can be selected when repackaging and a drum kit's cannot; see [`crate::tonebank`].
 
 use crate::container::{ascii_trim, Raw, RecordTable, Svd};
+use crate::samplebank::smpd;
 use crate::Result;
 
 /// How many user sample slots the panel has. `SMPa` holds exactly this many records, and a tone
@@ -69,6 +70,12 @@ pub struct SampleData {
     /// per frame" implied — the frame count works out the same either way.
     pub channel_bytes: u32,
     pub sample_rate: u32,
+    /// Every byte of the waveform is zero.
+    ///
+    /// A slot whose sample was deleted on the instrument keeps its directory entry — name, key,
+    /// length and all — while its audio is wiped. Nothing else distinguishes it from a slot that
+    /// still holds its recording, so a file built from one carries silence under a real name.
+    pub silent: bool,
 }
 
 impl SampleData {
@@ -251,13 +258,20 @@ fn read_svz_data(raw: &Raw, svd: &Svd) -> Result<Vec<SampleData>> {
         if &section[..4] != SMPD_MAGIC {
             break;
         }
+        let size = le_u32(entry, 8);
         out.push(SampleData {
             slot,
             offset,
             name: ascii_trim(&section[SMPD_NAME..SMPD_NAME + 16]),
-            size: le_u32(entry, 8),
+            size,
             channel_bytes: le_u32(section, SVZ_SMPD_CHANNEL_BYTES),
             sample_rate: le_u32(section, SVZ_SMPD_RATE),
+            // The `USDa` directory's size covers the whole section, header included.
+            silent: is_silent(
+                bytes,
+                offset + smpd::svz::AUDIO,
+                (size as usize).saturating_sub(smpd::svz::AUDIO),
+            ),
         });
     }
     Ok(out)
@@ -316,13 +330,21 @@ fn read_data(raw: &Raw, svd: &Svd) -> Result<Vec<SampleData>> {
         if &section[..4] != SMPD_MAGIC {
             break;
         }
+        let size = le_u32(section, SMPD_SIZE);
         out.push(SampleData {
             slot,
             offset,
             name: ascii_trim(&section[SMPD_NAME..SMPD_NAME + 16]),
-            size: le_u32(section, SMPD_SIZE),
+            size,
             channel_bytes: le_u32(section, SMPD_CHANNEL_BYTES),
             sample_rate: le_u32(section, SMPD_RATE),
+            // A section spans its declared size plus the 64-byte gap after it, which is audio
+            // too, and the first 0x80 of that span is header — see `crate::samplebank`.
+            silent: is_silent(
+                body,
+                offset + smpd::backup::AUDIO,
+                (size as usize + smpd::backup::TRAILING_GAP).saturating_sub(smpd::backup::AUDIO),
+            ),
         });
     }
     Ok(out)
@@ -370,6 +392,21 @@ fn read_multisamples(raw: &Raw, svd: &Svd, tag: &[u8; 4]) -> Result<Vec<Multisam
         });
     }
     Ok(out)
+}
+
+/// Whether a waveform is nothing but zeros, stopping at the first byte that says otherwise.
+///
+/// `len` must be the audio alone. Running past it into the next section's header would find that
+/// header's non-zero bytes and call a silent sample healthy — which is how this was first written,
+/// and it reported only the last of five wiped slots.
+///
+/// Cheap in the case that matters: a sample that still holds its recording almost always differs
+/// from silence in its first few bytes, so this reads a handful and stops.
+fn is_silent(bytes: &[u8], at: usize, len: usize) -> bool {
+    let end = (at + len).min(bytes.len());
+    bytes
+        .get(at..end)
+        .is_some_and(|audio| !audio.is_empty() && audio.iter().all(|&byte| byte == 0))
 }
 
 fn le_u32(bytes: &[u8], at: usize) -> u32 {
