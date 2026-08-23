@@ -135,6 +135,17 @@ multisampled tone, a drum kit with no sample areas at all, and one that plays a 
 the instrument writes. Engines whose sample references are
 undecoded are refused rather than exported without their audio.
 
+**Hardware-confirmed on a FANTOM-6.** A multisampled tone converted out of a backup — one tone, one
+multisample, three samples — imported and plays correctly; four tones selected into one file
+imported together under their own names. The instrument repoints each tone at wherever its samples
+land, so the positions a carried file uses are rewritten on the way in.
+
+That session also found the failure no structural check can see: a tone whose samples came from
+slots whose audio had been deleted on the instrument imported perfectly and made no sound. A
+deleted sample keeps its slot record — name, key, length — and loses its waveform, so `samples list`
+tells `<silent>` from `<no waveform>`, and building a package that carries one warns before it is
+written.
+
 **In a scene bank, user samples do not travel** — and that is Roland's own behaviour, not a
 limitation here: the instrument's scene exports carry sample *slot references* and no audio. A tone
 references a sample by slot (wave group 2 on a partial, see `docs/FORMAT.md`), so `extract` names

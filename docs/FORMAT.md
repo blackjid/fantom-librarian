@@ -948,6 +948,31 @@ It is limited to `PATa` and `RHYa`+`INSa` for the reason repackaging is: an engi
 references are undecoded cannot be carried without either dropping audio or copying a backup's
 entire sample bank.
 
+### A converted tone imports and plays — HARDWARE-CONFIRMED
+
+`Finesse Rise`, lifted out of a backup by `crate::convert` — one `PATa` tone, one `MSPa`
+multisample, three samples, 5.6 MB — imported on a **FANTOM-6** and **plays correctly**. Four tones
+selected into one file imported together, listed under their own names with the panel's `US`/`MS`
+tags, and landed in the USER slots the player chose.
+
+That validates the whole conversion at once: the synthesized envelope, `PATa` records carried
+across, the `MSPa` key map renumbered, `USPa` converted from `SMPa`, the `USDa` sections, and the
+`KY019$` stamp — which was known to be accepted by `IMPORT SAMPLE` and is now known to be accepted
+by tone import too.
+
+**The instrument repoints the tone at wherever its samples land.** A tone whose partials named
+samples 1 and 2 in the file read `143. Sledge 1` and `144. Hamma 1` on the panel after import. The
+numbers in a carried file are positions within it, and the import rewrites them — the same
+behaviour a scene bank's sample references do *not* get, because a scene bank has no table for them
+to be positions in.
+
+> **A tone can import perfectly and make no sound.** The same session imported tones whose samples
+> came from panel slots 1–50 of that backup, where the waveforms are zeros while the slot records
+> survive. Everything was right — names, lengths, keys, the repointed partials — and they were
+> silent. Deleting a sample on the instrument wipes the audio and keeps the slot, so *only the audio
+> bytes* distinguish a live sample from a dead one. `SampleData::silent` reads them, and the CLI
+> refuses to let a file like that leave without saying so.
+
 ## SysEx — CONFIRMED (FANTOM-6)
 
 Model ID `00 00 00 5B`, device ID `0x10`, RQ1 `0x11`, DT1 `0x12`. Identity Reply gives family code
