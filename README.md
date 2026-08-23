@@ -151,12 +151,13 @@ exports included.
 
 That session also found the failure no structural check can see, and it belongs to the instrument
 rather than to this tool: **a FANTOM can play a sample that its own files do not carry.** For the
-affected slots a backup stores the record in full and the waveform as zeros — and so did a tone
-export the instrument itself wrote, asked for the same sounds, on a day when its export of another
-tone carried real audio. So a tone built from such a backup imports perfectly and plays nothing,
-and re-importing the sample is the only recovery known. Nothing in a file marks the state, so `samples list` tells `<silent>` from
-`<no waveform>` by reading the audio, and anything built from such a slot says so before it is
-written. See [`docs/FORMAT.md`](docs/FORMAT.md).
+affected slots a backup stores the record in full and the waveform as zeros. So did a tone export
+the instrument itself wrote, asked for the same sounds, on a day when its export of another tone
+carried 5.6 MB of real audio. A tone built from such a backup imports perfectly and plays nothing,
+and re-importing the sample is the only recovery known. Nothing in a file marks the state, so
+`samples list` reads the audio to tell `<silent>` from `<no waveform>`, and anything built from
+such a slot says so before it is written. See [`docs/FORMAT.md`](docs/FORMAT.md), which also says
+what is still unexplained.
 
 **In a scene bank, user samples do not travel** — and that is Roland's own behaviour, not a
 limitation here: the instrument's scene exports carry sample *slot references* and no audio. A tone
