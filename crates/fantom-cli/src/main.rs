@@ -600,8 +600,9 @@ fn run_tone_extract(
         write_destination(write),
     );
     // A kit is loaded from a different page than a tone, and IMPORT TONE lists no kit at all —
-    // Roland's own kit exports included. Worth saying at the moment the file is written.
-    if area_tag(area)? == *b"RHYa" && !is_tone_bank(&raw) {
+    // Roland's own kit exports included. Asked of the file that was written rather than of the
+    // area requested, since repackaging an `.svz` kit produces one too.
+    if fantom_core::container::Svd::parse(&exported).is_ok_and(|svd| svd.area(b"RHYa").is_some()) {
         let _ = writeln!(
             out,
             "load this from MENU -> IMPORT DRUM; IMPORT TONE lists no kits"

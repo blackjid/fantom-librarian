@@ -56,6 +56,12 @@ pub(crate) mod smpd {
         /// Backup `0x4000_0000` becomes SVZ `0x0001_0000`. The pack's 50 samples split 46/4 on
         /// exactly this bit, matching their backup sections one for one; what it *means* is not
         /// decoded, which is why it is carried rather than derived from anything.
+        ///
+        /// **Only one family of samples has been checked.** Every section in every matched pair
+        /// reads `0x0201_0020` or `0x4201_0020`. One backup also holds 44 sections reading
+        /// `0x0101_0020` — a bit this conversion neither carries nor reproduces, because no
+        /// instrument-written export of such a sample exists to compare against. A file built
+        /// from those is structurally sound and unverified; see `docs/FORMAT.md`.
         pub const CARRIED_BIT_FROM: u32 = 0x4000_0000;
         pub const CARRIED_BIT_TO: u32 = 0x0001_0000;
     }

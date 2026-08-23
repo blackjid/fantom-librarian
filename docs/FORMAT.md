@@ -982,13 +982,12 @@ key map, `USPa`, `USDa` directory and audio, every CRC-32, and the preamble — 
 
 > **A tone can import perfectly and make no sound**, and the reason is not the tone. See below.
 
-### A backup can omit sample audio it still plays — CONFIRMED
+### A backup can omit sample audio the instrument still plays — CONFIRMED
 
-**A backup written by the newer OS carries no audio for samples that predate it.** The slot record
-survives in full — name, in-use flag, original key, length — and the `SMPd` section is written at
-its correct size with a correct header and **all-zero audio**.
-
-Measured across four backups from one instrument, and it tracks the OS-era marker exactly:
+**A `%`-era backup writes full-size, all-zero audio for samples the instrument plays.** The slot
+record survives complete — name, in-use flag, original key, length — and the `SMPd` section is
+written at its correct size with a correct header, including the content id of audio it does not
+contain.
 
 | backup | `SYSa[0]+0x00fb` | slots 1–50 in use | of them silent |
 |--------|------------------|-------------------|----------------|
@@ -997,18 +996,45 @@ Measured across four backups from one instrument, and it tracks the OS-era marke
 | `T8_MSMP_BACKUP` | `0x25` `%` | 49 | 49 |
 | `TESTv1` | `0x25` `%` | 50 | 49 |
 
-The audio is **not elsewhere in the file**: a 64-byte probe taken from one of those samples in a `$`
-backup appears nowhere in either `%` backup.
+On the instrument those samples **play**; their preview draws **no waveform**, where a sample
+imported later draws one. Confirmed on a FANTOM-6 by playing slots 1 and 30 directly.
 
-On the instrument those samples still **play**, but their preview shows **no waveform** — while a
-sample imported after the update, holding the same recording under the same name, plays *and* draws
-one, and is written into the backup with its audio. So the tell is a slot the instrument treats as
-occupied whose bytes are silence, and re-importing a sample restores both properties.
+**Nothing in the file marks the state.** Comparing the 49 silent slots against the 111 sounding ones
+byte by byte, no byte of the 84-byte `SMPa` record and no byte of the 128-byte `SMPd` header
+separates the two groups — not the flags word, which takes the same values on both sides. A backup
+that has lost this audio is structurally indistinguishable from one that has not, which is why
+[`crate::container::SampleData::silent`] reads the audio itself.
 
-The consequence for anything built from such a backup is total and silent: a scene bank, a tone
-export or a sample companion referencing those slots is structurally perfect and plays nothing.
-`SampleData::silent` reads the audio rather than trusting the slot record, and every report that
-names a sample says so.
+**The audio is not stored elsewhere.** The area table accounts for the whole file (280,697,520 bytes
+of areas in a 280,697,792-byte backup), and a 64-byte probe taken from one of these recordings in a
+`$` backup appears nowhere in either `%` one.
+
+**The cause is not established, and the correlation above is confounded.** The 49 silent slots are
+also exactly one commercial pack's samples, and also the oldest samples on the instrument — three
+properties that cannot be told apart with four backups from one machine. What is ruled out:
+
+- *Provenance.* The pack ships a scene bank carrying no audio at all, so its samples can only have
+  arrived through `IMPORT SAMPLE` — the same route as slots 5, 51, 2001 and 2002, which hold the
+  **byte-identical** recordings and back up with their audio intact.
+- *Licence protection of the content.* Same bytes, same pack, backed up normally in the other slots.
+- *A damaged region.* The silent set aligns exactly with the pack's sample list, not with any
+  address range.
+
+The experiment that would settle it: export from the instrument a tone referencing only one of these
+slots. Audio in the result means the wave data is readable and the backup omits it selectively;
+zeros mean it is unreachable to any file writer and re-importing is the only recovery.
+
+### The `USDa` directory word is a content id — CONFIRMED
+
+Identical audio carries an identical word wherever it sits. `1 Beat It - C2` occupies backup slots
+1, 5 and 2001 and the pack's own `.svz`, and all four carry `1730241937`; today's backup holds 153
+distinct words across 160 sections, and every collision is a known duplicate recording. It is not
+computed from the section as written, either: a zeroed section still carries the word of the audio
+that is missing.
+
+That is why [`crate::tonebank::build_waveform_area`] carries the word rather than computing one — a
+value derived from the audio, by a rule that has not been reproduced, cannot be invented for a
+section this tool assembles.
 
 ## SysEx — CONFIRMED (FANTOM-6)
 

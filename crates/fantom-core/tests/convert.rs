@@ -155,16 +155,18 @@ fn a_converted_tone_round_trips_through_the_instrument_unchanged() {
     }
 }
 
-/// A deleted sample keeps its slot, so a file can carry a full-length sample that plays nothing.
+/// A backup can hold a full-length, correctly named sample and none of its sound.
 ///
-/// This backup holds two such slots — panel 1 and 22, whose waveforms are zeros while their
-/// directory entries survive — and `Beat It Gong` at `PATa[542]` plays both. Exporting it produces
-/// a structurally perfect file that is silent, which nothing but the audio bytes can reveal.
+/// This backup writes zeros for the audio of panel slots 1 and 22 while keeping their records
+/// complete, and `Beat It Gong` at `PATa[542]` plays both — so exporting it produces a
+/// structurally perfect file that is silent. Nothing in the slot record or the section header
+/// distinguishes those slots from any other; only the audio bytes do, which is why they are read.
+/// (The instrument still plays them. See `docs/FORMAT.md`.)
 ///
-/// Both sections must be caught. Measuring one byte too far runs into the next section's header
-/// and finds its non-zero bytes, which reported only the last of a run of wiped slots.
+/// Both sections must be caught. Measuring one byte too far runs into the next section's header,
+/// finds its non-zero bytes, and reports only the last of a run.
 #[test]
-fn audio_that_was_deleted_is_reported_as_silence() {
+fn a_sample_the_backup_did_not_carry_is_reported_as_silence() {
     let Some(backup) = private(BACKUP) else {
         return;
     };
