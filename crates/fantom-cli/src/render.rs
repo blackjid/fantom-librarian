@@ -258,15 +258,44 @@ pub fn requirements(needs: &Requirements) -> String {
         }
     }
 
-    // Audio the file brings with it is not a requirement of the destination, but it is still the
-    // reason the file is 23 MB, and an export has to know the material is sampled at all.
-    let carried = needs.samples.len() - needs.missing_samples().count();
-    if carried > 0 {
+    // The one failure a structural check cannot catch: everything present, nothing audible.
+    let silent: Vec<_> = needs.silent_samples().collect();
+    if !silent.is_empty() {
         let _ = writeln!(
             out,
-            "note: plays {carried} user sample{} whose audio this file carries.",
-            plural(carried)
+            "warning: {} of the sample{} carried here hold{} no audio at all. Deleting a sample on\n\
+             \x20        the instrument wipes the waveform and keeps the slot, so these travel\n\
+             \x20        under their names and play silence. Re-record or re-import them on the\n\
+             \x20        source instrument, take a fresh backup, and build this again:",
+            silent.len(),
+            plural(needs.samples.len()),
+            if silent.len() == 1 { "s" } else { "" },
         );
+        for sample in silent {
+            let _ = writeln!(out, "           {}", slot_line("slot", sample));
+        }
+    }
+
+    // Content the file brings with it is not a requirement of the destination, but it is still the
+    // reason the file is 90 MB, and a transfer is checked against what it says it carries.
+    let mut carried = Vec::new();
+    let samples = needs.samples.len() - needs.missing_samples().count();
+    if samples > 0 {
+        carried.push(format!("{samples} user sample{}", plural(samples)));
+    }
+    let multisamples = needs
+        .multisamples
+        .iter()
+        .filter(|slot| slot.carried)
+        .count();
+    if multisamples > 0 {
+        carried.push(format!(
+            "{multisamples} multisample{}",
+            plural(multisamples)
+        ));
+    }
+    if !carried.is_empty() {
+        let _ = writeln!(out, "note: carries the {} it plays.", carried.join(" and "));
     }
 
     // Worth one line and no more: a factory sound is a dependency, but not one anybody has to act
@@ -316,6 +345,37 @@ mod requirement_tests {
     use fantom_core::model::{ToneAddress, ToneType};
     use fantom_core::requirements::{BankRequirement, ToneRequirement};
 
+    /// A sample that is present, named, full-length and silent is the one failure every other
+    /// check passes.
+    #[test]
+    fn audio_that_is_silence_is_called_out_by_name() {
+        let needs = Requirements {
+            samples: vec![
+                SlotRequirement {
+                    slot: 30,
+                    name: Some("Sledge 1".into()),
+                    carried: true,
+                    silent: true,
+                    played_by: vec!["Sledge + Hammer".into()],
+                },
+                SlotRequirement {
+                    slot: 55,
+                    name: Some("upiano1_55_a3".into()),
+                    carried: true,
+                    silent: false,
+                    played_by: Vec::new(),
+                },
+            ],
+            ..Requirements::default()
+        };
+        let report = requirements(&needs);
+        assert!(report.contains("no audio at all"), "{report}");
+        assert!(report.contains("slot  30  Sledge 1"), "{report}");
+        assert!(!report.contains("upiano1_55_a3"), "{report}");
+        // It still says what it carries; the warning is about quality, not presence.
+        assert!(report.contains("carries the 2 user samples"), "{report}");
+    }
+
     #[test]
     fn a_file_that_needs_nothing_prints_nothing() {
         assert_eq!(requirements(&Requirements::default()), "");
@@ -353,12 +413,14 @@ mod requirement_tests {
                     slot: 1,
                     name: Some("Beat It Gong".into()),
                     carried: true,
+                    silent: false,
                     played_by: vec!["Beat It".into()],
                 },
                 SlotRequirement {
                     slot: 22,
                     name: None,
                     carried: false,
+                    silent: false,
                     played_by: vec!["Beat It".into()],
                 },
             ],

@@ -91,6 +91,14 @@ impl Requirements {
         self.samples.iter().filter(|sample| !sample.carried)
     }
 
+    /// Slots this file carries whose audio is silence.
+    ///
+    /// The material names a sample, the file holds it, and it plays nothing — the one way a
+    /// package can be complete by every structural measure and still be empty.
+    pub fn silent_samples(&self) -> impl Iterator<Item = &SlotRequirement> {
+        self.samples.iter().filter(|sample| sample.silent)
+    }
+
     /// Name the slots this material needs from a file that holds the directory naming them.
     ///
     /// A scene bank carries no slot table, so one rebuilt out of a backup knows the numbers it
@@ -195,6 +203,13 @@ pub struct SlotRequirement {
     /// Whether this file carries the content for the slot. A scene bank never does; an `.svz`
     /// tone export carries the audio of every sample its tones play.
     pub carried: bool,
+    /// The file holds this slot's audio and it is nothing but zeros.
+    ///
+    /// Deleting a sample on the instrument wipes the waveform and keeps the slot's directory
+    /// entry, so a bank can carry a full-length, correctly named sample that plays nothing. Only
+    /// the bytes say so, which is why it is read here rather than trusted to a flag.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub silent: bool,
     /// Names of the bundled tones that play it, for a report that says which sound goes silent.
     pub played_by: Vec<String>,
 }
@@ -442,6 +457,10 @@ impl<'a> Scan<'a> {
 
     fn need_sample(&mut self, slot: u16, played_by: &str) {
         let bank = self.bank;
+        let audio = bank
+            .data
+            .iter()
+            .find(|audio| audio.slot as usize + 1 == slot as usize);
         let entry = self.samples.entry(slot).or_insert_with(|| SlotRequirement {
             slot,
             name: bank
@@ -449,10 +468,8 @@ impl<'a> Scan<'a> {
                 .iter()
                 .find(|held| held.index + 1 == slot as usize)
                 .map(|held| held.name.clone()),
-            carried: bank
-                .data
-                .iter()
-                .any(|audio| audio.slot as usize + 1 == slot as usize),
+            carried: audio.is_some(),
+            silent: audio.is_some_and(|audio| audio.silent),
             played_by: Vec::new(),
         });
         note_player(&mut entry.played_by, played_by);
@@ -471,6 +488,7 @@ impl<'a> Scan<'a> {
                 slot: number,
                 name: held.clone(),
                 carried: held.is_some(),
+                silent: false,
                 played_by: Vec::new(),
             });
         note_player(&mut entry.played_by, played_by);
@@ -494,24 +512,15 @@ impl<'a> Scan<'a> {
 
     /// The name of a multisample this file actually defines, if it does.
     ///
-    /// Two containers store them differently. A backup's `MLSa` is 128 records of which the
-    /// untouched ones are the factory `INITIAL MSMPL`, so [`container::read_samples`] has already
-    /// filtered those out; an `.svz` carries only the `MSPa` records it needs, so any record that
-    /// is there is real.
+    /// A backup's `MLSa` holds 128 records of which the untouched ones are the factory
+    /// `INITIAL MSMPL`; a companion's `MSPa` holds only what it carries. Both are filtered and
+    /// numbered by [`container::read_samples`], so this is a lookup rather than a second reader.
     fn held_multisample(&self, number: u16) -> Option<String> {
-        if let Some(held) = self
-            .bank
+        self.bank
             .multisamples
             .iter()
             .find(|held| held.index + 1 == number as usize)
-        {
-            return Some(held.name.clone());
-        }
-        let record = RecordTable::from_svd(self.raw, self.svd, b"MSPa")
-            .ok()
-            .flatten()
-            .and_then(|table| table.record(number as usize - 1))?;
-        Some(container::ascii_trim(&record[..16.min(record.len())]))
+            .map(|held| held.name.clone())
     }
 
     fn finish(self) -> Requirements {
@@ -812,6 +821,7 @@ mod tests {
                 slot: 7,
                 name: Some("Whoa".into()),
                 carried: false,
+                silent: false,
                 played_by: vec!["Africa Brass".into()],
             }],
             ..Requirements::default()
@@ -840,6 +850,7 @@ mod tests {
                 slot: 3,
                 name: Some("IML Whoa 1".into()),
                 carried: false,
+                silent: false,
                 played_by: Vec::new(),
             }],
             ..Requirements::default()
@@ -871,6 +882,7 @@ mod tests {
                 slot: 1,
                 name: Some("Kick".into()),
                 carried: true,
+                silent: false,
                 played_by: Vec::new(),
             }],
             carries_audio: true,
@@ -887,6 +899,7 @@ mod tests {
                 slot: 22,
                 name: None,
                 carried: false,
+                silent: false,
                 played_by: Vec::new(),
             }],
             ..Requirements::default()

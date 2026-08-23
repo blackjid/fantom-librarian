@@ -17,6 +17,7 @@ crates/
     codec/        # maps container bytes onto the model
     repackage.rs  # extract / canary / merge — rebundling and renumbering dependencies
     requirements.rs # the dependency closure as a value: what material needs where it lands
+    convert.rs    # SVD -> SVZ: a user tone leaves a backup with the audio it plays
     diff.rs       # compares two files by area and record; how new offsets get found
     presets.rs    # factory ZEN-Core preset tone name lookup (bundled sound list)
     params/       # Roland's parameter map — file bytes against SysEx addresses
@@ -121,6 +122,39 @@ that tone: 5,824,680 bytes, tone record, renumbered multisample reference, remap
 audio and checksums alike. Engines whose references are still unreadable fall back to carrying every
 sample the source holds, at unchanged slot numbers, rather than dropping them silently.
 
+**A user tone can leave a backup.** `.svz` is the only envelope that carries sample audio, and until
+now it was unreachable from the format people actually have: a sampled sound sat in a backup with no
+way out but re-exporting it by hand on the instrument. `tones extract` builds one — the tone records
+copied across, everything they play carried with them (samples, the samples a multisample maps
+across the keyboard, and the multisample itself), all renumbered to their new positions.
+
+The evidence is byte-level. From one FANTOM-6 backup, four exports that same instrument wrote are
+reproduced **byte for byte**, differing only in the OS-era stamp byte documented in
+[`docs/FORMAT.md`](docs/FORMAT.md): a two-tone file with a multisample and 7 MB of audio, a single
+multisampled tone, a drum kit with no sample areas at all, and one that plays a sample — every shape
+the instrument writes. Engines whose sample references are
+undecoded are refused rather than exported without their audio.
+
+**Hardware-confirmed on a FANTOM-6.** A multisampled tone converted out of a backup — one tone, one
+multisample, three samples — imported and plays correctly; four tones selected into one file
+imported together under their own names. A tone whose multisample number *moves* (2 in the backup,
+1 in the file) plays too, and so does a converted drum kit with its sample. The instrument repoints
+each tone at wherever its samples land, so the positions a carried file uses are rewritten on the
+way in.
+
+**The round trip is byte-identical.** One of those files, imported and then exported back off the
+instrument, returns all 5,824,680 bytes unchanged apart from the stamp byte the instrument makes its
+own — so every field is read as intended, not just the ones you can hear.
+
+Drum kits load from **IMPORT DRUM**, not IMPORT TONE, which lists no kit at all — Roland's own kit
+exports included.
+
+That session also found the failure no structural check can see: a tone whose samples came from
+slots whose audio had been deleted on the instrument imported perfectly and made no sound. A
+deleted sample keeps its slot record — name, key, length — and loses its waveform, so `samples list`
+tells `<silent>` from `<no waveform>`, and building a package that carries one warns before it is
+written.
+
 **In a scene bank, user samples do not travel** — and that is Roland's own behaviour, not a
 limitation here: the instrument's scene exports carry sample *slot references* and no audio. A tone
 references a sample by slot (wave group 2 on a partial, see `docs/FORMAT.md`), so `extract` names
@@ -203,6 +237,10 @@ cargo run -p fantom-cli -- check theirs/FANTOM.SVD
 # Weigh those requirements against a destination — a backup of the instrument you will load
 # onto. Unmet requirements exit non-zero, so this works as a preflight gate too.
 cargo run -p fantom-cli -- check theirs/FANTOM.SVD --against mine/FANTOM.SVD
+
+# Lift a user tone out of a backup as a self-contained .svz, carrying the samples it plays.
+# --area RHYa takes a drum kit instead. Works on an .svz source too, repackaging in place.
+cargo run -p fantom-cli -- tones extract path/to/BACKUP.SVD 954 -o pad.svz
 
 # SVZ tone banks use the same scene operations. Numbers are the indexes `tones list` prints.
 cargo run -p fantom-cli -- tones list path/to/Z-Core.svz

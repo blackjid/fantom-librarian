@@ -296,6 +296,7 @@ fn remap_numbers_for_group(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::BTreeMap;
 
     fn area_with(names: &[(&str, u8)], record_size: usize) -> Vec<u8> {
         let mut a = Vec::new();
@@ -425,6 +426,26 @@ mod tests {
     fn an_empty_partial_contributes_no_expansion() {
         assert!(expansion_banks(&tone_with_partials(&[(1, 0, 0)])).is_empty());
         assert!(multisample_slots(&tone_with_partials(&[(3, 0, 0)])).is_empty());
+    }
+
+    /// A multisample reference moves like a sample reference does, and neither drags the other.
+    ///
+    /// Nothing had ever moved one: the fixtures that carry a multisample all use number 1, which a
+    /// dense renumbering leaves at 1, so a remap that did nothing would have passed every test and
+    /// every hardware check.
+    #[test]
+    fn remapping_moves_a_multisample_number() {
+        let mut record = tone_with_partials(&[(2, 30, 31), (3, 5, 0)]);
+        remap_multisample_slots(&mut record, &BTreeMap::from([(5, 1)]));
+
+        assert_eq!(multisample_slots(&record), [1]);
+        // Groups do not bleed into each other: the sampled partial is untouched.
+        assert_eq!(sample_slots(&record), [30, 31]);
+
+        // And the sample remap leaves the multisample alone.
+        remap_sample_slots(&mut record, &BTreeMap::from([(30, 1), (31, 2)]));
+        assert_eq!(sample_slots(&record), [1, 2]);
+        assert_eq!(multisample_slots(&record), [1]);
     }
 
     #[test]

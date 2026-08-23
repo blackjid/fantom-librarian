@@ -743,9 +743,21 @@ dependencies. Verified against `EXPORT_Z-Core.svz` (10 ZEN-Core tones), `Z-Core_
 |-----|------|-------|-------|
 | 0x00 | 4 | magic | `SVZa` — no u16 length prefix, unlike SVD5 |
 | 0x04 | 1 | area count | 2, 3, 4 across the three fixtures, matching their area tables |
-| 0x05 | 1 | revision | 2 on the older export, 3 on both 2026 ones |
+| 0x05 | 1 | revision | the area count, less one when the file holds both tones and audio |
 | 0x06 | 6 | stamp | `KY019$` |
 | 0x0c | 4 | reserved | zeros |
+
+The revision byte tracks the file's shape, not a version anyone chose. Six instrument-written
+fixtures agree:
+
+| areas | count | revision |
+|-------|-------|----------|
+| `DIFa,PATa` | 2 | 2 |
+| `DIFa,RHYa,INSa` | 3 | 3 |
+| `DIFa,USPa,USDa` | 3 | 3 |
+| `DIFa,PATa,USPa,USDa` | 4 | 3 |
+| `DIFa,RHYa,INSa,USPa,USDa` | 5 | 4 |
+| `DIFa,PATa,USPa,MSPa,USDa` | 5 | 4 |
 
 The area table entries and the `format` stamp work as in SVD5, with `ZCOR` (ZEN-Core) in place of
 `KY19`. Areas seen: `DIFa`, `PATa`, `RHYa`+`INSa`, `USPa`, `USDa`.
@@ -913,6 +925,67 @@ because a reference that cannot be found cannot be rewritten. The CLI reports it
 banks that carry *different* samples is refused for the same reason: their slots collide and nothing
 can be repointed. The rule lives in `AreaSpec::sample_refs_decoded`, so decoding the `INSa` group
 field later is a one-line change to what the repackager is allowed to do.
+
+### SVD → SVZ: a tone leaves a backup — CONFIRMED
+
+**A tone record is the same bytes in both envelopes.** The only field that changes is a sample
+reference, which becomes the sample's position in the new file. `T8_MSMP_TONE.svz` and the backup
+from the same instrument hold `Beat It Gong` identically but for one byte: partial 0's right wave
+number, `22` in the backup and `2` in the export.
+
+**An `MSPa` record is an `MLSa` record**, same 1040 bytes, with the per-key sample numbers
+renumbered the same way. **`USPa`/`USDa` are built from `SMPa`/`SMPd` by the sample-file rules
+above** — a tone export's sample half is byte for byte what a sample-only export carries.
+
+So the conversion is: copy the records, renumber what travels (samples and multisamples densely
+from 1, in slot order), and lay out the envelope. `crate::convert` does that, and rebuilding four
+instrument-written exports from one backup reproduces each byte for byte apart from the `KY019$`
+stamp: `T8_MSMP_TONE.svz` (two tones, a multisample, 7 MB of audio), `T9_BACK.svz` (one multisampled
+tone), `DRUM_BEFORE.svz` (a drum kit with no sample areas), and `DRUM_AFTER.svz` (a kit that plays
+one) — every shape the instrument writes.
+
+It is limited to `PATa` and `RHYa`+`INSa` for the reason repackaging is: an engine whose sample
+references are undecoded cannot be carried without either dropping audio or copying a backup's
+entire sample bank.
+
+### A converted tone imports and plays — HARDWARE-CONFIRMED
+
+`Finesse Rise`, lifted out of a backup by `crate::convert` — one `PATa` tone, one `MSPa`
+multisample, three samples, 5.6 MB — imported on a **FANTOM-6** and **plays correctly**. Four tones
+selected into one file imported together, listed under their own names with the panel's `US`/`MS`
+tags, and landed in the USER slots the player chose.
+
+That validates the whole conversion at once: the synthesized envelope, `PATa` records carried
+across, the `MSPa` key map renumbered, `USPa` converted from `SMPa`, the `USDa` sections, and the
+`KY019$` stamp — which was known to be accepted by `IMPORT SAMPLE` and is now known to be accepted
+by tone import too.
+
+**The instrument repoints the tone at wherever its samples land.** A tone whose partials named
+samples 1 and 2 in the file read `143. Sledge 1` and `144. Hamma 1` on the panel after import. The
+numbers in a carried file are positions within it, and the import rewrites them — the same
+behaviour a scene bank's sample references do *not* get, because a scene bank has no table for them
+to be positions in.
+
+**A multisample number that moves survives.** Every fixture carrying a multisample uses number 1,
+which a dense renumbering leaves at 1 — so nothing had ever tested the remap. A tone playing
+multisample **2** in the backup, exported as multisample **1**, imports and plays correctly.
+
+**A drum kit imports from the drum page, not the tone page.** `RHYa`+`INSa` files do not appear in
+`IMPORT TONE` at all — Roland's own kit export does not either. Under `IMPORT DRUM` both appear, and
+a converted sampled kit imports and plays.
+
+**The instrument writes back exactly what it was given.** A tone built by `crate::convert`, imported,
+then exported by the instrument comes back byte for byte: all 5,824,680 bytes of tone record, `MSPa`
+key map, `USPa`, `USDa` directory and audio, every CRC-32, and the preamble — one byte apart, the
+`KY019$` stamp it restamps as its own. Pinned by
+`a_converted_tone_round_trips_through_the_instrument_unchanged`.
+
+> **A tone can import perfectly and make no sound.** The same session imported tones whose samples
+> came from panel slots 1–50 of that backup, where the waveforms are zeros while the slot records
+> survive. Everything was right — names, lengths, keys, the repointed partials — and they were
+> silent. Deleting a sample on the instrument wipes the audio and keeps the slot, so *only the audio
+> bytes* distinguish a live sample from a dead one. `SampleData::silent` reads them, and the CLI
+> refuses to let a file like that leave without saying so.
 
 ## SysEx — CONFIRMED (FANTOM-6)
 

@@ -21,6 +21,7 @@
 //! samples can be selected when repackaging and a drum kit's cannot; see [`crate::tonebank`].
 
 use crate::container::{ascii_trim, Raw, RecordTable, Svd};
+use crate::samplebank::smpd;
 use crate::Result;
 
 /// How many user sample slots the panel has. `SMPa` holds exactly this many records, and a tone
@@ -69,6 +70,12 @@ pub struct SampleData {
     /// per frame" implied — the frame count works out the same either way.
     pub channel_bytes: u32,
     pub sample_rate: u32,
+    /// Every byte of the waveform is zero.
+    ///
+    /// A slot whose sample was deleted on the instrument keeps its directory entry — name, key,
+    /// length and all — while its audio is wiped. Nothing else distinguishes it from a slot that
+    /// still holds its recording, so a file built from one carries silence under a real name.
+    pub silent: bool,
 }
 
 impl SampleData {
@@ -118,13 +125,17 @@ impl SampleBank {
 
     /// Audio present in `USDa` with no matching `SMPa` slot, or a slot with no audio — either
     /// means the two areas disagree and the bank should not be trusted for copying.
+    ///
+    /// Slots are named by their panel number, one higher than the record index they sit at, so the
+    /// message points at what the player can actually look up.
     pub fn orphans(&self) -> Vec<String> {
         let mut out = Vec::new();
         for slot in &self.slots {
             if !self.data.iter().any(|d| d.slot as usize == slot.index) {
                 out.push(format!(
                     "slot {} {:?} has no waveform data",
-                    slot.index, slot.name
+                    slot.index + 1,
+                    slot.name
                 ));
             }
         }
@@ -132,7 +143,8 @@ impl SampleBank {
             if !self.slots.iter().any(|s| s.index == data.slot as usize) {
                 out.push(format!(
                     "waveform {:?} points at unused slot {}",
-                    data.name, data.slot
+                    data.name,
+                    data.slot + 1
                 ));
             }
         }
@@ -186,13 +198,13 @@ pub fn read(raw: &Raw, svd: &Svd) -> Result<SampleBank> {
         return Ok(SampleBank {
             slots: read_svz_slots(raw, svd)?,
             data: read_svz_data(raw, svd)?,
-            multisamples: Vec::new(),
+            multisamples: read_multisamples(raw, svd, b"MSPa")?,
         });
     }
     Ok(SampleBank {
         slots: read_slots(raw, svd)?,
         data: read_data(raw, svd)?,
-        multisamples: read_multisamples(raw, svd)?,
+        multisamples: read_multisamples(raw, svd, b"MLSa")?,
     })
 }
 
@@ -246,13 +258,20 @@ fn read_svz_data(raw: &Raw, svd: &Svd) -> Result<Vec<SampleData>> {
         if &section[..4] != SMPD_MAGIC {
             break;
         }
+        let size = le_u32(entry, 8);
         out.push(SampleData {
             slot,
             offset,
             name: ascii_trim(&section[SMPD_NAME..SMPD_NAME + 16]),
-            size: le_u32(entry, 8),
+            size,
             channel_bytes: le_u32(section, SVZ_SMPD_CHANNEL_BYTES),
             sample_rate: le_u32(section, SVZ_SMPD_RATE),
+            // The `USDa` directory's size covers the whole section, header included.
+            silent: is_silent(
+                bytes,
+                offset + smpd::svz::AUDIO,
+                (size as usize).saturating_sub(smpd::svz::AUDIO),
+            ),
         });
     }
     Ok(out)
@@ -311,13 +330,21 @@ fn read_data(raw: &Raw, svd: &Svd) -> Result<Vec<SampleData>> {
         if &section[..4] != SMPD_MAGIC {
             break;
         }
+        let size = le_u32(section, SMPD_SIZE);
         out.push(SampleData {
             slot,
             offset,
             name: ascii_trim(&section[SMPD_NAME..SMPD_NAME + 16]),
-            size: le_u32(section, SMPD_SIZE),
+            size,
             channel_bytes: le_u32(section, SMPD_CHANNEL_BYTES),
             sample_rate: le_u32(section, SMPD_RATE),
+            // A section spans its declared size plus the 64-byte gap after it, which is audio
+            // too, and the first 0x80 of that span is header — see `crate::samplebank`.
+            silent: is_silent(
+                body,
+                offset + smpd::backup::AUDIO,
+                (size as usize + smpd::backup::TRAILING_GAP).saturating_sub(smpd::backup::AUDIO),
+            ),
         });
     }
     Ok(out)
@@ -337,8 +364,13 @@ fn factory_multisample(record_size: usize) -> Vec<u8> {
     record
 }
 
-fn read_multisamples(raw: &Raw, svd: &Svd) -> Result<Vec<Multisample>> {
-    let Some(table) = RecordTable::from_svd(raw, svd, b"MLSa")? else {
+/// The multisamples a file defines, whichever area holds them.
+///
+/// A backup keeps all 128 in `MLSa`, most of them untouched; a companion carries only the `MSPa`
+/// records its tones reach, densely numbered. The same record layout either way, so the same reader
+/// serves both — and a file that carries one is not allowed to look like a file that carries none.
+fn read_multisamples(raw: &Raw, svd: &Svd, tag: &[u8; 4]) -> Result<Vec<Multisample>> {
+    let Some(table) = RecordTable::from_svd(raw, svd, tag)? else {
         return Ok(Vec::new());
     };
     // Compare against the known factory bytes rather than against this file's own record 0 —
@@ -360,6 +392,21 @@ fn read_multisamples(raw: &Raw, svd: &Svd) -> Result<Vec<Multisample>> {
         });
     }
     Ok(out)
+}
+
+/// Whether a waveform is nothing but zeros, stopping at the first byte that says otherwise.
+///
+/// `len` must be the audio alone. Running past it into the next section's header would find that
+/// header's non-zero bytes and call a silent sample healthy — which is how this was first written,
+/// and it reported only the last of five wiped slots.
+///
+/// Cheap in the case that matters: a sample that still holds its recording almost always differs
+/// from silence in its first few bytes, so this reads a handful and stops.
+fn is_silent(bytes: &[u8], at: usize, len: usize) -> bool {
+    let end = (at + len).min(bytes.len());
+    bytes
+        .get(at..end)
+        .is_some_and(|audio| !audio.is_empty() && audio.iter().all(|&byte| byte == 0))
 }
 
 fn le_u32(bytes: &[u8], at: usize) -> u32 {
@@ -489,7 +536,8 @@ mod tests {
         let orphans = bank.orphans();
         assert_eq!(orphans.len(), 2);
         assert!(orphans[0].contains("no waveform data"));
-        assert!(orphans[1].contains("unused slot 7"));
+        // Record 7 is the panel's slot 8: these messages name what a player can look up.
+        assert!(orphans[1].contains("unused slot 8"), "{}", orphans[1]);
     }
 
     fn multisample_area(records: &[Vec<u8>], record_size: usize) -> Vec<u8> {

@@ -33,6 +33,12 @@ fn main() -> ExitCode {
         Command::Check { file, against } => run_check(&file, against.as_ref()),
         Command::Tones { command } => match command {
             TonesCommand::List { file } => run_tones(&file),
+            TonesCommand::Extract {
+                file,
+                tones,
+                area,
+                write,
+            } => run_tone_extract(&file, &tones, &area, &write),
         },
         Command::Samples { command } => match command {
             SamplesCommand::List { file } => run_samples(&file),
@@ -553,6 +559,68 @@ fn run_tones(file: &PathBuf) -> fantom_core::Result<String> {
     Ok(out)
 }
 
+/// Lift tones out of a file into an `.svz`, the one envelope that carries user audio.
+///
+/// An `.svz` source is repackaged in place by [`fantom_core::tonebank`]; an SVD is converted, which
+/// is the only way a sampled user tone can leave a backup at all.
+fn run_tone_extract(
+    file: &PathBuf,
+    tones: &[usize],
+    area: &str,
+    write: &WriteOptions,
+) -> fantom_core::Result<String> {
+    let raw = Raw::open(file)?;
+    let exported = if is_tone_bank(&raw) {
+        fantom_core::tonebank::extract_tones(&raw, tones)?
+    } else {
+        fantom_core::convert::export_tones(&raw, &area_tag(area)?, tones)?
+    };
+    if write.should_write() {
+        exported.save(write.output())?;
+    }
+
+    let needs = fantom_core::requirements::requirements(&exported)?;
+    let mut out = String::new();
+    let _ = writeln!(
+        out,
+        "extracted {} tone{}{}{}",
+        tones.len(),
+        render::plural(tones.len()),
+        match needs.samples.len() {
+            0 => String::new(),
+            n => format!(
+                " with {n} sample{}{}",
+                render::plural(n),
+                match needs.multisamples.len() {
+                    0 => String::new(),
+                    m => format!(" and {m} multisample{}", render::plural(m)),
+                }
+            ),
+        },
+        write_destination(write),
+    );
+    // A kit is loaded from a different page than a tone, and IMPORT TONE lists no kit at all —
+    // Roland's own kit exports included. Worth saying at the moment the file is written.
+    if area_tag(area)? == *b"RHYa" && !is_tone_bank(&raw) {
+        let _ = writeln!(
+            out,
+            "load this from MENU -> IMPORT DRUM; IMPORT TONE lists no kits"
+        );
+    }
+    // Whatever the audio could not cover: an expansion the destination has to have installed.
+    out.push_str(&render::requirements(&needs));
+    Ok(out)
+}
+
+/// A four-byte area tag from what the user typed.
+fn area_tag(area: &str) -> fantom_core::Result<[u8; 4]> {
+    area.as_bytes().try_into().map_err(|_| {
+        fantom_core::Error::Unrecognized(format!(
+            "{area:?} is not a four-character area tag (try PATa or RHYa)"
+        ))
+    })
+}
+
 fn run_samples(file: &PathBuf) -> fantom_core::Result<String> {
     let raw = Raw::open(file)?;
     let svd = fantom_core::container::Svd::parse(&raw)?;
@@ -576,13 +644,20 @@ fn run_samples(file: &PathBuf) -> fantom_core::Result<String> {
     for slot in &bank.slots {
         let data = bank.data.iter().find(|d| d.slot as usize == slot.index);
         table.row(vec![
-            slot.index.to_string(),
+            // Panel numbering: the instrument's first user sample is 1, and every other number
+            // this tool prints or takes — a tone's reference, `--samples-at` — counts the same way.
+            (slot.index + 1).to_string(),
             slot.name.clone(),
             slot.end.to_string(),
             format!("{:.2}", data.map(|d| d.seconds()).unwrap_or_default()),
             render::note(slot.original_key),
-            data.map(|d| d.name.clone())
-                .unwrap_or_else(|| "<no waveform>".to_string()),
+            // Three states, not two: audio, no section at all, and a section of silence — which
+            // is what a slot holds after its sample was deleted on the instrument.
+            match data {
+                Some(d) if d.silent => "<silent>".to_string(),
+                Some(d) => d.name.clone(),
+                None => "<no waveform>".to_string(),
+            },
         ]);
     }
     out.push_str(&table.render());
@@ -591,7 +666,7 @@ fn run_samples(file: &PathBuf) -> fantom_core::Result<String> {
         let _ = writeln!(out, "\n{} multisamples:", bank.multisamples.len());
         let mut table = Table::new(vec![("SLOT", Align::Right), ("NAME", Align::Left)]);
         for ms in &bank.multisamples {
-            table.row(vec![ms.index.to_string(), ms.name.clone()]);
+            table.row(vec![(ms.index + 1).to_string(), ms.name.clone()]);
         }
         out.push_str(&table.render());
     }
@@ -978,6 +1053,25 @@ mod tests {
                 "--dry-run",
             ],
             &["fantom", "tones", "list", "bank.svd"],
+            &[
+                "fantom",
+                "tones",
+                "extract",
+                "backup.SVD",
+                "954",
+                "--dry-run",
+            ],
+            &[
+                "fantom",
+                "tones",
+                "extract",
+                "backup.SVD",
+                "1",
+                "--area",
+                "RHYa",
+                "-o",
+                "kit.svz",
+            ],
             &["fantom", "samples", "list", "bank.svd"],
             &["fantom", "areas", "list", "bank.svd"],
             &["fantom", "check", "bank.svd"],
@@ -1010,6 +1104,7 @@ mod tests {
             ["fantom", "scenes", "extract", "bank.svd", "1"].as_slice(),
             ["fantom", "scenes", "canary", "bank.svd", "1"].as_slice(),
             ["fantom", "scenes", "merge", "base.svd", "source.svd"].as_slice(),
+            ["fantom", "tones", "extract", "backup.SVD", "954"].as_slice(),
         ] {
             assert!(
                 Cli::try_parse_from(argv).is_err(),
