@@ -92,6 +92,26 @@ fn exports_and_backups_resolve_the_same_tone_names() {
     }
 }
 
+/// The instrument cannot write out audio it plays, and its own export proves it.
+///
+/// Asked for the six tones that play user sample slots 30 and 31 — which the instrument plays —
+/// a FANTOM-6 wrote a tone bank whose six sections are correctly sized, correctly named, and
+/// entirely zeros. So a file this tool builds from the same material is not worse than Roland's;
+/// the audio cannot be got out at all, and the only honest thing to do is say so.
+#[test]
+fn an_instrument_written_export_can_carry_silence() {
+    let Some(export) = private("sledge+hammer.svz") else {
+        return;
+    };
+    let needs = fantom_core::requirements::requirements(&export).unwrap();
+
+    assert_eq!(needs.samples.len(), 6);
+    assert_eq!(needs.silent_samples().count(), 6);
+    // Sections are present; audio is not. A payload of silence is not audio.
+    assert!(!needs.carries_audio);
+    assert_eq!(needs.missing_samples().count(), 0);
+}
+
 /// A companion carries its multisamples in `MSPa`, not the `MLSa` a backup uses.
 ///
 /// Reading only `MLSa` meant a file carrying a multisample reported none — indistinguishable from

@@ -65,6 +65,10 @@ pub struct Requirements {
     pub unclassified: Vec<ToneAddress>,
     /// Whether the file carries user audio of its own — an `.svz` tone or sample bank does, a
     /// scene bank never does.
+    ///
+    /// False when every section it holds is silence. A file of correctly sized, correctly named,
+    /// empty waveforms carries a sample payload but no audio, and calling that "carries audio"
+    /// would be the reassuring half of the truth.
     pub carries_audio: bool,
 }
 
@@ -536,7 +540,7 @@ impl<'a> Scan<'a> {
                 ids
             },
             unclassified: self.unclassified,
-            carries_audio: !self.bank.data.is_empty(),
+            carries_audio: self.bank.data.iter().any(|audio| !audio.silent),
         }
     }
 }

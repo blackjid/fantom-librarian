@@ -1020,9 +1020,17 @@ properties that cannot be told apart with four backups from one machine. What is
 - *A damaged region.* The silent set aligns exactly with the pack's sample list, not with any
   address range.
 
-The experiment that would settle it: export from the instrument a tone referencing only one of these
-slots. Audio in the result means the wave data is readable and the backup omits it selectively;
-zeros mean it is unreachable to any file writer and re-importing is the only recovery.
+**The instrument cannot write this audio into any file, its own exports included.** Asked for the
+six tones that play slots 30 and 31, a FANTOM-6 wrote a tone bank whose six `SMPd` sections are
+**all zeros** — correct sizes, correct names, correct content ids, no audio — while the same
+instrument plays those tones. So the loss is not a property of backups: no file the instrument
+writes carries this audio, and re-importing the sample is the only recovery. A tool that copies
+faithfully can do nothing about it, which is why it is reported rather than worked around.
+
+That export also shows the instrument **de-duplicating by slot, as [`crate::convert`] does**: six
+tones produced three pairs of sections, one pair per distinct source slot. And the content id
+survives a round trip through the instrument — sections imported from a tool-built file carry the
+id of the backup slot they came from.
 
 ### The `USDa` directory word is a content id — CONFIRMED
 

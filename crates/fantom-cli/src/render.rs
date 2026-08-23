@@ -265,10 +265,10 @@ pub fn requirements(needs: &Requirements) -> String {
             out,
             "warning: {} of the sample{} carried here hold{} no audio at all — the source keeps\n\
              \x20        their names and lengths and none of their sound. The instrument may well\n\
-             \x20        still play them: a backup can omit audio it plays, and nothing in the\n\
-             \x20        file distinguishes that from an empty slot (see docs/FORMAT.md).\n\
-             \x20        Re-import these on the instrument and take a fresh backup, or they\n\
-             \x20        cannot travel:",
+             \x20        still play them and be unable to write them out: its own exports carry\n\
+             \x20        zeros for these too, and nothing in a file marks the difference (see\n\
+             \x20        docs/FORMAT.md). Re-import the samples on the instrument and take a\n\
+             \x20        fresh backup, or they cannot travel:",
             silent.len(),
             plural(needs.samples.len()),
             if silent.len() == 1 { "s" } else { "" },
@@ -372,7 +372,7 @@ mod requirement_tests {
         };
         let report = requirements(&needs);
         assert!(report.contains("no audio at all"), "{report}");
-        assert!(report.contains("can omit audio it plays"), "{report}");
+        assert!(report.contains("unable to write them out"), "{report}");
         assert!(report.contains("slot  30  Sledge 1"), "{report}");
         assert!(!report.contains("upiano1_55_a3"), "{report}");
         // It still says what it carries; the warning is about quality, not presence.
