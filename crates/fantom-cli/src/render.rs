@@ -263,10 +263,11 @@ pub fn requirements(needs: &Requirements) -> String {
     if !silent.is_empty() {
         let _ = writeln!(
             out,
-            "warning: {} of the sample{} carried here hold{} no audio at all. Deleting a sample on\n\
-             \x20        the instrument wipes the waveform and keeps the slot, so these travel\n\
-             \x20        under their names and play silence. Re-record or re-import them on the\n\
-             \x20        source instrument, take a fresh backup, and build this again:",
+            "warning: {} of the sample{} carried here hold{} no audio at all — the backup keeps\n\
+             \x20        their names and lengths and none of their sound. The instrument may well\n\
+             \x20        still play them: a backup written by the current OS carries no audio for\n\
+             \x20        samples that predate it (see docs/FORMAT.md). Re-import these on the\n\
+             \x20        instrument and take a fresh backup, or they cannot travel:",
             silent.len(),
             plural(needs.samples.len()),
             if silent.len() == 1 { "s" } else { "" },
@@ -370,6 +371,7 @@ mod requirement_tests {
         };
         let report = requirements(&needs);
         assert!(report.contains("no audio at all"), "{report}");
+        assert!(report.contains("predate it"), "{report}");
         assert!(report.contains("slot  30  Sledge 1"), "{report}");
         assert!(!report.contains("upiano1_55_a3"), "{report}");
         // It still says what it carries; the warning is about quality, not presence.

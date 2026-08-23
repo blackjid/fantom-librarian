@@ -149,11 +149,13 @@ own — so every field is read as intended, not just the ones you can hear.
 Drum kits load from **IMPORT DRUM**, not IMPORT TONE, which lists no kit at all — Roland's own kit
 exports included.
 
-That session also found the failure no structural check can see: a tone whose samples came from
-slots whose audio had been deleted on the instrument imported perfectly and made no sound. A
-deleted sample keeps its slot record — name, key, length — and loses its waveform, so `samples list`
-tells `<silent>` from `<no waveform>`, and building a package that carries one warns before it is
-written.
+That session also found the failure no structural check can see, and it is a property of backups
+rather than of this tool: **a backup written by the newer OS carries no audio for samples that
+predate it.** The slot record survives in full and the waveform is written as zeros, so a tone built
+from one imports perfectly and plays nothing — while the instrument itself still plays the sample.
+Confirmed across four backups from one machine, tracking the OS-era marker exactly, with the audio
+nowhere else in the file (see [`docs/FORMAT.md`](docs/FORMAT.md)). `samples list` tells `<silent>`
+from `<no waveform>`, and anything built from such a slot says so before it is written.
 
 **In a scene bank, user samples do not travel** — and that is Roland's own behaviour, not a
 limitation here: the instrument's scene exports carry sample *slot references* and no audio. A tone

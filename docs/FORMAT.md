@@ -980,12 +980,35 @@ key map, `USPa`, `USDa` directory and audio, every CRC-32, and the preamble — 
 `KY019$` stamp it restamps as its own. Pinned by
 `a_converted_tone_round_trips_through_the_instrument_unchanged`.
 
-> **A tone can import perfectly and make no sound.** The same session imported tones whose samples
-> came from panel slots 1–50 of that backup, where the waveforms are zeros while the slot records
-> survive. Everything was right — names, lengths, keys, the repointed partials — and they were
-> silent. Deleting a sample on the instrument wipes the audio and keeps the slot, so *only the audio
-> bytes* distinguish a live sample from a dead one. `SampleData::silent` reads them, and the CLI
-> refuses to let a file like that leave without saying so.
+> **A tone can import perfectly and make no sound**, and the reason is not the tone. See below.
+
+### A backup can omit sample audio it still plays — CONFIRMED
+
+**A backup written by the newer OS carries no audio for samples that predate it.** The slot record
+survives in full — name, in-use flag, original key, length — and the `SMPd` section is written at
+its correct size with a correct header and **all-zero audio**.
+
+Measured across four backups from one instrument, and it tracks the OS-era marker exactly:
+
+| backup | `SYSa[0]+0x00fb` | slots 1–50 in use | of them silent |
+|--------|------------------|-------------------|----------------|
+| `2023.4.8+topandprisma` | `0x24` `$` | 50 | 0 |
+| `Black NARFSOUNDS` | `0x24` `$` | 50 | 0 |
+| `T8_MSMP_BACKUP` | `0x25` `%` | 49 | 49 |
+| `TESTv1` | `0x25` `%` | 50 | 49 |
+
+The audio is **not elsewhere in the file**: a 64-byte probe taken from one of those samples in a `$`
+backup appears nowhere in either `%` backup.
+
+On the instrument those samples still **play**, but their preview shows **no waveform** — while a
+sample imported after the update, holding the same recording under the same name, plays *and* draws
+one, and is written into the backup with its audio. So the tell is a slot the instrument treats as
+occupied whose bytes are silence, and re-importing a sample restores both properties.
+
+The consequence for anything built from such a backup is total and silent: a scene bank, a tone
+export or a sample companion referencing those slots is structurally perfect and plays nothing.
+`SampleData::silent` reads the audio rather than trusting the slot record, and every report that
+names a sample says so.
 
 ## SysEx — CONFIRMED (FANTOM-6)
 
