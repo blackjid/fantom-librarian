@@ -128,6 +128,33 @@ fn an_exported_tone_needs_nothing_from_the_destination() {
     );
 }
 
+/// The instrument reads every field we write, and writes it back unchanged.
+///
+/// `T5_MSMOVE.svz` was built from a backup by [`export_tones`], imported on a FANTOM-6, and
+/// exported back off it. All 5,824,680 bytes return identical: the tone record, the `MSPa` key
+/// map, the `USPa` slot table, the `USDa` directory with its carried per-section words, the audio,
+/// every CRC-32, and the preamble's shape revision. Playing correctly says the audible fields are
+/// right; this says all of them are.
+///
+/// The tone plays multisample 2 in the backup and 1 in the file, so the number moved on the way
+/// out and survived the trip.
+#[test]
+fn a_converted_tone_round_trips_through_the_instrument_unchanged() {
+    let (Some(sent), Some(returned)) = (
+        private("hwtest_v1/T5_MSMOVE.svz"),
+        private("hwtest_v1/T5_BACK.svz"),
+    ) else {
+        return;
+    };
+    assert_same_but_the_stamp(&sent, &returned, "T5_MSMOVE.svz round trip");
+
+    // And it can still be rebuilt from the backup it came out of.
+    if let Some(backup) = private("TESTv1/FANTOM.SVD") {
+        let rebuilt = export_tones(&backup, b"PATa", &[564]).unwrap();
+        assert_eq!(rebuilt.bytes(), sent.bytes());
+    }
+}
+
 /// A deleted sample keeps its slot, so a file can carry a full-length sample that plays nothing.
 ///
 /// This backup holds two such slots — panel 1 and 22, whose waveforms are zeros while their

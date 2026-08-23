@@ -137,8 +137,17 @@ undecoded are refused rather than exported without their audio.
 
 **Hardware-confirmed on a FANTOM-6.** A multisampled tone converted out of a backup — one tone, one
 multisample, three samples — imported and plays correctly; four tones selected into one file
-imported together under their own names. The instrument repoints each tone at wherever its samples
-land, so the positions a carried file uses are rewritten on the way in.
+imported together under their own names. A tone whose multisample number *moves* (2 in the backup,
+1 in the file) plays too, and so does a converted drum kit with its sample. The instrument repoints
+each tone at wherever its samples land, so the positions a carried file uses are rewritten on the
+way in.
+
+**The round trip is byte-identical.** One of those files, imported and then exported back off the
+instrument, returns all 5,824,680 bytes unchanged apart from the stamp byte the instrument makes its
+own — so every field is read as intended, not just the ones you can hear.
+
+Drum kits load from **IMPORT DRUM**, not IMPORT TONE, which lists no kit at all — Roland's own kit
+exports included.
 
 That session also found the failure no structural check can see: a tone whose samples came from
 slots whose audio had been deleted on the instrument imported perfectly and made no sound. A

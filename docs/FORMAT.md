@@ -966,6 +966,20 @@ numbers in a carried file are positions within it, and the import rewrites them 
 behaviour a scene bank's sample references do *not* get, because a scene bank has no table for them
 to be positions in.
 
+**A multisample number that moves survives.** Every fixture carrying a multisample uses number 1,
+which a dense renumbering leaves at 1 — so nothing had ever tested the remap. A tone playing
+multisample **2** in the backup, exported as multisample **1**, imports and plays correctly.
+
+**A drum kit imports from the drum page, not the tone page.** `RHYa`+`INSa` files do not appear in
+`IMPORT TONE` at all — Roland's own kit export does not either. Under `IMPORT DRUM` both appear, and
+a converted sampled kit imports and plays.
+
+**The instrument writes back exactly what it was given.** A tone built by `crate::convert`, imported,
+then exported by the instrument comes back byte for byte: all 5,824,680 bytes of tone record, `MSPa`
+key map, `USPa`, `USDa` directory and audio, every CRC-32, and the preamble — one byte apart, the
+`KY019$` stamp it restamps as its own. Pinned by
+`a_converted_tone_round_trips_through_the_instrument_unchanged`.
+
 > **A tone can import perfectly and make no sound.** The same session imported tones whose samples
 > came from panel slots 1–50 of that backup, where the waveforms are zeros while the slot records
 > survive. Everything was right — names, lengths, keys, the repointed partials — and they were

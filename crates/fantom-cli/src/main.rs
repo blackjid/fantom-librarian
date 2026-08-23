@@ -599,6 +599,14 @@ fn run_tone_extract(
         },
         write_destination(write),
     );
+    // A kit is loaded from a different page than a tone, and IMPORT TONE lists no kit at all —
+    // Roland's own kit exports included. Worth saying at the moment the file is written.
+    if area_tag(area)? == *b"RHYa" && !is_tone_bank(&raw) {
+        let _ = writeln!(
+            out,
+            "load this from MENU -> IMPORT DRUM; IMPORT TONE lists no kits"
+        );
+    }
     // Whatever the audio could not cover: an expansion the destination has to have installed.
     out.push_str(&render::requirements(&needs));
     Ok(out)
