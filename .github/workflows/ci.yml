@@ -26,7 +26,7 @@ jobs:
       - uses: actions/checkout@v7
 
       # Toolchain versions come from mise.toml, the same file a developer shell reads.
-      - uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4.2.5
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
 
       - uses: Swatinem/rust-cache@v2
 
@@ -64,7 +64,7 @@ jobs:
       - uses: actions/checkout@v7
 
       # Nothing here builds Rust, so leave that toolchain uninstalled.
-      - uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4.2.5
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
           install_args: node pnpm
 
