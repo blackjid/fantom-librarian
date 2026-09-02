@@ -166,10 +166,7 @@ impl BankRequirement {
     /// content. A bank whose mapping is unconfirmed is never assumed to be factory — the safe
     /// error is to mention something the destination turns out to have.
     pub fn is_factory(&self) -> bool {
-        matches!(
-            self.bank.as_deref(),
-            Some(bank) if bank.starts_with("PR-") || bank == "PRST" || bank == "CMN"
-        )
+        self.bank.as_deref().is_some_and(is_factory_bank)
     }
 
     /// How the requirement reads in a list. An unconfirmed bank shows its raw `LSB` rather than an
@@ -190,6 +187,14 @@ impl BankRequirement {
             self.address.pc
         )
     }
+}
+
+/// Whether a bank label names content every FANTOM ships with.
+///
+/// Split out from [`BankRequirement::is_factory`] so a caller holding only the label — a catalog
+/// filtering on stored text, say — decides it the same way. See that method for the reasoning.
+pub fn is_factory_bank(bank: &str) -> bool {
+    bank.starts_with("PR-") || bank == "PRST" || bank == "CMN"
 }
 
 /// One user sample or multisample slot the material plays.
