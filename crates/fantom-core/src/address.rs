@@ -50,6 +50,12 @@ pub struct AreaSpec {
     pub word_swapped: bool,
     /// Record internals are undecoded: copy verbatim, never interpret beyond the name.
     pub opaque: bool,
+    /// Offset of the record's model selector, for the engines that host several models.
+    ///
+    /// `MDLa` and `ACBa` each hold one engine's records, but that engine is a *family*: a MODEL
+    /// record is a JUNO-106 or an SH-101 or an n/zyme patch, and nothing outside the record says
+    /// which. A `u32` here does — see [`AreaSpec::model_id`].
+    pub model_offset: Option<usize>,
     /// Whether we can tell which user samples a record of this engine plays.
     ///
     /// Two engines qualify. A `PATa` tone carries a confirmed wave group and slot number on each of
@@ -62,6 +68,14 @@ pub struct AreaSpec {
 
 /// Length of a record's name field.
 pub const NAME_LEN: usize = 16;
+
+/// Offset of the model selector in an `MDLa` or `ACBa` record — CONFIRMED as per-record.
+///
+/// A backup holding one `JUNO Heartbeat` reads 9 there while all 1023 of its `INITIAL TONE` slots
+/// read 7, so the field varies inside a single file and is not a firmware or format stamp. Which
+/// model each number *is* has not been confirmed against an instrument; [`model_label`] names only
+/// what has been, and the rest are reported by number.
+const MODEL_OFFSET: usize = 0x08;
 
 impl AreaSpec {
     /// The area tag as a string, for messages.
@@ -97,6 +111,15 @@ impl AreaSpec {
         out
     }
 
+    /// The record's model selector, for an area whose engine hosts several models.
+    ///
+    /// `None` for every other area, and for a record too short to hold one.
+    pub fn model_id(&self, record: &[u8]) -> Option<u32> {
+        let at = self.model_offset?;
+        let bytes = record.get(at..at + 4)?;
+        Some(u32::from_le_bytes(bytes.try_into().ok()?))
+    }
+
     /// How many records this bank can address before it would collide with the next engine.
     pub fn capacity(&self) -> usize {
         (self.lsb_last - self.lsb_first + 1) as usize * PC_PER_PAGE
@@ -130,6 +153,7 @@ const DEFAULT: AreaSpec = AreaSpec {
     name_offset: 0,
     word_swapped: false,
     opaque: false,
+    model_offset: None,
     sample_refs_decoded: false,
 };
 
@@ -198,6 +222,7 @@ pub const AREAS: [AreaSpec; 9] = [
         name_offset: 0x1c44,
         word_swapped: true,
         opaque: true,
+        model_offset: Some(MODEL_OFFSET),
         ..DEFAULT
     },
     AreaSpec {
@@ -215,6 +240,7 @@ pub const AREAS: [AreaSpec; 9] = [
         msb: 97,
         name_offset: 0x10,
         opaque: true,
+        model_offset: Some(MODEL_OFFSET),
         ..DEFAULT
     },
 ];
@@ -254,6 +280,21 @@ pub fn dependency_tags() -> impl Iterator<Item = [u8; 4]> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_the_family_areas_carry_a_model_selector() {
+        let mdla = spec_for_tag(b"MDLa").unwrap();
+        let pata = spec_for_tag(b"PATa").unwrap();
+
+        let mut record = vec![0u8; 2048];
+        record[MODEL_OFFSET..MODEL_OFFSET + 4].copy_from_slice(&9u32.to_le_bytes());
+        assert_eq!(mdla.model_id(&record), Some(9));
+        // A `PATa` tone is one engine with no models under it, so it answers nothing rather than
+        // reading whatever those four bytes happen to hold.
+        assert_eq!(pata.model_id(&record), None);
+        // Nor does a record too short to hold one.
+        assert_eq!(mdla.model_id(&record[..MODEL_OFFSET + 2]), None);
+    }
 
     #[test]
     fn user_references_index_their_area_directly() {

@@ -731,6 +731,19 @@ Confirmed across banks: PRISMA 16, NARF 50, TOP80 83, full backup **512** scenes
 > to have exactly 16 scenes and a 16-byte header. NARF (count 0x32) disproved that — records always
 > begin at a fixed 16-byte header, and +0 is the scene count.
 
+### `MDLa` and `ACBa` records name their model at +0x08
+
+`u32` little-endian, per record. Values seen: `MDLa` 7 and 9, `ACBa` 4102 (`0x1006`).
+
+Per-record, not per-file: one backup's single `JUNO Heartbeat` reads 9 while its 1023 `INITIAL
+TONE` slots read 7.
+
+| Area | Value | Model | Basis |
+|------|-------|-------|-------|
+| `MDLa` | 7 | JUPITER-8 (`JP8`) | Panel-confirmed; also what an `INITIAL TONE` slot carries |
+| `ACBa` | 4102 | JUPITER-8 (`JP8`) | Its records are copies of `Soft & Subtle`, JUPITER-8 tone 1 in the Sound List (107/64) |
+| `MDLa` | 9 | unknown | — |
+
 ## SVZ tone export — CONFIRMED
 
 An `.svz` is the tone-level counterpart to a scene bank: no `PRFa`, just one engine area plus its
