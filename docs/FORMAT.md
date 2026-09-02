@@ -168,19 +168,34 @@ The `fixtures/TONEMAP/FANTOM.SVD` export adds these observed bank mappings:
 | VPiano | 90/0 | USER |
 | VPiano | 90/64 | PRST |
 | Expansion VPiano | 103/64 | M09X01 |
-| MODEL | 97/64 | USER |
-| MODEL | 97/66 | JP8 |
-| MODEL | 97/68 | JU106 |
-| MODEL | 97/70 | JX8P |
-| MODEL | 97/72 | n/zyme |
-| MODEL | 97/79 | SH101 |
+| MODEL | 97/0 | USER |
 | ACB | 107/0 | USER |
 | ACB | 107/64 | JP8 |
 | ACB | 107/66 | SH101 |
 | ACB | 107/70 | JU106 |
 | ACB | 107/76 | JX3P |
 
-The export did not contain a JD-800 MODEL zone, so its bank address remains unknown.
+### The MODEL banks — PANEL-CONFIRMED (FANTOM-6)
+
+| MSB/LSB | Bank | First tone |
+|---------|------|------------|
+| 97/64 | JP8 | `Berlin Night` |
+| 97/66 | JU106 | `Heater Pad` |
+| 97/68 | JX8P | `Mass-5` |
+| 97/70 | SH101 | `Gimme Lead` |
+| 97/72 | JD800 | `Millennium` |
+| 97/79 | n/zyme | `Geometric Wave` |
+
+Each bank was swept with `dump-sounds` and its first tone looked up in the panel's tone list.
+
+> **Correction.** Every MODEL label above was previously read off one `TONEMAP` export, and every
+> one of them was wrong: the labels sat one slot late, the last two were swapped, and 97/64 was
+> recorded as `USER`. `97/0` is the user bank — its addresses index `MDLa`, while 97/64 answers
+> with 106 ROM tones. JD-800 was recorded as having no known address; it is 97/72.
+>
+> The `ACB` rows below come from that same export and have not been re-checked. ACB cannot be
+> swept, so confirming them needs the panel.
+
 
 `TONEMAP2` confirms that native ACB factory references are address-only in a scene export. Its
 JP8 PC 0 and PC 1 scenes have no `ACBa` area, and their `PRFa` records differ only in the scene
@@ -1055,6 +1070,54 @@ area to go with it — the one engine with none. Sweeping `02 10`, `02 30`, `04 
 PC 7 returned byte-identical answers: every area that replies is stale from an earlier selection,
 and the Z-Core one blanks to 16 spaces rather than naming the ACB tone. Its names have to come from
 the sound list.
+
+### The bundled expansion catalogs
+
+`crates/fantom-core/src/expansion_sounds.tsv` names 3065 sounds across 25 expansions, keyed by
+**product code** and recording the `MSB/LSB` page each product was observed answering at.
+`tools/gen_expansion_catalog.py` builds it from bank pages in the shape `dump-sounds` writes.
+The product per page mirrors `ToneRef::bank`; `expansions::tests` pins the two together.
+
+Captured from one FANTOM-6: `EXZ001`-`EXZ015`, `EXSN01`-`EXSN04`, `M09X01`, and the six MODEL
+banks. `EXSN04` (105/67) is in no Roland list here; its code was read off the panel's expansion
+list, where it follows `EXSN01`-`EXSN03`.
+
+Two disagreements worth keeping:
+
+- `EXSN02` 32 and 33 are `75 ModDelayEP RD` and `75 ModDelay EP` on the instrument, and the other
+  way round in Roland's FANTOM-0 sound list. The instrument is what a scene selects, so it wins.
+- `105/68` answers with the previously selected name rather than its own, which is how a bank that
+  is not installed replies. Scenes do reference it, so the expansion exists and this instrument
+  does not have it.
+
+### An EXZ bank's LSB is an allocation slot, not a product's address — OBSERVED
+
+At MSB 93 each installed wave expansion holds a contiguous run of 128-program pages, sized to its
+contents, and the runs are not in product-code order:
+
+| LSB | Product | Pages | Sounds | ceil(n/128) |
+|-----|---------|-------|--------|-------------|
+| 1 | EXZ013 | 1 | 50 | 1 |
+| 2 | EXZ005 | 1 | 128 | 1 |
+| 3 | EXZ009 | 1 | 128 | 1 |
+| 7-10 | EXZ007 | 4 | 449 | 4 |
+| 11-14 | EXZ008 | 4 | 406 | 4 |
+| 15-17 | EXZ012 | 3 | 361 | 3 |
+| 19-22 | EXZ006 | 4 | 407 | 4 |
+| 23 | EXZ010 | 1 | 100 | 1 |
+| 24 | EXZ014 | 1 | 42 | 1 |
+| 26 | EXZ011 | 1 | 50 | 1 |
+| 27 | EXZ015 | 1 | 125 | 1 |
+
+Eleven products, eleven exact fits, and `EXZ001`-`EXZ004` elsewhere entirely (100/64-65, 101/64-65).
+`93/4-6`, `93/18` and `93/25` are holes: selecting one leaves the ZEN-Core temporary name **blank**,
+which is neither a bank's content nor the stale name an uninstalled bank echoes. Their sizes — one
+run of three pages and two of one — are expansion-shaped.
+
+So the LSB records where a product was *placed*, and a scene stores only that placement. Two
+instruments with different install histories can disagree about what `93/7` means, which is why
+`expansion_sounds.tsv` is keyed by product code: the contents belong to the product, and only the
+address-to-product map is per instrument.
 
 ### A record on disk is its SysEx parameter blocks, packed
 
