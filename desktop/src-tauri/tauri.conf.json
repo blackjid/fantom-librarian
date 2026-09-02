@@ -39,7 +39,8 @@
     "category": "Music",
     "shortDescription": "A librarian for Roland FANTOM sound material.",
     "macOS": {
-      "minimumSystemVersion": "10.15"
+      "minimumSystemVersion": "10.15",
+      "signingIdentity": "-"
     }
   }
 }

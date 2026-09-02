@@ -77,6 +77,108 @@ mod tests {
         assert!(!sounds.exists());
     }
 
+    /// An upgrade rewrites a library in place, so the copy has to be taken before it starts.
+    ///
+    /// The backup is the whole folder, not just the catalog: originals and exports are as much
+    /// the user's work as the database that indexes them, and only all three together restore.
+    #[test]
+    fn an_older_workspace_is_copied_beside_itself_before_it_is_upgraded() {
+        let tmp = tempfile::tempdir().expect("temp dir");
+        let root = tmp.path().join("My Library");
+        let ws = Workspace::create(&root).unwrap();
+        std::fs::write(root.join(workspace::ORIGINALS_DIR).join("keep.svd"), "mine").unwrap();
+        drop(ws);
+        // What a build one format older left behind.
+        std::fs::write(root.join(workspace::MARKER), "{\n  \"format\": 1\n}\n").unwrap();
+
+        let ws = Workspace::open(&root).unwrap();
+        let upgrade = ws.upgrade().expect("the older format was upgraded");
+        assert_eq!(upgrade.from_format, 1);
+        assert_eq!(upgrade.to_format, workspace::FORMAT_VERSION);
+
+        // Beside the library rather than inside it: a copy within the folder would be swept up by
+        // the next copy, and doubles the library every upgrade.
+        let backup = upgrade.backup_path.clone();
+        assert_eq!(backup.parent(), root.parent());
+        assert!(backup.join(workspace::DB_FILE).is_file());
+        assert_eq!(
+            std::fs::read_to_string(backup.join(workspace::ORIGINALS_DIR).join("keep.svd"))
+                .unwrap(),
+            "mine"
+        );
+        // The copy keeps the format it was taken at, so the build that wrote it can still open it.
+        assert!(std::fs::read_to_string(backup.join(workspace::MARKER))
+            .unwrap()
+            .contains("\"format\": 1"));
+
+        // The library itself is now at this build's format, and opening it again copies nothing.
+        drop(ws);
+        let reopened = Workspace::open(&root).unwrap();
+        assert!(
+            reopened.upgrade().is_none(),
+            "a second open backed up again"
+        );
+    }
+
+    /// A library a newer build has already upgraded is refused, and refused without touching it.
+    ///
+    /// This build would migrate it by rules that no longer describe it, so the only safe move is
+    /// to stop and say which library it was and what wrote it.
+    #[test]
+    fn a_workspace_from_a_newer_build_is_refused_and_left_alone() {
+        let tmp = tempfile::tempdir().expect("temp dir");
+        let root = tmp.path().join("My Library");
+        drop(Workspace::create(&root).unwrap());
+        std::fs::write(root.join(workspace::MARKER), "{\n  \"format\": 99\n}\n").unwrap();
+
+        let refused = match Workspace::open(&root) {
+            Ok(_) => panic!("a library from a newer build was opened anyway"),
+            Err(refused) => refused,
+        };
+        let Error::WorkspaceTooNew { path, format } = &refused else {
+            panic!("expected a refusal, got {refused:?}");
+        };
+        assert_eq!(path, &root);
+        assert_eq!(*format, 99);
+        // The message is what the recovery screen shows, so it has to name the library itself.
+        assert!(refused.to_string().contains("My Library"), "{refused}");
+
+        // Untouched: still at the format the newer build left, and nothing was copied for it.
+        assert!(std::fs::read_to_string(root.join(workspace::MARKER))
+            .unwrap()
+            .contains("99"));
+        let siblings = std::fs::read_dir(tmp.path()).unwrap().count();
+        assert_eq!(
+            siblings, 1,
+            "a refused open left something beside the library"
+        );
+    }
+
+    /// An upgrade that fails is tried again on the next open, and the copy must not be remade.
+    ///
+    /// Copying again would fill the disk a library at a time, and — worse — would replace the
+    /// untouched copy with one taken of the half-upgraded library, losing the only way back.
+    #[test]
+    fn a_second_attempt_at_the_same_upgrade_keeps_the_first_copy() {
+        let tmp = tempfile::tempdir().expect("temp dir");
+        let root = tmp.path().join("My Library");
+        drop(Workspace::create(&root).unwrap());
+        std::fs::write(root.join(workspace::MARKER), "{\n  \"format\": 1\n}\n").unwrap();
+
+        let first = Workspace::open(&root).unwrap().upgrade().unwrap().clone();
+        // What a failed upgrade leaves behind: the library still declaring the older format.
+        std::fs::write(root.join(workspace::MARKER), "{\n  \"format\": 1\n}\n").unwrap();
+        let second = Workspace::open(&root).unwrap().upgrade().unwrap().clone();
+
+        assert_eq!(second.backup_path, first.backup_path);
+        let backups = std::fs::read_dir(tmp.path())
+            .unwrap()
+            .filter_map(|entry| entry.ok())
+            .filter(|entry| entry.file_name().to_string_lossy().contains("backup"))
+            .count();
+        assert_eq!(backups, 1, "the same upgrade was copied twice");
+    }
+
     /// Owning an expansion and having it loaded are two facts, and the inventory keeps them apart.
     ///
     /// The FANTOM's expansion slots are finite, so a player owns more than the instrument holds.

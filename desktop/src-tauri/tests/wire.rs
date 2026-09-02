@@ -8,6 +8,7 @@ use fantom_core::requirements::{Requirements, SlotRequirement, WaveExpansion};
 use fantom_core::role::Role;
 use fantom_library::catalog::Stats;
 use fantom_library::model::*;
+use fantom_library::workspace::Upgrade;
 use serde_json::{json, Value};
 
 /// An object's field names, sorted — the front end reads by name, so only the set matters.
@@ -398,4 +399,69 @@ fn a_scene_detail_carries_its_keyboard_groups() {
     // A grouped zone is switched off, and still counts as a dependency.
     assert_eq!(json["zones"][0]["enabled"], false);
     assert_eq!(json["user_tones"][0], "Sub Bass");
+}
+
+/// The header, the development warning, and the upgrade notice all read from one payload.
+#[test]
+fn workspace_info_tells_the_front_end_which_installation_it_is() {
+    let info = fantom_desktop_lib::WorkspaceInfo {
+        path: "/Users/me/Documents/FANTOM Librarian".into(),
+        name: "FANTOM Librarian".into(),
+        installation: fantom_desktop_lib::Installation::Development,
+        upgrade: None,
+        stats: Stats {
+            scenes: 1,
+            tones: 2,
+            sources: 3,
+            songs: 4,
+            samples: 5,
+        },
+    };
+
+    let json = serde_json::to_value(&info).unwrap();
+    assert_eq!(
+        keys(&json),
+        sorted(["path", "name", "installation", "upgrade", "stats"])
+    );
+    // The two installations are told apart by name, not by a flag the UI has to interpret.
+    assert_eq!(json["installation"], "development");
+    assert_eq!(
+        serde_json::to_value(fantom_desktop_lib::Installation::Personal).unwrap(),
+        "personal"
+    );
+    assert!(json["upgrade"].is_null());
+}
+
+/// After an upgrade the app has to be able to say where the copy of the old library went.
+#[test]
+fn an_upgrade_crosses_with_the_backup_it_took() {
+    let info = fantom_desktop_lib::WorkspaceInfo {
+        path: "/Users/me/Documents/FANTOM Librarian".into(),
+        name: "FANTOM Librarian".into(),
+        installation: fantom_desktop_lib::Installation::Personal,
+        upgrade: Some(Upgrade {
+            from_format: 1,
+            to_format: 2,
+            backup_path: "/Users/me/Documents/FANTOM Librarian backup 2026-09-02 201530".into(),
+        }),
+        stats: Stats {
+            scenes: 0,
+            tones: 0,
+            sources: 0,
+            songs: 0,
+            samples: 0,
+        },
+    };
+
+    let json = serde_json::to_value(&info).unwrap();
+    assert_eq!(
+        keys(&json["upgrade"]),
+        sorted(["from_format", "to_format", "backup_path"])
+    );
+    assert_eq!(json["upgrade"]["from_format"], 1);
+    assert_eq!(json["upgrade"]["to_format"], 2);
+    assert_eq!(
+        json["upgrade"]["backup_path"],
+        "/Users/me/Documents/FANTOM Librarian backup 2026-09-02 201530"
+    );
 }

@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { FolderOpen, FolderPlus, Library } from "lucide-react";
-import { api, message, type WorkspaceInfo } from "@/lib/api";
+import { api, message, type Installation, type WorkspaceInfo } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Spinner } from "@/components/ui/spinner";
@@ -13,12 +13,26 @@ import { Spinner } from "@/components/ui/spinner";
 export function Welcome({ onOpen }: { onOpen: (info: WorkspaceInfo) => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [installation, setInstallation] = useState<Installation | null>(null);
+
+  // The development build reopens nothing by itself, so this screen is where every one of its
+  // libraries is chosen — which makes it the one place the warning is certain to be read.
+  useEffect(() => {
+    api
+      .appInstallation()
+      .then(setInstallation)
+      .catch(() => undefined);
+  }, []);
 
   async function choose(create: boolean) {
     setError(null);
+    // A new library is offered somewhere the user can find again; opening an existing one starts
+    // wherever they last were, because their library is already somewhere of their choosing.
+    const defaultPath = create ? ((await api.defaultWorkspacePath()) ?? undefined) : undefined;
     const picked = await open({
       directory: true,
       multiple: false,
+      defaultPath,
       title: create ? "Choose a folder for your library" : "Open a library",
     });
     if (typeof picked !== "string") return;
@@ -57,6 +71,16 @@ export function Welcome({ onOpen }: { onOpen: (info: WorkspaceInfo) => void }) {
           Open existing
         </Button>
       </div>
+
+      {installation === "development" && (
+        <Alert className="max-w-md border-destructive/40">
+          <AlertTitle>Development build</AlertTitle>
+          <AlertDescription>
+            This is the development installation, and it changes whatever library you open for
+            real. Your own library belongs in the installed app.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {error && (
         <Alert variant="destructive" className="max-w-md">

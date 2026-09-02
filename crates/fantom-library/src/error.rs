@@ -23,8 +23,11 @@ pub enum Error {
     #[error("{0} already contains a Fantom library workspace")]
     AlreadyAWorkspace(PathBuf),
 
-    #[error("this workspace was written by a newer version of the app (format {0})")]
-    WorkspaceTooNew(u32),
+    #[error(
+        "{path} was written by a newer version of the app (format {format}); \
+         it has been left untouched — install the newer version to open it"
+    )]
+    WorkspaceTooNew { path: PathBuf, format: u32 },
 
     #[error("no {kind} with id {id}")]
     NotFound { kind: &'static str, id: i64 },

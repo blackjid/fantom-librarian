@@ -297,9 +297,23 @@ export interface Stats {
   samples: number;
 }
 
+/** Which installation has the library open. Mirrors `Installation` in the desktop crate. */
+export type Installation = "personal" | "development";
+
+/** What opening a library had to do to bring it up to this build. */
+export interface Upgrade {
+  from_format: number;
+  to_format: number;
+  /** The copy taken before anything was written, beside the library itself. */
+  backup_path: string;
+}
+
 export interface WorkspaceInfo {
   path: string;
   name: string;
+  installation: Installation;
+  /** Null when the library was already current, which is every ordinary launch. */
+  upgrade: Upgrade | null;
   stats: Stats;
 }
 
@@ -331,6 +345,8 @@ export const api = {
   workspaceInfo: () => invoke<WorkspaceInfo>("workspace_info"),
   closeWorkspace: () => invoke<void>("close_workspace"),
   isWorkspace: (path: string) => invoke<boolean>("is_workspace", { path }),
+  defaultWorkspacePath: () => invoke<string | null>("default_workspace_path"),
+  appInstallation: () => invoke<Installation>("app_installation"),
 
   importFiles: (paths: string[], info: SourceInfo) =>
     invoke<ImportReport>("import_files", { paths, info }),
