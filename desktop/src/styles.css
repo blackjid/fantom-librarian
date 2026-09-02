@@ -120,6 +120,10 @@
     --background: oklch(0.965 0.004 80);
     --panel: oklch(0.982 0.003 80);
     --panel-raised: oklch(0.997 0.002 80);
+    --surface-edge: oklch(0.2 0.008 80 / 6%);
+    --surface-highlight: oklch(1 0 0 / 50%);
+    --surface-shadow:
+        0 1px 1px oklch(0.2 0.02 80 / 0.04), 0 6px 20px -16px oklch(0.2 0.02 80 / 0.12);
 }
 
 /* The window ships dark (`<html class="dark">`); the light tokens above are what a theme switch
@@ -136,6 +140,11 @@
     --sidebar: oklch(0.185 0.005 70);
     --panel: oklch(0.205 0.005 70);
     --panel-raised: oklch(0.245 0.006 70);
+    /* A surface is told from the one under it by its edge, not by its fill: a hairline, a light
+       caught along its top, and a shadow it sits in. */
+    --surface-edge: oklch(1 0 0 / 5%);
+    --surface-highlight: oklch(1 0 0 / 3.5%);
+    --surface-shadow: 0 1px 1px oklch(0 0 0 / 0.16), 0 6px 20px -16px oklch(0 0 0 / 0.4);
     --muted: oklch(0.26 0.005 70);
     --accent: oklch(0.27 0.006 70);
     --sidebar-accent: oklch(0.27 0.008 68);
@@ -244,5 +253,15 @@
   .scroll-region:hover::-webkit-scrollbar-thumb,
   .scroll-region-x:hover::-webkit-scrollbar-thumb {
     background-color: color-mix(in oklch, var(--foreground) 30%, transparent);
+  }
+}
+
+@layer components {
+  /* Panels and the cards inside them. The highlight is inset so it follows the corner radius. */
+  .surface {
+    border: 1px solid var(--surface-edge);
+    box-shadow:
+      inset 0 1px 0 0 var(--surface-highlight),
+      var(--surface-shadow);
   }
 }

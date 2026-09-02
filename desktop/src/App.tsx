@@ -303,7 +303,9 @@ export default function App() {
             linkTarget={selected}
           />
         ) : (
-          <>
+          // One panel holds both: the list is the panel's own surface, and the detail is a card
+          // inset within it — contained by the list rather than butted against it.
+          <div className="surface flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl bg-panel">
             <AssetList
               assets={assets}
               loading={loading}
@@ -317,10 +319,10 @@ export default function App() {
               subtitle={heading.subtitle}
               searchRef={searchRef}
             />
-            <div className="relative min-w-[22rem] flex-1 overflow-hidden rounded-xl bg-panel-raised">
+            <div className="surface m-2 min-w-[22rem] flex-1 overflow-hidden rounded-lg bg-panel-raised">
               {selected ? <AssetDetail asset={selected} onChanged={onChanged} /> : <NoSelection />}
             </div>
-          </>
+          </div>
         )}
       </div>
 

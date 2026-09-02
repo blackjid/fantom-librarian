@@ -47,8 +47,8 @@ export function SongsPanel({
   const selected = songs.find((song) => song.id === selectedId) ?? null;
 
   return (
-    <div className="flex h-full min-w-0 flex-1">
-      <div className="-mr-3 flex w-72 min-w-[15rem] flex-col overflow-hidden rounded-l-xl bg-panel">
+    <div className="surface flex h-full min-w-0 flex-1 overflow-hidden rounded-2xl bg-panel">
+      <div className="flex w-72 min-w-[15rem] flex-col">
         <div className="flex items-center justify-between gap-2 border-b p-3">
           <h2 className="text-sm font-medium">Songs</h2>
           <Button size="sm" variant="outline" onClick={() => setCreating(true)}>
@@ -94,7 +94,7 @@ export function SongsPanel({
         </div>
       </div>
 
-      <div className="relative min-w-[20rem] flex-1 overflow-hidden rounded-xl bg-panel-raised">
+      <div className="surface m-2 min-w-[20rem] flex-1 overflow-hidden rounded-lg bg-panel-raised">
         {creating ? (
           <SongForm
             onDone={(created) => {
