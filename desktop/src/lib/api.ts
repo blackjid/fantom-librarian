@@ -117,6 +117,11 @@ export interface SceneDetail {
   requirements: Requirements;
 }
 
+/** A scene named in Roland's sound list, without serialized scene data. */
+export interface FactorySceneDetail {
+  kind: "factory-scene";
+}
+
 export interface ToneDetail {
   kind: "tone";
   engine: string;
@@ -133,7 +138,7 @@ export interface ToneDetail {
   requirements: Requirements;
 }
 
-export type AssetDetail = SceneDetail | ToneDetail;
+export type AssetDetail = SceneDetail | FactorySceneDetail | ToneDetail;
 
 export interface AssetSource {
   source_id: number;

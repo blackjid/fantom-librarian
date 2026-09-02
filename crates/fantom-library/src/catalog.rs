@@ -399,13 +399,15 @@ pub fn archive_source(ws: &Workspace, id: i64, archived: bool) -> Result<()> {
 /// Rename an asset. Scenes only in v1 — a tone rename has no verified write path yet, so the
 /// library refuses to record a name it could never put in an export.
 pub fn rename_asset(ws: &Workspace, id: i64, name: &str) -> Result<()> {
-    let kind: String = ws
+    let (kind, origin): (String, String) = ws
         .db()
-        .query_row("SELECT kind FROM assets WHERE id = ?1", [id], |r| r.get(0))
+        .query_row("SELECT kind, origin FROM assets WHERE id = ?1", [id], |r| {
+            Ok((r.get(0)?, r.get(1)?))
+        })
         .map_err(|_| Error::NotFound { kind: "asset", id })?;
-    if kind != "scene" {
+    if kind != "scene" || origin == "factory" {
         return Err(Error::Rejected(
-            "tone renaming is not supported until a verified write path exists".into(),
+            "only imported scenes can be renamed until a verified write path exists".into(),
         ));
     }
     let name = check_fantom_name(name)?;

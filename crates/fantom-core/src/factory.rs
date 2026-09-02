@@ -32,6 +32,16 @@ pub struct FactorySound<'a> {
     pub category: &'a str,
 }
 
+/// One scene the instrument ships with.
+///
+/// Roland's sound list names factory scenes but does not carry their serialized scene data. The
+/// name is therefore the catalog identity; the panel slot is deliberately not retained because a
+/// player can move a scene without changing what it is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FactoryScene {
+    pub name: &'static str,
+}
+
 impl FactorySound<'_> {
     /// The engine that plays it.
     pub fn engine(&self) -> ToneType {
@@ -49,6 +59,17 @@ impl FactorySound<'_> {
 }
 
 const TABLE_TSV: &str = include_str!("factory_sounds.tsv");
+const SCENE_TABLE_TSV: &str = include_str!("factory_scenes.tsv");
+
+/// Every factory scene named by Roland's sound list.
+pub fn scenes() -> impl Iterator<Item = FactoryScene> {
+    SCENE_TABLE_TSV
+        .lines()
+        .skip(1)
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .map(|name| FactoryScene { name })
+}
 
 /// Every built-in sound this build carries: ZEN-Core presets first, then the other banks.
 pub fn all() -> impl Iterator<Item = FactorySound<'static>> {

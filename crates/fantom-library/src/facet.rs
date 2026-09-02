@@ -45,6 +45,7 @@ pub fn models_of(asset: &Asset) -> Vec<String> {
             }
             out
         }
+        AssetDetail::FactoryScene => Vec::new(),
     }
 }
 
@@ -95,37 +96,43 @@ pub fn plays_of(asset: &Asset) -> Option<Plays> {
 /// do the same through its zones. Unknown bank addresses remain visible: without a product code,
 /// the inventory cannot honestly say whether they are installed.
 pub fn needs_uninstalled_expansion(asset: &Asset, installed: &HashSet<String>) -> bool {
-    expansion_codes(asset).any(|code| !installed.contains(&code.to_ascii_uppercase()))
+    expansion_codes(asset)
+        .into_iter()
+        .any(|code| !installed.contains(&code.to_ascii_uppercase()))
 }
 
-fn expansion_codes(asset: &Asset) -> impl Iterator<Item = &str> {
-    let detail_codes: Vec<&str> = match &asset.detail {
-        AssetDetail::Tone(tone) => tone.bank.iter().map(String::as_str).collect(),
-        AssetDetail::Scene(scene) => scene
-            .external_refs
-            .iter()
-            .map(|reference| bank_label(reference))
-            .collect(),
+fn expansion_codes(asset: &Asset) -> Vec<&str> {
+    let (mut codes, requirements): (Vec<&str>, Option<_>) = match &asset.detail {
+        AssetDetail::Tone(tone) => (
+            tone.bank.iter().map(String::as_str).collect(),
+            Some(&tone.requirements),
+        ),
+        AssetDetail::Scene(scene) => (
+            scene
+                .external_refs
+                .iter()
+                .map(|reference| bank_label(reference))
+                .collect(),
+            Some(&scene.requirements),
+        ),
+        AssetDetail::FactoryScene => (Vec::new(), None),
     };
-    let requirements = match &asset.detail {
-        AssetDetail::Tone(tone) => &tone.requirements,
-        AssetDetail::Scene(scene) => &scene.requirements,
-    };
-    detail_codes
-        .into_iter()
-        .chain(
+    if let Some(requirements) = requirements {
+        codes.extend(
             requirements
                 .banks
                 .iter()
-                .filter_map(|bank| bank.bank.as_deref())
-                .chain(
-                    requirements
-                        .wave_expansions
-                        .iter()
-                        .filter_map(|wave| wave.product.as_deref()),
-                ),
-        )
-        .filter(|code| fantom_core::expansions::is_product(code))
+                .filter_map(|bank| bank.bank.as_deref()),
+        );
+        codes.extend(
+            requirements
+                .wave_expansions
+                .iter()
+                .filter_map(|wave| wave.product.as_deref()),
+        );
+    }
+    codes.retain(|code| fantom_core::expansions::is_product(code));
+    codes
 }
 
 /// The bank alone — `PR-A`, `JP8` — out of an `ENGINE BANK PC nnn` reference.

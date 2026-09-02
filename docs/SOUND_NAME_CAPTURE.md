@@ -6,6 +6,7 @@ Everything the librarian can name comes from three bundled tables:
 |-------|--------|----------|
 | `crates/fantom-core/src/preset_tones.tsv` | ZEN-Core presets | (no generator; extracted once) |
 | `crates/fantom-core/src/factory_sounds.tsv` | drum kits, SN-A, V-Piano, VTW, ACB JP8 | `tools/gen_sound_list.py` |
+| `crates/fantom-core/src/factory_scenes.tsv` | factory scene names | `tools/gen_sound_list.py` |
 | `crates/fantom-core/src/expansion_sounds.tsv` | 3065 sounds, 26 expansions | `tools/gen_expansion_catalog.py` |
 
 A zone whose address none of them covers shows its bank and program and no name.
@@ -69,6 +70,12 @@ pdftotext -layout FANTOM_SoundList_multi02_W.pdf base.txt
 pdftotext -layout FANTOM_EX_SoundList_multi01_W.pdf ex.txt
 cat base.txt ex.txt | tools/gen_sound_list.py 91-65.tsv | awk -F'\t' 'NR==1 || $1!=87' \
     > crates/fantom-core/src/factory_sounds.tsv
+
+# Factory scene names. The scene list's slot is intentionally discarded: a player can move a
+# scene without changing its data. INITIAL SCENE is the blank template, not a factory scene.
+pdftotext -layout FANTOM_SoundList_multi02_W.pdf - | tools/gen_sound_list.py \
+    | awk -F'\t' 'BEGIN { print "name" } NR > 1 && $1 == 85 && $5 != "INITIAL SCENE" { print $5 }' \
+    > crates/fantom-core/src/factory_scenes.tsv
 
 cargo test -p fantom-core
 ```

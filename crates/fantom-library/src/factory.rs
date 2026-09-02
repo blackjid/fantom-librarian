@@ -33,8 +33,30 @@ pub fn seed(ws: &mut Workspace) -> Result<usize> {
     for sound in fantom_core::expansions::all() {
         added += insert(&tx, &sound.sound, Some(sound.product), at)?;
     }
+    for scene in fantom_core::factory::scenes() {
+        added += insert_scene(&tx, scene, at)?;
+    }
     tx.commit()?;
     Ok(added)
+}
+
+fn insert_scene(
+    tx: &Transaction<'_>,
+    scene: fantom_core::factory::FactoryScene,
+    at: i64,
+) -> Result<usize> {
+    Ok(tx.execute(
+        "INSERT OR IGNORE INTO assets
+           (kind, identity_hash, fantom_name, imported_name, memo, engine, detail, origin,
+            created_at)
+         VALUES ('scene', ?1, ?2, ?2, '', '', ?3, 'factory', ?4)",
+        (
+            format!("factory:scene:{}", scene.name),
+            scene.name,
+            serde_json::to_string(&AssetDetail::FactoryScene).unwrap_or_else(|_| "{}".into()),
+            at,
+        ),
+    )?)
 }
 
 fn insert(
