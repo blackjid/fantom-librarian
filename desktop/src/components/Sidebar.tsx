@@ -13,7 +13,7 @@ import {
   TriangleAlert,
   Waves,
 } from "lucide-react";
-import type { AssetKind, KindCounts, Role, Source, Tag } from "@/lib/api";
+import type { AssetKind, Facets, KindCounts, Origin, Plays, Role, Source, Tag } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { fileLabel } from "@/lib/format";
@@ -51,6 +51,15 @@ export function Sidebar({
   tags,
   activeTags,
   onToggleTag,
+  facets,
+  engines,
+  models,
+  origin,
+  plays,
+  onToggleEngine,
+  onToggleModel,
+  onOrigin,
+  onPlays,
   onImport,
 }: {
   /** Dragged by the shell, which owns the bounds. */
@@ -66,6 +75,16 @@ export function Sidebar({
   tags: Tag[];
   activeTags: string[];
   onToggleTag: (tag: string) => void;
+  /** What this kind, in this scope, can be narrowed by — with what each value would leave. */
+  facets: Facets;
+  engines: string[];
+  models: string[];
+  origin: Origin | null;
+  plays: Plays | null;
+  onToggleEngine: (engine: string) => void;
+  onToggleModel: (model: string) => void;
+  onOrigin: (origin: Origin) => void;
+  onPlays: (plays: Plays) => void;
   onImport: () => void;
 }) {
   // Every imported file, in one run, each still knowing the pack it came from.
@@ -125,25 +144,82 @@ export function Sidebar({
             )}
           </Section>
 
+          {facets.origins.length > 1 && (
+            <Section title="Comes from">
+              <div className="flex flex-wrap gap-1 px-1">
+                {facets.origins.map((facet) => (
+                  <Chip
+                    key={facet.value}
+                    label={facet.value === "factory" ? "The instrument" : "My files"}
+                    count={facet.count}
+                    active={origin === facet.value}
+                    onClick={() => onOrigin(facet.value as Origin)}
+                  />
+                ))}
+              </div>
+            </Section>
+          )}
+
+          {facets.plays.length > 1 && (
+            <Section title="Plays">
+              <div className="flex flex-wrap gap-1 px-1">
+                {facets.plays.map((facet) => (
+                  <Chip
+                    key={facet.value}
+                    label={facet.value === "factory-only" ? "Anywhere" : "Needs mine"}
+                    count={facet.count}
+                    active={plays === facet.value}
+                    onClick={() => onPlays(facet.value as Plays)}
+                  />
+                ))}
+              </div>
+            </Section>
+          )}
+
+          {facets.engines.length > 1 && (
+            <Section title="Engine" collapsible>
+              <div className="flex flex-wrap gap-1 px-1">
+                {facets.engines.map((facet) => (
+                  <Chip
+                    key={facet.value}
+                    label={facet.value}
+                    count={facet.count}
+                    active={engines.includes(facet.value)}
+                    onClick={() => onToggleEngine(facet.value)}
+                  />
+                ))}
+              </div>
+            </Section>
+          )}
+
+          {facets.models.length > 0 && (
+            <Section title="Model / expansion" collapsible>
+              <div className="flex flex-wrap gap-1 px-1">
+                {facets.models.map((facet) => (
+                  <Chip
+                    key={facet.value}
+                    label={facet.value}
+                    count={facet.count}
+                    active={models.includes(facet.value)}
+                    onClick={() => onToggleModel(facet.value)}
+                  />
+                ))}
+              </div>
+            </Section>
+          )}
+
           {tags.length > 0 && (
             <Section title="Tags">
               <div className="flex flex-wrap gap-1 px-1">
                 {tags.map((tag) => (
-                  <button
+                  <Chip
                     key={tag.name}
-                    type="button"
+                    icon={TagIcon}
+                    label={tag.name}
+                    count={tag.count}
+                    active={activeTags.includes(tag.name)}
                     onClick={() => onToggleTag(tag.name)}
-                    className={cn(
-                      "inline-flex min-h-6 items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors",
-                      activeTags.includes(tag.name)
-                        ? "border-transparent bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                    )}
-                  >
-                    <TagIcon className="size-3" />
-                    {tag.name}
-                    <span className="tabular-nums">{tag.count}</span>
-                  </button>
+                  />
                 ))}
               </div>
             </Section>
@@ -198,6 +274,39 @@ function Section({
       </h2>
       {open && children}
     </div>
+  );
+}
+
+/** One value of a facet: press it to narrow by it, press it again to let it go. */
+function Chip({
+  icon: Icon,
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  icon?: React.ComponentType<{ className?: string }>;
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "inline-flex min-h-6 items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors",
+        active
+          ? "border-transparent bg-primary text-primary-foreground"
+          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+      )}
+    >
+      {Icon && <Icon className="size-3" />}
+      {label}
+      <span className="tabular-nums">{count}</span>
+    </button>
   );
 }
 

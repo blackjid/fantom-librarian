@@ -161,6 +161,28 @@ function Header({
                 <span>level {asset.detail.level}</span>
               </>
             )}
+            {/* A built-in sound has no record behind it; where it lives on the panel is the
+                whole of what there is to say about finding it. */}
+            {asset.detail.kind === "tone" && asset.detail.bank && asset.detail.address && (
+              <>
+                <span>·</span>
+                <span>
+                  {asset.detail.bank} {asset.detail.address.pc + 1}
+                </span>
+                {asset.detail.category && (
+                  <>
+                    <span>·</span>
+                    <span>{asset.detail.category}</span>
+                  </>
+                )}
+              </>
+            )}
+            {asset.origin === "factory" && (
+              <>
+                <span>·</span>
+                <span>in the instrument</span>
+              </>
+            )}
             {asset.imported_name !== asset.fantom_name && (
               <>
                 <span>·</span>

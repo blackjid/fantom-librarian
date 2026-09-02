@@ -9,7 +9,10 @@ import {
   type Asset,
   type ImportReport,
   type AssetKind,
+  type Facets,
   type KindCounts,
+  type Origin,
+  type Plays,
   type Query,
   type Song,
   type Source,
@@ -48,12 +51,22 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [kind, setKind] = useState<AssetKind>("scene");
   const [activeTags, setActiveTags] = useState<string[]>([]);
+  const [engines, setEngines] = useState<string[]>([]);
+  const [models, setModels] = useState<string[]>([]);
+  const [origin, setOrigin] = useState<Origin | null>(null);
+  const [plays, setPlays] = useState<Plays | null>(null);
 
   const [assets, setAssets] = useState<Asset[]>([]);
   const [counts, setCounts] = useState<KindCounts>({ scenes: 0, tones: 0 });
   const [sources, setSources] = useState<Source[]>([]);
   const [songs, setSongs] = useState<Song[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
+  const [facets, setFacets] = useState<Facets>({
+    engines: [],
+    models: [],
+    origins: [],
+    plays: [],
+  });
   const [selected, setSelected] = useState<Asset | null>(null);
   const [selectedSong, setSelectedSong] = useState<number | null>(null);
 
@@ -187,20 +200,26 @@ export default function App() {
       source_id: scope.view === "source" ? scope.id : null,
       file_id: scope.view === "file" ? scope.id : null,
       tags: activeTags,
+      engines,
+      models,
+      origin,
+      plays,
     }),
-    [search, scope, activeTags.join(" ")],
+    [search, scope, activeTags.join(" "), engines.join(" "), models.join(" "), origin, plays],
   );
 
   const reloadAssets = useCallback(async () => {
     if (!workspace || scope.view === "songs") return;
     setLoading(true);
     try {
-      const [rows, totals] = await Promise.all([
+      const [rows, totals, available] = await Promise.all([
         api.listAssets({ ...baseQuery, kind }),
         api.countAssets(baseQuery),
+        api.listFacets({ ...baseQuery, kind }),
       ]);
       setAssets(rows);
       setCounts(totals);
+      setFacets(available);
       setError(null);
     } catch (e) {
       setError(message(e));
@@ -317,15 +336,37 @@ export default function App() {
           onKind={(next) => {
             setKind(next);
             // Picking a kind is a move to the top of that side of the library, not a filter
-            // laid over wherever you happened to be.
+            // laid over wherever you happened to be. A scene's models are not a tone's, so the
+            // facets go with it.
             setScope({ view: "library" });
             setSelected(null);
+            setEngines([]);
+            setModels([]);
+            setOrigin(null);
+            setPlays(null);
           }}
           counts={counts}
           sources={sources}
           songCount={songs.length}
           tags={tags}
           activeTags={activeTags}
+          facets={facets}
+          engines={engines}
+          models={models}
+          origin={origin}
+          plays={plays}
+          onToggleEngine={(value) =>
+            setEngines((current) =>
+              current.includes(value) ? current.filter((e) => e !== value) : [...current, value],
+            )
+          }
+          onToggleModel={(value) =>
+            setModels((current) =>
+              current.includes(value) ? current.filter((m) => m !== value) : [...current, value],
+            )
+          }
+          onOrigin={(next) => setOrigin((current) => (current === next ? null : next))}
+          onPlays={(next) => setPlays((current) => (current === next ? null : next))}
           onToggleTag={(tag) =>
             setActiveTags((current) =>
               current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag],

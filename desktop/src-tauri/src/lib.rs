@@ -85,11 +85,12 @@ fn open_workspace(
     create: bool,
 ) -> CmdResult<WorkspaceInfo> {
     let path = PathBuf::from(path);
-    let ws = wrap(if create {
+    let mut ws = wrap(if create {
         Workspace::open_or_create(&path)
     } else {
         Workspace::open(&path)
     })?;
+    catch_up(&mut ws);
     let info = wrap(info(&ws))?;
     *state
         .workspace
@@ -97,6 +98,21 @@ fn open_workspace(
         .map_err(|_| "workspace lock poisoned")? = Some(ws);
     remember(&app, &info.path);
     Ok(info)
+}
+
+/// Fill in what an older catalog was written too early to know, from the files it already keeps.
+///
+/// Best effort by design: a library that cannot be brought forward still opens, and still shows
+/// everything it did before.
+fn catch_up(ws: &mut Workspace) {
+    if let Err(e) = fantom_library::rescan::model_ids(ws) {
+        eprintln!("could not fill in tone models: {e}");
+    }
+    // The instrument's own sounds are part of the library too, and they arrive from a bundled
+    // list rather than from anything the user imported.
+    if let Err(e) = fantom_library::factory::seed(ws) {
+        eprintln!("could not add the instrument's built-in sounds: {e}");
+    }
 }
 
 /// Reopen the workspace from last launch, if it is still where it was.
@@ -111,9 +127,10 @@ fn resume_workspace(
     if !workspace::is_workspace(&path) {
         return Ok(None);
     }
-    let Ok(ws) = Workspace::open(&path) else {
+    let Ok(mut ws) = Workspace::open(&path) else {
         return Ok(None);
     };
+    catch_up(&mut ws);
     let info = wrap(info(&ws))?;
     *state
         .workspace
@@ -165,6 +182,12 @@ fn list_assets(state: tauri::State<'_, AppState>, query: Query) -> CmdResult<Vec
 #[tauri::command]
 fn count_assets(state: tauri::State<'_, AppState>, query: Query) -> CmdResult<KindCounts> {
     with(&state, |ws| catalog::counts(ws, &query))
+}
+
+/// What the current scope can be narrowed by — engines, models and expansions, factory or user.
+#[tauri::command]
+fn list_facets(state: tauri::State<'_, AppState>, query: Query) -> CmdResult<Facets> {
+    with(&state, |ws| catalog::facets(ws, &query))
 }
 
 #[tauri::command]
@@ -356,6 +379,7 @@ pub fn run() {
             import_files,
             list_assets,
             count_assets,
+            list_facets,
             get_asset,
             list_sources,
             list_files,
