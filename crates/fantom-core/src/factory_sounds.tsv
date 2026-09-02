@@ -63,6 +63,7 @@ msb	lsb	pc	number	name	category
 86	65	45	0045	TR-909	Drums
 86	65	46	0046	TR-909 comp	Drums
 86	65	47	0047	TR-909 w comp	Drums
+86	65	48	0048	TR-808	Drums
 86	65	49	0049	TR-808 comp	Drums
 86	65	50	0050	TR-808 w comp	Drums
 86	65	51	0051	TR-707&727	Drums
@@ -176,6 +177,31 @@ msb	lsb	pc	number	name	category
 90	64	15	0015	Aco Grand9	1:Ac.Piano
 90	64	16	0016	Aco Grand10	1:Ac.Piano
 90	64	17	0017	at Stage	1:Ac.Piano
+91	65	1	1	Tone Wheel Organ	
+91	65	2	2	Fat Rock Organ	
+91	65	3	3	Earthy Jazz Org	
+91	65	4	4	Crispy Funk Org	
+91	65	5	5	Gospel Main Org	
+91	65	6	6	Wild Rock Organ	
+91	65	7	7	Hard Rock Organ	
+91	65	8	8	Clear Drive Org	
+91	65	9	9	Quick Firing Org	
+91	65	10	10	Clicky Organ	
+91	65	11	11	Wide Spread Org	
+91	65	12	12	Ring Mod Organ	
+91	65	13	13	Auto Wah Org 1/4	
+91	65	14	14	Ballad Organ	
+91	65	15	15	Light Jazz Organ	
+91	65	16	16	Clean Jazz Organ	
+91	65	17	17	Funk Solo Organ	
+91	65	18	18	Gospel Intro Org	
+91	65	19	19	Worship Organ	
+91	65	20	20	Moody Organ	
+91	65	21	21	Oldies Organ	
+91	65	22	22	Organ Rock	
+91	65	23	23	Tone Wheel Lead	
+91	65	24	24	Metal Lead Organ	
+91	65	25	25	Metal TW Organ	
 107	64	1	1	Soft & Subtle	
 107	64	2	2	Straight Poke	
 107	64	3	3	Reso Polloy	
@@ -198,6 +224,7 @@ msb	lsb	pc	number	name	category
 107	64	20	20	eJungle Brass	
 107	64	21	21	1981 NEG Pluck	
 107	64	22	22	1981 Cars Sync	
+107	64	23	23	1981 Hammer Lead	
 107	64	24	24	1981 Clav	
 107	64	25	25	1981 Echo Piano	
 107	64	26	26	1981 Honky Tonk	
