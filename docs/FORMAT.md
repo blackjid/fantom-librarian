@@ -1025,6 +1025,37 @@ channel *n*, which assumes a receive-channel mapping a scene is free to remap.
 **The panel caches the tone name.** Writing temporary memory sets the edited asterisk but does not
 redraw it. Writing Scene Common `+0x12` (Current Zone) away and back does — verified on a FANTOM-6.
 
+### Reading a bank's names back — HARDWARE-CONFIRMED (FANTOM-6)
+
+Select with DT1 to the zone's own block (`02 00 1n 00`: MSB, LSB, PC at +0, +1, +2), wait, then RQ1
+16 bytes at the engine's temporary area. 60ms between the two is enough — names match a 400ms pass
+exactly. `dump-sounds` does this; an installed expansion needs no sound list this way.
+
+| Engine | Name at | Confirmed by |
+|--------|---------|--------------|
+| ZEN-Core | `02 1n 00 00` | `87/64/0` → `AX Classic Lead` |
+| **MODEL, n/zyme** | `02 1n 00 00` | `97/79/0` → `Geometric Wave`, `97/72/0` → `Millennium` |
+| Drum kit | `02 (30+2n) 00 00` | `86/64/0` → `LD Std Kit 1` |
+| SN-A | `04 0n 00 00` | `89/65/0` → `Strings Sect 1` |
+| V-Piano | `04 20 00 00` | `90/64/0` → `Stage Grand` |
+| EXSN | `05 0n 00 00` | `105/64/0` → `Concert Jazz` |
+| ACB | — | nothing answers for it; see below |
+
+**A modelled tone is named at the ZEN-Core address, not at the Model area.** The map gives Model
+Tone Common as `05 2n 0A 00`; that address answers nothing, while `02 1n 00 00` holds the MODEL
+tone's name. `05 2n 00 00` does answer, with parameters that differ per model — so the area exists
+and its Common block is not where the map puts it.
+
+An uninstalled bank leaves the last name in place, so a run of identical names is the end of a bank
+rather than its content.
+
+**ACB is not readable at all.** The address map gives MSB 107 as a selectable bank and no temporary
+area to go with it — the one engine with none. Sweeping `02 10`, `02 30`, `04 00`, `04 20`, `04 40`,
+`04 60`, `05 00`, `05 20`, `05 40`, `05 60`, `06 00` and `07 00` while a zone held ACB PC 0 and then
+PC 7 returned byte-identical answers: every area that replies is stale from an earlier selection,
+and the Z-Core one blanks to 16 spaces rather than naming the ACB tone. Its names have to come from
+the sound list.
+
 ### A record on disk is its SysEx parameter blocks, packed
 
 The same map describes both sides. Converting file → wire:
