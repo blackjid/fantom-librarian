@@ -25,7 +25,7 @@ export function AssetDetail({
   const [error, setError] = useState<string | null>(null);
 
   return (
-    <div className="flex h-full min-w-[22rem] flex-1 flex-col">
+    <div className="flex h-full flex-col">
       <Header asset={asset} onChanged={onChanged} onError={setError} />
       {error && (
         <Alert variant="destructive" className="mx-4 mb-2 w-auto">
