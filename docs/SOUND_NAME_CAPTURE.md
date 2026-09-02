@@ -6,7 +6,6 @@ Everything the librarian can name comes from three bundled tables:
 |-------|--------|----------|
 | `crates/fantom-core/src/preset_tones.tsv` | ZEN-Core presets | (no generator; extracted once) |
 | `crates/fantom-core/src/factory_sounds.tsv` | drum kits, SN-A, V-Piano, VTW, ACB JP8 | `tools/gen_sound_list.py` |
-| `crates/fantom-core/src/factory_scenes.tsv` | factory scene names | `tools/gen_sound_list.py` |
 | `crates/fantom-core/src/expansion_sounds.tsv` | 3065 sounds, 26 expansions | `tools/gen_expansion_catalog.py` |
 
 A zone whose address none of them covers shows its bank and program and no name.
@@ -71,12 +70,6 @@ pdftotext -layout FANTOM_EX_SoundList_multi01_W.pdf ex.txt
 cat base.txt ex.txt | tools/gen_sound_list.py 91-65.tsv | awk -F'\t' 'NR==1 || $1!=87' \
     > crates/fantom-core/src/factory_sounds.tsv
 
-# Factory scene names. The scene list's slot is intentionally discarded: a player can move a
-# scene without changing its data. INITIAL SCENE is the blank template, not a factory scene.
-pdftotext -layout FANTOM_SoundList_multi02_W.pdf - | tools/gen_sound_list.py \
-    | awk -F'\t' 'BEGIN { print "name" } NR > 1 && $1 == 85 && $5 != "INITIAL SCENE" { print $5 }' \
-    > crates/fantom-core/src/factory_scenes.tsv
-
 cargo test -p fantom-core
 ```
 
@@ -84,3 +77,32 @@ cargo test -p fantom-core
 which is what a dropped sound-list row looks like. Then bump
 `fantom_library::rescan::NAMING_REVISION` so existing catalogs read their scenes again — without
 it, a library already stamped with the current revision will never see the new names.
+
+## Factory scenes: why the sound list is the wrong source
+
+Roland's sound list names the ~271 scenes a FANTOM ships with, and an early version of this
+project seeded them into every library from that list. It was withdrawn. Two reasons, and they
+are worth keeping written down so the same shortcut is not taken twice:
+
+- **A name is all the list gives.** A scene catalogued from a file carries tempo, zones, engines
+  and requirements, read from its bytes. A scene from a printed list has a name. In a real library
+  that produced 271 rows with nothing in them, against 16 the user actually owned.
+- **A name cannot identify a scene.** Nothing in any file *points at* a scene the way a zone points
+  at a tone, so the list buys no naming power at all — while a user who imports a backup of a
+  mostly-untouched instrument gets every one of those names twice, once as an empty factory row and
+  once as their real scene. Measured against one such backup: **263 collisions**.
+
+**The capture that would work** is a full backup taken from a FANTOM that has been factory reset,
+or has otherwise never had its scene memory written. Every scene in it is Roland's, with its real
+bytes. From that:
+
+1. Take the backup, and confirm the instrument is untouched — a scene the owner edited is not a
+   factory scene, and there is no way to tell after the fact.
+2. For each scene record, record its **fingerprint** — `codec::scene_fingerprint`, which is what
+   import identity already uses, so a factory scene renumbered by repackaging still matches. The
+   raw record checksum is the cheaper alternative and worth comparing against it.
+3. Ship that table, keyed by fingerprint rather than by name.
+
+Then nothing is seeded. A scene is flagged as Roland's **when it is imported**, by matching what
+its bytes actually are — which is the same rule the rest of the catalog already lives by, and
+which cannot produce a duplicate because the flag lands on the user's own row.

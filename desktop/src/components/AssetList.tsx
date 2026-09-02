@@ -267,9 +267,7 @@ function Row({
   const summary =
     asset.detail.kind === "scene"
       ? plural(asset.detail.active_zones, "zone")
-      : asset.detail.kind === "factory-scene"
-        ? "Included with FANTOM"
-        : asset.detail.engine;
+      : asset.detail.engine;
 
   return (
     <li

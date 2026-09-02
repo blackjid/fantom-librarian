@@ -250,8 +250,7 @@ mod tests {
             ..Default::default()
         };
         let sounds = catalog::assets(&ws, &query).unwrap();
-        assert!(sounds.len() > 3000);
-        assert!(sounds.len() < added, "factory scenes are seeded too");
+        assert_eq!(sounds.len(), added);
 
         // Each one knows the bank it sits in, which is what the model filter offers.
         let piano = sounds
@@ -262,18 +261,18 @@ mod tests {
         assert!(piano.sources.is_empty(), "no file carries a built-in sound");
     }
 
+    /// Seeding puts sounds in the library and nothing else.
+    ///
+    /// The scenes a FANTOM ships with were seeded here once, from the names in Roland's sound
+    /// list, and it was withdrawn: a name is all that list gives, so every one of them was a row
+    /// with no tempo, no zones and no requirements — and a user importing a backup of an untouched
+    /// instrument got each of those names a second time, once empty and once real. Identifying a
+    /// factory scene is a job for its bytes, at import; see `docs/SOUND_NAME_CAPTURE.md`.
     #[test]
-    fn factory_scenes_are_distinct_from_user_scenes_with_the_same_name() {
+    fn seeding_adds_no_scenes() {
         let (_dir, mut ws) = workspace();
-        ws.db()
-            .execute(
-                "INSERT INTO assets (kind, identity_hash, fantom_name, imported_name, created_at)
-                 VALUES ('scene', 'user-scene', 'Piano+Pad Layer', 'Piano+Pad Layer', 0)",
-                [],
-            )
-            .unwrap();
-
         crate::factory::seed(&mut ws).unwrap();
+
         let scenes = catalog::assets(
             &ws,
             &Query {
@@ -282,31 +281,7 @@ mod tests {
             },
         )
         .unwrap();
-        let factory = scenes
-            .iter()
-            .find(|scene| {
-                scene.origin == crate::model::Origin::Factory
-                    && scene.fantom_name == "Piano+Pad Layer"
-            })
-            .expect("the bundled factory scene");
-        assert!(matches!(
-            factory.detail,
-            crate::model::AssetDetail::FactoryScene
-        ));
-        assert_eq!(factory.detail.summary(), "Included with the FANTOM");
-        assert!(factory.engine.is_empty(), "the source names no engine");
-        assert_eq!(crate::facet::engine_of(factory), None);
-        assert!(scenes.iter().any(|scene| {
-            scene.origin == crate::model::Origin::User && scene.fantom_name == factory.fantom_name
-        }));
-        assert!(
-            scenes
-                .iter()
-                .filter(|scene| scene.origin == crate::model::Origin::Factory)
-                .count()
-                > 250
-        );
-        assert_eq!(crate::factory::seed(&mut ws).unwrap(), 0);
+        assert!(scenes.is_empty(), "{} scenes were seeded", scenes.len());
     }
 
     #[test]

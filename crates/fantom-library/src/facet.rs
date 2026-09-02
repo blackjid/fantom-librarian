@@ -45,7 +45,6 @@ pub fn models_of(asset: &Asset) -> Vec<String> {
             }
             out
         }
-        AssetDetail::FactoryScene => Vec::new(),
     }
 }
 
@@ -115,7 +114,6 @@ fn expansion_codes(asset: &Asset) -> Vec<&str> {
                 .collect(),
             Some(&scene.requirements),
         ),
-        AssetDetail::FactoryScene => (Vec::new(), None),
     };
     if let Some(requirements) = requirements {
         codes.extend(
