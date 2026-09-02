@@ -12,6 +12,9 @@
 //! What is here is the base instrument. A model or wave expansion publishes its own sound list;
 //! until one is added, its banks are named by the scenes that reach for them and nothing more.
 
+use std::collections::HashMap;
+use std::sync::OnceLock;
+
 use crate::model::{ToneAddress, ToneRef, ToneType};
 use crate::presets;
 
@@ -52,6 +55,28 @@ pub fn all() -> impl Iterator<Item = FactorySound<'static>> {
     presets::all().chain(parse(TABLE_TSV))
 }
 
+/// The built-in sound at an address, when one of the bundled lists names it.
+///
+/// Keyed by the whole address rather than by the 16-bit id a ZEN-Core zone stores, which is what
+/// lets the drum kits in — MSB 86 and MSB 87 share that id space, so [`crate::presets`] leaves
+/// kits out to avoid naming a tone as a kit. Nothing shares an MSB/LSB/PC.
+pub fn lookup(address: ToneAddress) -> Option<FactorySound<'static>> {
+    static INDEX: OnceLock<HashMap<(u8, u8, u8), FactorySound<'static>>> = OnceLock::new();
+    INDEX
+        .get_or_init(|| {
+            all()
+                .map(|sound| {
+                    (
+                        (sound.address.msb, sound.address.lsb, sound.address.pc),
+                        sound,
+                    )
+                })
+                .collect()
+        })
+        .get(&(address.msb, address.lsb, address.pc))
+        .copied()
+}
+
 /// Read a sound list in the shape `tools/gen_sound_list.py` and `dump-sounds` both write:
 /// `msb`, `lsb`, `pc`, `number`, `name`, `category`, tab separated, one header line.
 ///
@@ -80,6 +105,7 @@ pub fn parse(text: &str) -> impl Iterator<Item = FactorySound<'_>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::BTreeMap;
 
     #[test]
     fn every_built_in_bank_is_one_this_version_can_name() {
@@ -107,9 +133,37 @@ mod tests {
                 (ToneType::Drum, "CMN"),
                 (ToneType::SnA, "PRST"),
                 (ToneType::VPiano, "PRST"),
+                // Roland prints no VTW list; these came off a FANTOM-6 over SysEx.
+                (ToneType::Vtw, "PRST"),
                 (ToneType::Acb, "JP8"),
             ]
         );
+    }
+
+    /// A bank prints as a run of consecutive programs, so a hole in one is a row the sound-list
+    /// extraction dropped rather than a slot Roland left empty — the way `TR-808` went missing from
+    /// `CMN` and turned a scene's drum zone unnameable. The expansion catalogs are deliberately not
+    /// checked this way: those are swept from an instrument and may genuinely be part-captured.
+    #[test]
+    fn no_bank_is_missing_a_program_in_the_middle() {
+        let mut banks: BTreeMap<(u8, u8), Vec<u8>> = BTreeMap::new();
+        for sound in all() {
+            banks
+                .entry((sound.address.msb, sound.address.lsb))
+                .or_default()
+                .push(sound.address.pc);
+        }
+        for (bank, mut programs) in banks {
+            programs.sort_unstable();
+            let span = *programs.last().unwrap() - programs[0] + 1;
+            assert_eq!(
+                programs.len(),
+                span as usize,
+                "{}/{} skips a program",
+                bank.0,
+                bank.1
+            );
+        }
     }
 
     /// `Soft & Subtle` is the JUPITER-8 tone every ACB record in the fixtures is a copy of, and the
