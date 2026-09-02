@@ -1,20 +1,43 @@
 name: Release
 
-# A tag is the only thing that publishes. The personal installation is upgraded by hand from the
-# DMG this attaches, so a run that produces no artifact is a failed release, not a quiet one.
+# Conventional commits on main drive the whole thing: release-please keeps one release pull
+# request up to date with the next version and its changelog, and merging that pull request is
+# what tags a release.
+#
+# The disk image is built in this same workflow rather than in a separate `on: push: tags` one,
+# because a tag pushed with GITHUB_TOKEN does not start another workflow run — that second
+# workflow would simply never fire.
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
-  macos:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      released: ${{ steps.release.outputs.release_created }}
+      tag: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  disk-image:
+    needs: release-please
+    if: needs.release-please.outputs.released == 'true'
     runs-on: macos-latest
     steps:
+      # The tag rather than the branch: what is shipped is exactly what was released.
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-please.outputs.tag }}
 
       # The same file a developer shell reads, so the release toolchain is the one that was tested.
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
@@ -28,27 +51,36 @@ jobs:
       # Ad-hoc signed (`signingIdentity: "-"`): enough for a Mac to run it after one Gatekeeper
       # confirmation, and it needs no Apple Developer account. Notarization comes with a Developer
       # ID certificate, which this project does not have yet.
-      # The script the README documents, so the release path and a local build stay the same thing.
       - name: Build
         working-directory: desktop
         run: pnpm app:build
 
-      - name: Collect the disk image
-        id: dmg
+      - name: Attach the disk image to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.release-please.outputs.tag }}
         run: |
           # Searched from the workspace target dir rather than assumed: a missing bundle folder
           # should read as "no disk image was built", not as a find that could not open a path.
           dmg=$(find target -path '*/release/bundle/dmg/*.dmg' -print -quit)
           test -n "$dmg" || { echo "no .dmg was produced"; exit 1; }
-          echo "path=$dmg" >> "$GITHUB_OUTPUT"
+          gh release upload "$TAG" "$dmg" --clobber
 
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: ${{ steps.dmg.outputs.path }}
-          body: |
-            A macOS build of the FANTOM Librarian, signed ad-hoc rather than with an Apple
-            Developer ID. macOS will refuse it on first open: open **System Settings → Privacy &
-            Security** and choose **Open Anyway**. Every later launch opens normally.
+      # Appended to the generated notes rather than replacing them: the changelog is what the
+      # release is for, and this is the one thing a download cannot tell you.
+      - name: Say how to open it the first time
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.release-please.outputs.tag }}
+        run: |
+          notes=$(gh release view "$TAG" --json body --jq .body)
+          gh release edit "$TAG" --notes "$notes
 
-            Upgrading replaces the app only. Your library folder is untouched, and the first open
-            after a format change copies the whole folder beside itself before it changes anything.
+          ---
+
+          This build is signed ad-hoc rather than with an Apple Developer ID, so macOS refuses it
+          the first time. Open **System Settings → Privacy & Security** and choose **Open Anyway**;
+          every later launch opens normally.
+
+          Upgrading replaces the app only. Your library folder is untouched, and the first open
+          after a format change copies the whole folder beside itself before it changes anything."

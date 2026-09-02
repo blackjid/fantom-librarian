@@ -59,9 +59,9 @@ pnpm app:build    # the personal installation: a bundled .app / .dmg
 
 ### Installing and upgrading the personal installation
 
-Releases are macOS disk images attached to a tagged GitHub release. Download the newer DMG and
-replace the app in `/Applications`; nothing else is needed, because the app and the library are
-separate things.
+Releases are macOS disk images attached to a GitHub release. Download the newer DMG and replace
+the app in `/Applications`; nothing else is needed, because the app and the library are separate
+things.
 
 The build is **signed ad-hoc**, not with an Apple Developer ID, so macOS refuses it the first
 time: open **System Settings → Privacy & Security** and choose **Open Anyway**. There is no
@@ -69,6 +69,23 @@ in-app update check — upgrading is something you do, not something that happen
 
 A new library is offered at `~/Documents/FANTOM Librarian`: somewhere visible, so it can be found,
 copied, and backed up without knowing where an app hides its data.
+
+### Cutting a release
+
+Commit subjects follow [Conventional Commits](https://www.conventionalcommits.org), and that is
+the whole release process: `release-please` watches `main`, keeps one release pull request up to
+date with the next version and its changelog, and merging that pull request tags the release and
+builds the disk image onto it.
+
+Versioning stays in **0.x** until it is deliberately taken out: `fix` bumps the patch, `feat` bumps
+the minor, and a breaking change bumps the minor too rather than jumping to 1.0.0
+(`bump-minor-pre-major` in `release-please-config.json`; drop it to release 1.0.0). If features
+should be patches instead, add `bump-patch-for-minor-pre-major` beside it.
+
+The app's version lives in `desktop/src-tauri/tauri.conf.json`, which is what release-please bumps
+and what names the DMG. The crate versions in `Cargo.toml` are left alone: nothing here is
+published to crates.io, so they are not the product's version and moving them would only churn
+`Cargo.lock`.
 
 The app manages one **workspace** folder — the library, and ordinary user data you can copy and
 back up:
