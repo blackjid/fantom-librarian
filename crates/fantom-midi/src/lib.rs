@@ -7,8 +7,11 @@
 //! about the wire and the librarian reads it without a MIDI port in sight. This crate is only
 //! the transport, and re-exports the map for callers that want both.
 
+mod session;
+
 pub use fantom_core::params;
 pub use fantom_core::params::file_value;
+pub use session::{Session, Unanswered, PORT};
 
 /// Model ID of the FANTOM-6/7/8, its EX revision, and the FANTOM-06/07/08.
 ///

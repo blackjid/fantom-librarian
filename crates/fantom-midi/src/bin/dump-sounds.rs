@@ -20,16 +20,9 @@
 //! table. **This writes to the temporary scene**, which picks up the edited asterisk — nothing is
 //! stored unless you press Write, but audition on a scratch scene rather than one you care about.
 
-use std::sync::mpsc;
 use std::time::Duration;
 
-use fantom_midi::{dt1, rq1, zone_block, TempArea, NAME_LEN};
-use midir::{MidiInput, MidiOutput};
-
-const PORT: &str = "FANTOM-6 7 8";
-const REPLY: Duration = Duration::from_millis(600);
-/// Where a DT1 reply's data starts: `F0 41 dev <model×4> 12 <address×4>`.
-const DATA_AT: usize = 12;
+use fantom_midi::{dt1, zone_block, Session, TempArea, Unanswered};
 
 struct Options {
     msb: u8,
@@ -49,7 +42,10 @@ fn options() -> Result<Options, String> {
         .next()
         .and_then(|a| a.parse().ok())
         .ok_or("usage: dump-sounds <msb> <lsb> [--zone N] [--first PC] [--last PC] [--delay MS] [--engine NAME] [--repeats N] [--port NAME]")?;
-    let lsb = args.next().and_then(|a| a.parse().ok()).ok_or("a bank is an MSB and an LSB")?;
+    let lsb = args
+        .next()
+        .and_then(|a| a.parse().ok())
+        .ok_or("a bank is an MSB and an LSB")?;
     let mut o = Options {
         msb,
         lsb,
@@ -63,7 +59,11 @@ fn options() -> Result<Options, String> {
     };
     while let Some(flag) = args.next() {
         let value = args.next().ok_or(format!("{flag} needs a value"))?;
-        let number = || value.parse::<u32>().map_err(|_| format!("{flag} wants a number"));
+        let number = || {
+            value
+                .parse::<u32>()
+                .map_err(|_| format!("{flag} wants a number"))
+        };
         match flag.as_str() {
             "--zone" => o.zone = (number()?.max(1) - 1).min(15) as u8,
             "--first" => o.first = number()?.min(127) as u8,
@@ -72,7 +72,8 @@ fn options() -> Result<Options, String> {
             "--repeats" => o.repeats = number()? as usize,
             "--port" => o.port = Some(value.clone()),
             "--engine" => {
-                o.engine = Some(TempArea::parse(&value).ok_or(format!("no engine called {value:?}"))?)
+                o.engine =
+                    Some(TempArea::parse(&value).ok_or(format!("no engine called {value:?}"))?)
             }
             _ => return Err(format!("unknown option {flag}")),
         }
@@ -80,22 +81,17 @@ fn options() -> Result<Options, String> {
     Ok(o)
 }
 
-/// A missing port is nearly always the wrong name or a sleeping instrument, so say what is there.
-fn missing(wanted: &str, found: &[String]) -> String {
-    if found.is_empty() {
-        return format!("no MIDI ports at all, so no {wanted:?}");
-    }
-    format!("no MIDI port called {wanted:?}. Ports here: {}", found.join(", "))
-}
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let o = options()?;
-    let area = o.engine.or_else(|| TempArea::for_bank(o.msb, o.lsb)).ok_or_else(|| {
-        format!(
-            "no temporary area known for MSB {} LSB {} — name one with --engine",
-            o.msb, o.lsb
-        )
-    })?;
+    let area = o
+        .engine
+        .or_else(|| TempArea::for_bank(o.msb, o.lsb))
+        .ok_or_else(|| {
+            format!(
+                "no temporary area known for MSB {} LSB {} — name one with --engine",
+                o.msb, o.lsb
+            )
+        })?;
     eprintln!(
         "reading {}/{} from the {area:?} area, zone {}, {:?} per sound",
         o.msb,
@@ -104,38 +100,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         o.delay
     );
 
-    let out = MidiOutput::new("dump-sounds-out")?;
-    let inp = MidiInput::new("dump-sounds-in")?;
-    let port = o.port.as_deref().unwrap_or(PORT);
-    let dest = out
-        .ports()
-        .into_iter()
-        .find(|p| out.port_name(p).as_deref() == Ok(port))
-        .ok_or_else(|| missing(port, &out.ports().iter().filter_map(|p| out.port_name(p).ok()).collect::<Vec<_>>()))?;
-    let src = inp
-        .ports()
-        .into_iter()
-        .find(|p| inp.port_name(p).as_deref() == Ok(port))
-        .ok_or_else(|| missing(port, &inp.ports().iter().filter_map(|p| inp.port_name(p).ok()).collect::<Vec<_>>()))?;
-    let (tx, rx) = mpsc::channel();
-    let mut pending: Vec<u8> = Vec::new();
-    let _ci = inp.connect(
-        &src,
-        "s",
-        move |_, m, _| {
-            if m.first() == Some(&0xF0) {
-                pending.clear();
-            } else if pending.is_empty() {
-                return;
-            }
-            pending.extend_from_slice(m);
-            if pending.last() == Some(&0xF7) {
-                let _ = tx.send(std::mem::take(&mut pending));
-            }
-        },
-        (),
-    )?;
-    let mut co = out.connect(&dest, "s")?;
+    let mut fantom = Session::open(o.port.as_deref())?;
 
     let zone = zone_block(o.zone);
     let name_at = area.name_addr(o.zone);
@@ -143,20 +108,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut repeated = 0;
 
     for pc in o.first..=o.last {
-        co.send(&dt1(zone, &[o.msb, o.lsb, pc]))?;
+        fantom.send(&dt1(zone, &[o.msb, o.lsb, pc]))?;
         std::thread::sleep(o.delay);
-        // Anything still queued is an answer to the last program, not this one.
-        while rx.try_recv().is_ok() {}
-        co.send(&rq1(name_at, NAME_LEN))?;
-        let Ok(reply) = rx.recv_timeout(REPLY) else {
-            eprintln!("PC {pc}: no answer; try a longer --delay");
-            continue;
+        let name = match fantom.read_name(name_at) {
+            Ok(name) => name,
+            Err(Unanswered::Silence) => {
+                eprintln!("PC {pc}: no answer; try a longer --delay");
+                continue;
+            }
+            Err(short) => {
+                eprintln!("PC {pc}: {short}");
+                continue;
+            }
         };
-        let Some(bytes) = reply.get(DATA_AT..DATA_AT + NAME_LEN as usize) else {
-            eprintln!("PC {pc}: short reply ({} bytes)", reply.len());
-            continue;
-        };
-        let name = String::from_utf8_lossy(bytes).trim_end().to_string();
 
         // A bank ends where the instrument stops changing its answer: an empty slot leaves the
         // last sound in place, so a run of identical names is the end rather than the content.

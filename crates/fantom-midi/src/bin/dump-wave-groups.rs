@@ -21,18 +21,15 @@
 //! **This writes to the temporary scene**, exactly as `dump-sounds` does: nothing is stored unless
 //! you press Write, but audition on a scratch scene rather than one you care about.
 
-use std::sync::mpsc;
 use std::time::Duration;
 
-use fantom_midi::{dt1, offset_addr, rq1, zone_block, TempArea};
-use midir::{MidiInput, MidiOutput};
+use fantom_midi::{dt1, offset_addr, zone_block, Session, TempArea, Unanswered};
 
-const PORT: &str = "FANTOM-6 7 8";
-const REPLY: Duration = Duration::from_millis(800);
-/// Where a DT1 reply's data starts: `F0 41 dev <model×4> 12 <address×4>`.
-const DATA_AT: usize = 12;
 /// `WAV_GTYPE` through `WAV_NUM_R`: one 7-bit byte then three 4-nibble words.
 const WAVE_FIELDS: u32 = 13;
+
+/// Long enough for a bank page that has to be paged in before it answers.
+const REPLY: Duration = Duration::from_millis(800);
 
 /// A ZEN-Core partial's wave block: `PCMT_PTL` instance `p` at `00 2p 00`, fields at `+27`.
 const TONE_PARTIALS: usize = 4;
@@ -139,16 +136,6 @@ fn word(data: &[u8], at: usize) -> u16 {
         | data[at + 3] as u16
 }
 
-fn missing(wanted: &str, found: &[String]) -> String {
-    if found.is_empty() {
-        return format!("no MIDI ports at all, so no {wanted:?}");
-    }
-    format!(
-        "no MIDI port called {wanted:?}. Ports here: {}",
-        found.join(", ")
-    )
-}
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let o = options()?;
     let area = TempArea::for_bank(o.msb, o.lsb).ok_or_else(|| {
@@ -166,70 +153,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         wave_blocks.len()
     );
 
-    let out = MidiOutput::new("dump-wave-groups-out")?;
-    let inp = MidiInput::new("dump-wave-groups-in")?;
-    let port = o.port.as_deref().unwrap_or(PORT);
-    let dest = out
-        .ports()
-        .into_iter()
-        .find(|p| out.port_name(p).as_deref() == Ok(port))
-        .ok_or_else(|| {
-            missing(
-                port,
-                &out.ports()
-                    .iter()
-                    .filter_map(|p| out.port_name(p).ok())
-                    .collect::<Vec<_>>(),
-            )
-        })?;
-    let src = inp
-        .ports()
-        .into_iter()
-        .find(|p| inp.port_name(p).as_deref() == Ok(port))
-        .ok_or_else(|| {
-            missing(
-                port,
-                &inp.ports()
-                    .iter()
-                    .filter_map(|p| inp.port_name(p).ok())
-                    .collect::<Vec<_>>(),
-            )
-        })?;
-    let (tx, rx) = mpsc::channel();
-    let mut pending: Vec<u8> = Vec::new();
-    let _ci = inp.connect(
-        &src,
-        "s",
-        move |_, m, _| {
-            if m.first() == Some(&0xF0) {
-                pending.clear();
-            } else if pending.is_empty() {
-                return;
-            }
-            pending.extend_from_slice(m);
-            if pending.last() == Some(&0xF7) {
-                let _ = tx.send(std::mem::take(&mut pending));
-            }
-        },
-        (),
-    )?;
-    let mut co = out.connect(&dest, "s")?;
+    let mut fantom = Session::open(o.port.as_deref())?.with_timeout(REPLY);
 
     println!("msb\tlsb\tpc\tblock\tgroup_type\tgroup_id\twave_l\twave_r");
     for pc in o.first..=o.last {
-        co.send(&dt1(zone_block(o.zone), &[o.msb, o.lsb, pc]))?;
+        fantom.send(&dt1(zone_block(o.zone), &[o.msb, o.lsb, pc]))?;
         std::thread::sleep(o.delay);
         for (label, at) in &wave_blocks {
-            // Anything still queued answers an earlier request, not this one.
-            while rx.try_recv().is_ok() {}
-            co.send(&rq1(*at, WAVE_FIELDS))?;
-            let Ok(reply) = rx.recv_timeout(REPLY) else {
-                eprintln!("PC {pc} {label}: no answer; try a longer --delay");
-                continue;
-            };
-            let Some(data) = reply.get(DATA_AT..DATA_AT + WAVE_FIELDS as usize) else {
-                eprintln!("PC {pc} {label}: short reply ({} bytes)", reply.len());
-                continue;
+            let data = match fantom.read(*at, WAVE_FIELDS) {
+                Ok(data) => data,
+                Err(Unanswered::Silence) => {
+                    eprintln!("PC {pc} {label}: no answer; try a longer --delay");
+                    continue;
+                }
+                Err(short) => {
+                    eprintln!("PC {pc} {label}: {short}");
+                    continue;
+                }
             };
             // The panel numbers a bank from one; the wire counts programs from zero.
             println!(
@@ -238,9 +178,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 o.lsb,
                 pc + 1,
                 data[0],
-                word(data, 1),
-                word(data, 5),
-                word(data, 9)
+                word(&data, 1),
+                word(&data, 5),
+                word(&data, 9)
             );
         }
     }
