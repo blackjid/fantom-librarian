@@ -24,6 +24,9 @@ const PRFA: &[u8; 4] = b"PRFa";
 /// Offsets of the per-zone MIDI bank/program tuple within a settings-table record (`0x194`).
 const TONE_ID_OFFSET: usize = 0x01;
 const TONE_MSB_OFFSET: usize = 0x00;
+/// The MSB every ZEN-Core address carries. Only the test builders need it now: `resolve_tone`
+/// reads the bundled lists by whole address rather than singling this engine out.
+#[cfg(test)]
 const ZEN_CORE_MSB: u8 = 87;
 
 /// The `PRFa` area opens with a fixed 16-byte header, then fixed-stride records begin.
@@ -489,17 +492,25 @@ fn read_zones(record: &[u8], resolver: Option<&ToneResolver>) -> Result<Vec<Zone
     Ok(zones)
 }
 
-/// Name a zone's tone address: a bundled user record if the file holds one, else the ZEN-Core
-/// factory sound list. Addresses we cannot place keep their raw MSB/LSB/PC and no name — showing
-/// the wrong name would be worse than showing none.
+/// Name a zone's tone address: a bundled user record if the file holds one, else whichever list
+/// covers the address — the sounds the instrument ships with, then the expansion catalogs.
+/// Addresses we cannot place keep their raw MSB/LSB/PC and no name — showing the wrong name would
+/// be worse than showing none.
+///
+/// The built-in lists are consulted by whole address, not by the 16-bit id a ZEN-Core zone stores,
+/// so a drum kit is named as a kit rather than as the tone sharing its id.
 fn resolve_tone(msb: u8, id: u16, resolver: Option<&ToneResolver>) -> ToneRef {
     let [lsb, pc] = id.to_be_bytes();
+    let address = crate::model::ToneAddress { msb, lsb, pc };
     let name = match resolver.and_then(|r| r.name(msb, lsb, pc)) {
         Some(name) => Some(name.to_owned()),
-        None if msb == ZEN_CORE_MSB => {
-            crate::presets::lookup(id).map(|preset| preset.name.to_owned())
-        }
-        None => None,
+        // An expansion's sounds live in the instrument, so nothing about the file says whether the
+        // reader owns it. Naming it either way is the point: an install guide has to say what the
+        // scene plays, not only which bank it came from.
+        None => crate::factory::lookup(address)
+            .map(|found| found.name)
+            .or_else(|| crate::expansions::lookup(address).map(|found| found.sound.name))
+            .map(str::to_owned),
     };
     ToneRef::new(msb, lsb, pc, name)
 }
@@ -825,7 +836,7 @@ mod tests {
     }
 
     #[test]
-    fn resolve_tone_names_bundled_records_and_falls_back_to_presets() {
+    fn resolve_tone_names_bundled_records_and_falls_back_to_presets_then_expansions() {
         let r = ToneResolver {
             names: HashMap::from([
                 (
@@ -861,6 +872,19 @@ mod tests {
         assert_eq!(sn_ep.name(), Some("Time Intro EP"));
         assert_eq!(sn_ep.tone_type(), crate::model::ToneType::SnEp);
         assert_eq!(sn_ep.bank(), Some("USER"));
+
+        // A factory drum kit shares its 16-bit id with a ZEN-Core tone, so only the whole address
+        // names it — `86/64/0` is a kit, `87/64/0` is `AX Classic Lead`.
+        let kit = resolve_tone(86, 0x4000, Some(&r));
+        assert_eq!(kit.tone_type(), crate::model::ToneType::Drum);
+        assert_eq!(kit.bank(), Some("PR-A"));
+        assert_eq!(kit.name(), Some("LD Std Kit 1"));
+
+        // An expansion's tone is in no file and in no preset list; the bundled catalogs name it,
+        // whether or not this reader owns EXZ008.
+        let exz = resolve_tone(93, 0x0b0b, Some(&r));
+        assert_eq!(exz.bank(), Some("EXZ008"));
+        assert_eq!(exz.name(), Some("Stage73 SRX"));
     }
 
     /// The rule is the same in a full backup: a `PATa` holding the whole USER bank (and an `MDLa`

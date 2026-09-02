@@ -12,6 +12,7 @@
 //! - [`params`] — Roland's parameter map, file bytes against SysEx addresses, for tones and scenes.
 //! - [`presets`] — factory ZEN-Core preset tone name lookup (bundled sound list).
 //! - [`factory`] — every sound the instrument ships with, at the address a zone selects it by.
+//! - [`expansions`] — the sounds each expansion adds, keyed by product code.
 //! - [`diff`] — compares two files by area and record; the tool that finds new offsets.
 //! - [`role`] — what a file is *for*: a backup and a scene export are both `SVD5`.
 //! - [`requirements`] — the dependency closure as a value: what material needs from its destination.
@@ -31,6 +32,7 @@ pub mod codec;
 pub mod container;
 pub mod convert;
 pub mod diff;
+pub mod expansions;
 pub mod factory;
 pub mod model;
 pub mod params;
