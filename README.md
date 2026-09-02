@@ -65,6 +65,12 @@ Imports are copied, never moved or edited. Identical records consolidate into on
 that remembers every source it came from, so re-importing an overlapping pack grows provenance
 rather than duplicates.
 
+The library bundles catalogs for the base instrument and supported expansions. An expansion tone
+stays in the catalog when that expansion is uninstalled, so its tags, notes, and song links stay
+with it; turn on **Hide unavailable expansions** in the sidebar when browsing only material the
+currently installed inventory can play. Older workspaces remove their obsolete `sounds/` cache on
+open: bundled catalogs and the expansion inventory are now the only source of truth.
+
 ## Status
 
 Reads the SVD5 container envelope (verified on a Roland **FANTOM-6**), lists **scene names**, and

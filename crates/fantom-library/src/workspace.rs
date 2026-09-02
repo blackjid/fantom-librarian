@@ -16,12 +16,8 @@ pub const ORIGINALS_DIR: &str = "originals";
 /// Generated deployment folders. Never overwritten; each build is its own timestamped folder.
 pub const EXPORTS_DIR: &str = "exports";
 
-/// Sound lists for whatever this instrument has installed, dumped from it or from Roland's PDFs.
-/// The base instrument's sounds are built in; expansions differ per instrument, so they live here.
-pub const SOUNDS_DIR: &str = "sounds";
-
 /// Bumped when the on-disk layout changes in a way an older build cannot read.
-pub const FORMAT_VERSION: u32 = 1;
+pub const FORMAT_VERSION: u32 = 2;
 
 /// An open workspace: a root folder and a connection to its catalog.
 pub struct Workspace {
@@ -37,7 +33,7 @@ impl Workspace {
             return Err(Error::AlreadyAWorkspace(root.to_path_buf()));
         }
         fs::create_dir_all(root).map_err(|e| Error::io(root, e))?;
-        for dir in [ORIGINALS_DIR, EXPORTS_DIR, SOUNDS_DIR] {
+        for dir in [ORIGINALS_DIR, EXPORTS_DIR] {
             let path = root.join(dir);
             fs::create_dir_all(&path).map_err(|e| Error::io(&path, e))?;
         }
@@ -75,6 +71,7 @@ impl Workspace {
         let db = Connection::open(root.join(DB_FILE))?;
         db.execute_batch(include_str!("schema.sql"))?;
         migrate(&db)?;
+        retire_sound_lists(root)?;
         db.execute(
             "INSERT INTO meta (key, value) VALUES ('format', ?1)
              ON CONFLICT (key) DO UPDATE SET value = excluded.value",
@@ -103,15 +100,21 @@ impl Workspace {
         &mut self.db
     }
 
-    /// Where dumped sound lists go, created on demand so an older workspace grows one.
-    pub fn sounds_dir(&self) -> PathBuf {
-        self.root.join(SOUNDS_DIR)
-    }
-
     /// Absolute path of a `stored_path` recorded in the catalog.
     pub fn resolve(&self, stored_path: &str) -> PathBuf {
         self.root.join(stored_path)
     }
+}
+
+/// The old per-workspace sound-list cache duplicated catalogs now bundled with the application.
+/// It never held user-authored library metadata, and removing it ensures it cannot become a
+/// second source of truth after an upgrade.
+fn retire_sound_lists(root: &Path) -> Result<()> {
+    let legacy = root.join("sounds");
+    if legacy.exists() {
+        fs::remove_dir_all(&legacy).map_err(|e| Error::io(&legacy, e))?;
+    }
+    Ok(())
 }
 
 /// Bring an older catalog up to the current shape.

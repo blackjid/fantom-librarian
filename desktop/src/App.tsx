@@ -56,6 +56,7 @@ export default function App() {
   const [models, setModels] = useState<string[]>([]);
   const [origin, setOrigin] = useState<Origin | null>(null);
   const [plays, setPlays] = useState<Plays | null>(null);
+  const [hideUninstalledExpansions, setHideUninstalledExpansions] = useState(false);
 
   const [assets, setAssets] = useState<Asset[]>([]);
   const [counts, setCounts] = useState<KindCounts>({ scenes: 0, tones: 0 });
@@ -209,8 +210,18 @@ export default function App() {
       models,
       origin,
       plays,
+      hide_uninstalled_expansions: hideUninstalledExpansions,
     }),
-    [search, scope, activeTags.join(" "), engines.join(" "), models.join(" "), origin, plays],
+    [
+      search,
+      scope,
+      activeTags.join(" "),
+      engines.join(" "),
+      models.join(" "),
+      origin,
+      plays,
+      hideUninstalledExpansions,
+    ],
   );
 
   const reloadAssets = useCallback(async () => {
@@ -353,6 +364,7 @@ export default function App() {
             setModels([]);
             setOrigin(null);
             setPlays(null);
+            setHideUninstalledExpansions(false);
           }}
           counts={counts}
           sources={sources}
@@ -364,6 +376,7 @@ export default function App() {
           models={models}
           origin={origin}
           plays={plays}
+          hideUninstalledExpansions={hideUninstalledExpansions}
           onToggleEngine={(value) =>
             setEngines((current) =>
               current.includes(value) ? current.filter((e) => e !== value) : [...current, value],
@@ -376,6 +389,7 @@ export default function App() {
           }
           onOrigin={(next) => setOrigin((current) => (current === next ? null : next))}
           onPlays={(next) => setPlays((current) => (current === next ? null : next))}
+          onHideUninstalledExpansions={setHideUninstalledExpansions}
           onToggleTag={(tag) =>
             setActiveTags((current) =>
               current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag],

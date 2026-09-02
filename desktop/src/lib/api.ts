@@ -254,6 +254,8 @@ export interface Query {
   models?: string[];
   origin?: Origin | null;
   plays?: Plays | null;
+  /** Omit assets that need a bundled expansion not installed on this instrument. */
+  hide_uninstalled_expansions?: boolean;
 }
 
 /** Where an asset came from: the instrument itself, or one of your files. */

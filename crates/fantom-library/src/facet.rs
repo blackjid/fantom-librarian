@@ -12,6 +12,8 @@
 use fantom_core::model::{model_label, ToneType};
 use fantom_core::requirements::is_factory_bank;
 
+use std::collections::HashSet;
+
 use crate::model::{Asset, AssetDetail, Facet, Facets, Plays, Query};
 
 /// The engine an asset is, or the dominant one it plays.
@@ -87,9 +89,51 @@ pub fn plays_of(asset: &Asset) -> Option<Plays> {
     })
 }
 
+/// Whether an asset depends on a named expansion that is absent from the instrument inventory.
+///
+/// A tone can name an expansion through its own bank or the waves its partials use. A scene can
+/// do the same through its zones. Unknown bank addresses remain visible: without a product code,
+/// the inventory cannot honestly say whether they are installed.
+pub fn needs_uninstalled_expansion(asset: &Asset, installed: &HashSet<String>) -> bool {
+    expansion_codes(asset).any(|code| !installed.contains(&code.to_ascii_uppercase()))
+}
+
+fn expansion_codes(asset: &Asset) -> impl Iterator<Item = &str> {
+    let detail_codes: Vec<&str> = match &asset.detail {
+        AssetDetail::Tone(tone) => tone.bank.iter().map(String::as_str).collect(),
+        AssetDetail::Scene(scene) => scene
+            .external_refs
+            .iter()
+            .map(|reference| bank_label(reference))
+            .collect(),
+    };
+    let requirements = match &asset.detail {
+        AssetDetail::Tone(tone) => &tone.requirements,
+        AssetDetail::Scene(scene) => &scene.requirements,
+    };
+    detail_codes
+        .into_iter()
+        .chain(
+            requirements
+                .banks
+                .iter()
+                .filter_map(|bank| bank.bank.as_deref())
+                .chain(
+                    requirements
+                        .wave_expansions
+                        .iter()
+                        .filter_map(|wave| wave.product.as_deref()),
+                ),
+        )
+        .filter(|code| fantom_core::expansions::is_product(code))
+}
+
 /// The bank alone — `PR-A`, `JP8` — out of an `ENGINE BANK PC nnn` reference.
 fn bank_label(reference: &str) -> &str {
-    let bank = reference.split_once(" PC ").map(|(bank, _)| bank).unwrap_or(reference);
+    let bank = reference
+        .split_once(" PC ")
+        .map(|(bank, _)| bank)
+        .unwrap_or(reference);
     bank.split_once(' ').map(|(_, bank)| bank).unwrap_or(bank)
 }
 
@@ -164,7 +208,8 @@ impl Tally {
     }
 
     fn into_facets(mut self) -> Vec<Facet> {
-        self.0.sort_by(|a, b| b.count.cmp(&a.count).then(a.value.cmp(&b.value)));
+        self.0
+            .sort_by(|a, b| b.count.cmp(&a.count).then(a.value.cmp(&b.value)));
         self.0
     }
 }
