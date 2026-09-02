@@ -52,6 +52,30 @@ fn table() -> &'static HashMap<u16, PresetTone> {
     })
 }
 
+/// Every ZEN-Core preset, at the address a zone selects it by.
+///
+/// The table is keyed by the id a scene stores — `(LSB << 8) | (PC - 1)`, MSB always 87 — so the
+/// address comes back out of the key.
+pub fn all() -> impl Iterator<Item = crate::factory::FactorySound<'static>> {
+    let mut sounds: Vec<_> = table()
+        .iter()
+        .map(|(&id, preset)| crate::factory::FactorySound {
+            address: crate::model::ToneAddress {
+                msb: 87,
+                // The id's low byte *is* the stored program number: both are zero-based, and only
+                // the sound list's printed `PC` column counts from one.
+                lsb: (id >> 8) as u8,
+                pc: (id & 0xff) as u8,
+            },
+            number: preset.number,
+            name: preset.name,
+            category: preset.category,
+        })
+        .collect();
+    sounds.sort_by_key(|sound| (sound.address.lsb, sound.address.pc));
+    sounds.into_iter()
+}
+
 /// Look up a factory preset tone by its 16-bit scene reference id.
 pub fn lookup(tone_id: u16) -> Option<&'static PresetTone> {
     table().get(&tone_id)

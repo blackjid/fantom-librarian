@@ -11,6 +11,7 @@
 //! - [`codec`] — maps container bytes onto [`model`] types (read now, write later).
 //! - [`params`] — Roland's parameter map, file bytes against SysEx addresses, for tones and scenes.
 //! - [`presets`] — factory ZEN-Core preset tone name lookup (bundled sound list).
+//! - [`factory`] — every sound the instrument ships with, at the address a zone selects it by.
 //! - [`diff`] — compares two files by area and record; the tool that finds new offsets.
 //! - [`role`] — what a file is *for*: a backup and a scene export are both `SVD5`.
 //! - [`requirements`] — the dependency closure as a value: what material needs from its destination.
@@ -30,6 +31,7 @@ pub mod codec;
 pub mod container;
 pub mod convert;
 pub mod diff;
+pub mod factory;
 pub mod model;
 pub mod params;
 pub mod presets;

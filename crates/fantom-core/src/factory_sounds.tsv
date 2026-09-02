@@ -1,0 +1,221 @@
+msb	lsb	pc	number	name	category
+86	64	1	0001	LD Std Kit 1	Drums
+86	64	2	0002	LD Std Kit 2	Drums
+86	64	3	0003	Me Shell Kit 1	Drums
+86	64	4	0004	Me Shell Kit 2	Drums
+86	64	5	0005	WD Std Kit 1	Drums
+86	64	6	0006	WD Std Kit 2	Drums
+86	64	7	0007	SF Std Kit 1	Drums
+86	64	8	0008	SF Std Kit 2	Drums
+86	64	9	0009	Rock Kit 1	Drums
+86	64	10	0010	Rock Kit 2	Drums
+86	64	11	0011	Brush Jz Kit 1	Drums
+86	64	12	0012	Brush Jz Kit 2	Drums
+86	64	13	0013	Standard Kit 1	Drums
+86	64	14	0014	Standard Kit 2	Drums
+86	64	15	0015	Standard Kit 3	Drums
+86	64	16	0016	Standard Kit 4	Drums
+86	64	17	0017	Standard Kit 5	Drums
+86	65	1	0001	Standard Kit	Drums
+86	65	2	0002	Room Kit	Drums
+86	65	3	0003	Power Kit	Drums
+86	65	4	0004	Electric Kit	Drums
+86	65	5	0005	Analog Kit	Drums
+86	65	6	0006	Jazz Kit	Drums
+86	65	7	0007	Brush Kit	Drums
+86	65	8	0008	Orchestra Kit	Drums
+86	65	9	0009	SFX Kit	Drums
+86	65	10	0010	Standard Kit w	Drums
+86	65	11	0011	Room Kit w	Drums
+86	65	12	0012	Power Kit w	Drums
+86	65	13	0013	Electric Kit w	Drums
+86	65	14	0014	Analog Kit w	Drums
+86	65	15	0015	Jazz Kit w	Drums
+86	65	16	0016	Brush Kit w	Drums
+86	65	17	0017	Orchestra Kit w	Drums
+86	65	18	0018	SFX Kit w	Drums
+86	65	19	0019	Studio Kit	Drums
+86	65	20	0020	Studio Kit w	Drums
+86	65	21	0021	Pop Kit	Drums
+86	65	22	0022	Pop Kit w	Drums
+86	65	23	0023	Pop Kit Lim	Drums
+86	65	24	0024	90’s Kit	Drums
+86	65	25	0025	90’s Kit comp	Drums
+86	65	26	0026	90’s Kit w comp	Drums
+86	65	27	0027	80’s Kit	Drums
+86	65	28	0028	80’s Kit comp	Drums
+86	65	29	0029	80’s Kit w comp	Drums
+86	65	30	0030	EDM Kit	Drums
+86	65	31	0031	EDM Kit w	Drums
+86	65	32	0032	EDM Kit Lim	Drums
+86	65	33	0033	Drum&Bass Kit	Drums
+86	65	34	0034	Drum&Bass Kit w	Drums
+86	65	35	0035	Drum&Bass KitLim	Drums
+86	65	36	0036	Techno Kit	Drums
+86	65	37	0037	Techno Kit w	Drums
+86	65	38	0038	House Kit	Drums
+86	65	39	0039	House Kit w	Drums
+86	65	40	0040	HipHop Kit	Drums
+86	65	41	0041	HipHop Kit comp	Drums
+86	65	42	0042	HipHop Kit w cmp	Drums
+86	65	43	0043	R&B Kit	Drums
+86	65	44	0044	R&B Kit w	Drums
+86	65	45	0045	TR-909	Drums
+86	65	46	0046	TR-909 comp	Drums
+86	65	47	0047	TR-909 w comp	Drums
+86	65	49	0049	TR-808 comp	Drums
+86	65	50	0050	TR-808 w comp	Drums
+86	65	51	0051	TR-707&727	Drums
+86	65	52	0052	TR-707&727 comp	Drums
+86	65	53	0053	TR-707&727 w cmp	Drums
+86	65	54	0054	CR-78	Drums
+86	65	55	0055	CR-78 comp	Drums
+86	65	56	0056	CR-78 w comp	Drums
+86	65	57	0057	TR-606	Drums
+86	65	58	0058	TR-606 comp	Drums
+86	65	59	0059	TR-606 w comp	Drums
+86	65	60	0060	TR-626	Drums
+86	65	61	0061	TR-626 comp	Drums
+86	65	62	0062	TR-626 w comp	Drums
+86	65	63	0063	Kick	Drums
+86	65	64	0064	Kick w	Drums
+86	65	65	0065	Snare	Drums
+86	65	66	0066	Snare w	Drums
+86	65	67	0067	RimStickClapTom	Drums
+86	65	68	0068	RimStickClapTm w	Drums
+86	65	69	0069	HiHat Cymbal	Drums
+86	65	70	0070	HiHat Cymbal w	Drums
+86	65	71	0071	Other Perc 1	Drums
+86	65	72	0072	Other Perc 1 w	Drums
+86	65	73	0073	Other Perc 2	Drums
+86	65	74	0074	Other Perc 2 w	Drums
+89	65	1	0001	Strings Sect 1	
+89	65	2	0002	Strings Sect 2	
+89	65	3	0003	5th Down Str	
+89	65	4	0004	Slow Strings	
+89	65	5	0005	Tape Strings	1:Staccato
+89	65	6	0006	Marcato Str	3:Tremolo
+89	65	7	0007	Marcato Warm Str	
+89	65	8	0008	Strings Stacc	
+89	65	9	0009	Strings Pizz	
+89	65	10	0010	Strings Trem	
+89	65	11	0011	Large Choir Ah	32:Vox/Choir
+89	65	12	0012	Large Choir Oo	32:Vox/Choir
+89	65	13	0013	Choir Pad	32:Vox/Choir
+89	65	14	0014	Harp	22:Plucked/Stroke
+89	65	15	0015	HarpGliss Dim	22:Plucked/Stroke
+89	65	16	0016	HarpGliss C Mixo	22:Plucked/Stroke
+89	65	17	0017	HarpGliss C HMin	22:Plucked/Stroke
+89	65	18	0018	HarpGliss C Dori	22:Plucked/Stroke
+89	65	19	0019	Harp Nail	22:Plucked/Stroke
+89	65	20	0020	Fing Bass 1	20:E.Bass
+89	65	21	0021	Fing Bass 2	20:E.Bass
+89	65	22	0022	Comp Fing Bs	20:E.Bass
+89	65	23	0023	Phaser Fing Bs 1	20:E.Bass
+89	65	24	0024	Phaser Fing Bs 2	20:E.Bass
+89	65	25	0025	Slap Bass	20:E.Bass
+89	65	26	0026	Fretless Bs 1	20:E.Bass
+89	65	27	0027	Fretless Bs 2	20:E.Bass
+89	65	28	0028	Comp Fretless Bs	20:E.Bass
+89	65	29	0029	Mr.Fretless	20:E.Bass
+89	65	30	0030	Violin 1	23:Solo Strings
+89	65	31	0031	Violin 2	23:Solo Strings
+89	65	32	0032	Violin 1 Stacc	23:Solo Strings
+89	65	33	0033	Violin 1 Pizz	23:Solo Strings
+89	65	34	0034	Violin 2 Pizz	23:Solo Strings
+89	65	35	0035	Viola	23:Solo Strings
+89	65	36	0036	Viola Pizz	23:Solo Strings
+89	65	37	0037	Cello 1	23:Solo Strings
+89	65	38	0038	Cello 2	23:Solo Strings
+89	65	39	0039	Cello 1 Stacc	23:Solo Strings
+89	65	40	0040	Cello 1 Pizz	23:Solo Strings
+89	65	41	0041	Cello 2 Pizz	23:Solo Strings
+89	65	42	0042	Contrabass	23:Solo Strings
+89	65	43	0043	Contrabass Pizz	23:Solo Strings
+89	65	44	0044	Erhu	23:Solo Strings
+89	65	45	0045	Air From China	23:Solo Strings
+89	65	46	0046	Trumpet	26:Solo Brass
+89	65	47	0047	Light Tp	26:Solo Brass
+89	65	48	0048	Mellow Tp	26:Solo Brass
+89	65	49	0049	Mute Trumpet 1	26:Solo Brass
+89	65	50	0050	Bold Mute Tp	26:Solo Brass
+89	65	51	0051	Mute Trumpet 2	26:Solo Brass
+89	65	52	0052	Wah Trumpet	26:Solo Brass
+89	65	53	0053	Trombone	26:Solo Brass
+89	65	54	0054	Breathy Tb	26:Solo Brass
+89	65	55	0055	Tb Staccato	26:Solo Brass
+89	65	56	0056	Alto Sax	30:Sax
+89	65	57	0057	A.Sax Soft	30:Sax
+89	65	58	0058	Tenor Sax	30:Sax
+89	65	59	0059	T.Sax Soft	30:Sax
+89	65	60	0060	T.Sax Growl	30:Sax
+89	65	61	0061	Baritone Sax	30:Sax
+89	65	62	0062	B.Sax Soft	30:Sax
+89	65	63	0063	Piccolo Fl	29:Flute
+89	65	64	0064	Pan Flute	29:Flute
+89	65	65	0065	Oboe 1	28:Wind
+89	65	66	0066	Oboe 2	28:Wind
+89	65	67	0067	Clarinet 1	28:Wind
+89	65	68	0068	Clarinet 2	28:Wind
+89	65	69	0069	Uilleann Pipes	28:Wind
+89	65	70	0070	Bag Pipes	28:Wind
+90	64	1	0001	Stage Grand	1:Ac.Piano
+90	64	2	0002	Deep Concert	1:Ac.Piano
+90	64	3	0003	Eastcoast Studio	1:Ac.Piano
+90	64	4	0004	Contemp Concerto	1:Ac.Piano
+90	64	5	0005	Symphony Hall	1:Ac.Piano
+90	64	6	0006	Bold Beauty	1:Ac.Piano
+90	64	7	0007	Aco Grand1	1:Ac.Piano
+90	64	8	0008	Aco Grand2	1:Ac.Piano
+90	64	9	0009	Aco Grand3	1:Ac.Piano
+90	64	10	0010	Aco Grand4	1:Ac.Piano
+90	64	11	0011	Aco Grand5	1:Ac.Piano
+90	64	12	0012	Aco Grand6	1:Ac.Piano
+90	64	13	0013	Aco Grand7	1:Ac.Piano
+90	64	14	0014	Aco Grand8	1:Ac.Piano
+90	64	15	0015	Aco Grand9	1:Ac.Piano
+90	64	16	0016	Aco Grand10	1:Ac.Piano
+90	64	17	0017	at Stage	1:Ac.Piano
+107	64	1	1	Soft & Subtle	
+107	64	2	2	Straight Poke	
+107	64	3	3	Reso Polloy	
+107	64	4	4	City Scape	
+107	64	5	5	Echo Gems	
+107	64	6	6	Gasser	
+107	64	7	7	Round Boy	
+107	64	8	8	India Pulse	
+107	64	9	9	Klang Swallow	
+107	64	10	10	Bump Sub	
+107	64	11	11	Wet Reso	
+107	64	12	12	Wide P	
+107	64	13	13	Stutter Mod	
+107	64	14	14	Pulse Phase	
+107	64	15	15	Disto Sing	
+107	64	16	16	Trust Me	
+107	64	17	17	Summer Brass	
+107	64	18	18	Brass Panner	
+107	64	19	19	Brass Baby	
+107	64	20	20	eJungle Brass	
+107	64	21	21	1981 NEG Pluck	
+107	64	22	22	1981 Cars Sync	
+107	64	24	24	1981 Clav	
+107	64	25	25	1981 Echo Piano	
+107	64	26	26	1981 Honky Tonk	
+107	64	27	27	1981 Xylo	
+107	64	28	28	1981 Harp	
+107	64	29	29	1981 Lo Strings	
+107	64	30	30	1981 Hi Strings	
+107	64	31	31	1981 Mellow Str	
+107	64	32	32	1981 Lo Brass	
+107	64	33	33	1981 Hi Brass	
+107	64	34	34	1981 S/H Brass	
+107	64	35	35	1981 Pipe Organ	
+107	64	36	36	1981 Drawbar Org	
+107	64	37	37	1981 Solo Voice	
+107	64	38	38	1981 Choir Voice	
+107	64	39	39	1981 Fat Fifth	
+107	64	40	40	1981 Fuzzy Fifth	
+107	64	41	41	1981 Hard Blip	
+107	64	42	42	1981 Flute	
+107	64	43	43	1981 Whistle	
+107	64	44	44	1981 Chime	
