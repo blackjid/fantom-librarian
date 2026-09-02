@@ -60,6 +60,9 @@ CREATE TABLE IF NOT EXISTS assets (
     memo           TEXT    NOT NULL DEFAULT '',
     engine         TEXT    NOT NULL DEFAULT '',
     detail         TEXT    NOT NULL DEFAULT '{}',
+    -- 'user' for a record that came out of an imported file, 'factory' for one the instrument
+    -- ships with. A factory row has no occurrences: there is no file behind it.
+    origin         TEXT    NOT NULL DEFAULT 'user' CHECK (origin IN ('user', 'factory')),
     created_at     INTEGER NOT NULL,
     archived_at    INTEGER
 );

@@ -245,6 +245,10 @@ fn catalogue(
                     engine: engine.clone(),
                     area: area.clone(),
                     index: tone.index,
+                    bank: None,
+                    address: None,
+                    category: None,
+                    model_id: tone.model_id,
                     requirements: reader
                         .as_ref()
                         .and_then(|reader| reader.tone(&tone.area, tone.index).ok())

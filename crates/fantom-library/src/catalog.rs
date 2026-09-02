@@ -3,6 +3,7 @@
 
 use rusqlite::{params, params_from_iter, Row};
 
+use crate::facet;
 use crate::model::*;
 use crate::workspace::Workspace;
 use crate::{now, Error, Result};
@@ -93,6 +94,25 @@ pub struct KindCounts {
 }
 
 pub fn counts(ws: &Workspace, query: &Query) -> Result<KindCounts> {
+    // A facet is decided from the stored detail rather than in SQL, so when one is set the count
+    // has to come from the same rows the list does — see [`crate::facet`].
+    if query.narrows_by_facet() {
+        let mut out = KindCounts::default();
+        for asset in select(
+            ws,
+            &Query {
+                kind: None,
+                limit: None,
+                ..query.clone()
+            },
+        )? {
+            match asset.kind {
+                AssetKind::Scene => out.scenes += 1,
+                AssetKind::Tone => out.tones += 1,
+            }
+        }
+        return Ok(out);
+    }
     let filter = Filter::build(query, false);
     let mut sql = String::from("SELECT a.kind, COUNT(DISTINCT a.id) FROM assets a");
     filter.apply(&mut sql);
@@ -117,17 +137,45 @@ pub fn counts(ws: &Workspace, query: &Query) -> Result<KindCounts> {
     Ok(out)
 }
 
-/// Assets matching `query`, newest first.
+/// Assets matching `query`, with their tags and sources.
 pub fn assets(ws: &Workspace, query: &Query) -> Result<Vec<Asset>> {
+    let mut out = select(ws, query)?;
+    for asset in &mut out {
+        asset.tags = tags_of(ws, asset.id)?;
+        asset.sources = sources_of(ws, asset.id)?;
+    }
+    Ok(out)
+}
+
+/// What the current scope offers to narrow by, and how much of it each value accounts for.
+///
+/// Counted over the scope with the facets themselves lifted, so choosing one never hides the
+/// others — a filter the user cannot see their way out of is a dead end.
+pub fn facets(ws: &Workspace, query: &Query) -> Result<Facets> {
+    let scope = Query {
+        engines: Vec::new(),
+        models: Vec::new(),
+        origin: None,
+        limit: None,
+        ..query.clone()
+    };
+    Ok(facet::tally(&select(ws, &scope)?))
+}
+
+/// The rows themselves, without the per-asset tag and source queries. Facets are applied here, so
+/// nothing downstream can see a row the query excluded.
+fn select(ws: &Workspace, query: &Query) -> Result<Vec<Asset>> {
     let filter = Filter::build(query, true);
     let mut sql = String::from(
         "SELECT DISTINCT a.id, a.kind, a.fantom_name, a.imported_name, a.note, a.memo,
-                a.engine, a.detail, a.created_at, a.archived_at
+                a.engine, a.detail, a.created_at, a.archived_at, a.origin
            FROM assets a",
     );
     filter.apply(&mut sql);
     sql.push_str(" ORDER BY a.fantom_name COLLATE NOCASE, a.id");
-    if let Some(limit) = query.limit {
+    // A facet trims rows after SQL has chosen them, so the limit has to wait for it.
+    let narrowing = query.narrows_by_facet();
+    if let (Some(limit), false) = (query.limit, narrowing) {
         sql.push_str(&format!(" LIMIT {}", limit.max(0)));
     }
 
@@ -138,12 +186,12 @@ pub fn assets(ws: &Workspace, query: &Query) -> Result<Vec<Asset>> {
         Ok(row_to_asset(row))
     })?;
 
-    let mut out = Vec::new();
-    for asset in rows {
-        let mut asset = asset?;
-        asset.tags = tags_of(ws, asset.id)?;
-        asset.sources = sources_of(ws, asset.id)?;
-        out.push(asset);
+    let mut out = rows.collect::<rusqlite::Result<Vec<Asset>>>()?;
+    if narrowing {
+        out.retain(|asset| facet::matches(asset, query));
+        if let Some(limit) = query.limit {
+            out.truncate(limit.max(0) as usize);
+        }
     }
     Ok(out)
 }
@@ -154,7 +202,7 @@ pub fn asset(ws: &Workspace, id: i64) -> Result<Asset> {
     let mut asset = db
         .query_row(
             "SELECT id, kind, fantom_name, imported_name, note, memo, engine, detail,
-                    created_at, archived_at
+                    created_at, archived_at, origin
                FROM assets WHERE id = ?1",
             [id],
             |row| Ok(row_to_asset(row)),
@@ -182,6 +230,10 @@ fn row_to_asset(row: &Row<'_>) -> Asset {
             engine: String::new(),
             area: String::new(),
             index: 0,
+            bank: None,
+            address: None,
+            category: None,
+            model_id: None,
             requirements: Default::default(),
         }));
     Asset {
@@ -193,6 +245,10 @@ fn row_to_asset(row: &Row<'_>) -> Asset {
         memo: row.get(5).unwrap_or_default(),
         engine: row.get(6).unwrap_or_default(),
         detail,
+        origin: row
+            .get::<_, String>(10)
+            .map(|origin| Origin::parse(&origin))
+            .unwrap_or(Origin::User),
         created_at: row.get(8).unwrap_or_default(),
         archived_at: row.get(9).unwrap_or_default(),
         tags: Vec::new(),

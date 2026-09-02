@@ -125,11 +125,18 @@ pub struct Asset {
     /// Sound engine label, for tones and for a scene's dominant engine.
     pub engine: String,
     pub detail: AssetDetail,
+    /// Whether this came out of one of the user's files, or ships with the instrument.
+    #[serde(default = "user_origin")]
+    pub origin: Origin,
     pub created_at: i64,
     pub archived_at: Option<i64>,
     pub tags: Vec<String>,
     /// Every source this asset was seen in, in import order.
     pub sources: Vec<AssetSource>,
+}
+
+fn user_origin() -> Origin {
+    Origin::User
 }
 
 /// Where one asset came from. The same asset can appear in several sources at once.
@@ -237,6 +244,21 @@ pub struct ToneDetail {
     /// Four-byte SVD area tag the record lives in.
     pub area: String,
     pub index: usize,
+    /// The bank it sits in, for a sound that is the instrument's rather than a record in a file.
+    #[serde(default)]
+    pub bank: Option<String>,
+    /// The address a zone selects it by — a built-in sound is only ever reached this way.
+    #[serde(default)]
+    pub address: Option<fantom_core::model::ToneAddress>,
+    /// Roland's category for a built-in sound, e.g. `35:Synth Brass`.
+    #[serde(default)]
+    pub category: Option<String>,
+    /// Which model of its engine family this is — `MODEL` and `ACB` records each carry one.
+    ///
+    /// Defaulted so a catalog written before the selector was decoded still reads; those tones
+    /// get theirs the next time their source is imported.
+    #[serde(default)]
+    pub model_id: Option<u32>,
     /// The samples, multisamples, and expansions this tone plays. See [`SceneDetail::requirements`].
     #[serde(default)]
     pub requirements: Requirements,
@@ -290,6 +312,81 @@ pub struct Query {
     pub include_archived: bool,
     #[serde(default)]
     pub limit: Option<i64>,
+    /// Sound engines to keep, by their label — `MODEL`, `ZEN-Core`, `ACB`. Empty keeps every one.
+    #[serde(default)]
+    pub engines: Vec<String>,
+    /// Models and expansions to keep, as [`crate::facet`] names them. Empty keeps every one.
+    #[serde(default)]
+    pub models: Vec<String>,
+    /// Keep only the instrument's own sounds, or only what the user's files carry.
+    #[serde(default)]
+    pub origin: Option<Origin>,
+    /// Keep only what plays anywhere, or only what asks for something first.
+    #[serde(default)]
+    pub plays: Option<Plays>,
+}
+
+impl Query {
+    /// Whether any facet is set. Those are decided from the stored detail, not in SQL, so the
+    /// catalog takes a different path through the same rows when one is.
+    pub fn narrows_by_facet(&self) -> bool {
+        !self.engines.is_empty()
+            || !self.models.is_empty()
+            || self.origin.is_some()
+            || self.plays.is_some()
+    }
+}
+
+/// Where an asset came from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Origin {
+    /// The instrument ships with it; no file in the library carries it.
+    Factory,
+    /// It came out of one of the user's imported files.
+    User,
+}
+
+impl Origin {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Factory => "factory",
+            Self::User => "user",
+        }
+    }
+
+    pub fn parse(s: &str) -> Self {
+        match s {
+            "factory" => Self::Factory,
+            _ => Self::User,
+        }
+    }
+}
+
+/// What an asset asks of the instrument it is loaded onto.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Plays {
+    /// Preset banks alone, and no bundled user tones: it plays anywhere, as it was heard.
+    FactoryOnly,
+    /// Needs something of the user's, or an expansion that has to be installed.
+    NeedsYours,
+}
+
+/// One value a facet can take, and how many assets in scope take it.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Facet {
+    pub value: String,
+    pub count: i64,
+}
+
+/// What the current scope can be narrowed by, and by how much.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Facets {
+    pub engines: Vec<Facet>,
+    pub models: Vec<Facet>,
+    pub origins: Vec<Facet>,
+    pub plays: Vec<Facet>,
 }
 
 /// What one import did, reported back so nothing is silently dropped.

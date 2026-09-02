@@ -49,6 +49,7 @@ fn an_asset_serialises_with_the_fields_the_front_end_reads() {
             external_refs: Vec::new(),
             requirements: Requirements::default(),
         }),
+        origin: Origin::User,
         created_at: 0,
         archived_at: None,
         tags: vec!["rhodes".into()],
@@ -67,6 +68,7 @@ fn an_asset_serialises_with_the_fields_the_front_end_reads() {
             "memo",
             "engine",
             "detail",
+            "origin",
             "created_at",
             "archived_at",
             "tags",
@@ -86,11 +88,16 @@ fn a_tone_detail_keeps_its_own_tag() {
         engine: "MODEL".into(),
         area: "MDLa".into(),
         index: 3,
+        bank: None,
+        address: None,
+        category: None,
+        model_id: Some(9),
         requirements: Requirements::default(),
     });
     let json = serde_json::to_value(&detail).unwrap();
     assert_eq!(json["kind"], "tone");
     assert_eq!(json["area"], "MDLa");
+    assert_eq!(json["model_id"], 9);
 }
 
 /// What an asset needs travels with it, spelled the way the front end reads it.

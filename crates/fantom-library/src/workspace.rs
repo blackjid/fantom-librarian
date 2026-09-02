@@ -16,6 +16,10 @@ pub const ORIGINALS_DIR: &str = "originals";
 /// Generated deployment folders. Never overwritten; each build is its own timestamped folder.
 pub const EXPORTS_DIR: &str = "exports";
 
+/// Sound lists for whatever this instrument has installed, dumped from it or from Roland's PDFs.
+/// The base instrument's sounds are built in; expansions differ per instrument, so they live here.
+pub const SOUNDS_DIR: &str = "sounds";
+
 /// Bumped when the on-disk layout changes in a way an older build cannot read.
 pub const FORMAT_VERSION: u32 = 1;
 
@@ -33,7 +37,7 @@ impl Workspace {
             return Err(Error::AlreadyAWorkspace(root.to_path_buf()));
         }
         fs::create_dir_all(root).map_err(|e| Error::io(root, e))?;
-        for dir in [ORIGINALS_DIR, EXPORTS_DIR] {
+        for dir in [ORIGINALS_DIR, EXPORTS_DIR, SOUNDS_DIR] {
             let path = root.join(dir);
             fs::create_dir_all(&path).map_err(|e| Error::io(&path, e))?;
         }
@@ -99,6 +103,11 @@ impl Workspace {
         &mut self.db
     }
 
+    /// Where dumped sound lists go, created on demand so an older workspace grows one.
+    pub fn sounds_dir(&self) -> PathBuf {
+        self.root.join(SOUNDS_DIR)
+    }
+
     /// Absolute path of a `stored_path` recorded in the catalog.
     pub fn resolve(&self, stored_path: &str) -> PathBuf {
         self.root.join(stored_path)
@@ -110,13 +119,19 @@ impl Workspace {
 /// `schema.sql` creates what is missing but never alters what exists, so a column added to a table
 /// an existing workspace already has has to be added here too. Each step is idempotent.
 fn migrate(db: &Connection) -> Result<()> {
-    for (table, column, definition) in [("files", "role", "TEXT NOT NULL DEFAULT 'unknown'")] {
+    for (table, column, definition) in [
+        ("files", "role", "TEXT NOT NULL DEFAULT 'unknown'"),
+        ("assets", "origin", "TEXT NOT NULL DEFAULT 'user'"),
+    ] {
         if !has_column(db, table, column)? {
             db.execute_batch(&format!(
                 "ALTER TABLE {table} ADD COLUMN {column} {definition}"
             ))?;
         }
     }
+    // Indexes over a migrated column belong here rather than in `schema.sql`, which runs first and
+    // would name a column an older catalog does not have yet.
+    db.execute_batch("CREATE INDEX IF NOT EXISTS assets_origin ON assets (origin)")?;
     Ok(())
 }
 

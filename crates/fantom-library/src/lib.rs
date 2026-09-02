@@ -18,8 +18,11 @@
 //! - [`model`] — the serialisable types both front ends speak.
 
 pub mod catalog;
+pub mod facet;
+pub mod factory;
 pub mod import;
 pub mod model;
+pub mod rescan;
 pub mod workspace;
 
 mod error;
@@ -60,6 +63,31 @@ mod tests {
         assert!(dir.path().join(workspace::DB_FILE).exists());
         assert!(dir.path().join(workspace::ORIGINALS_DIR).is_dir());
         Workspace::open(dir.path()).expect("reopen");
+    }
+
+    #[test]
+    fn the_instruments_own_sounds_seed_once_and_stay_put() {
+        let (_dir, mut ws) = workspace();
+        let added = crate::factory::seed(&mut ws).unwrap();
+        assert!(added > 3000, "the bundled sound lists are thin: {added}");
+        // Opening a library again must not double its factory rows.
+        assert_eq!(crate::factory::seed(&mut ws).unwrap(), 0);
+
+        let query = Query {
+            kind: Some(AssetKind::Tone),
+            origin: Some(crate::model::Origin::Factory),
+            ..Default::default()
+        };
+        let sounds = catalog::assets(&ws, &query).unwrap();
+        assert_eq!(sounds.len(), added);
+
+        // Each one knows the bank it sits in, which is what the model filter offers.
+        let piano = sounds
+            .iter()
+            .find(|sound| sound.fantom_name == "Stage Grand")
+            .expect("the V-Piano bank");
+        assert_eq!(crate::facet::models_of(piano), ["VPiano PRST"]);
+        assert!(piano.sources.is_empty(), "no file carries a built-in sound");
     }
 
     #[test]
