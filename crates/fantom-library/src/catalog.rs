@@ -1,7 +1,7 @@
 //! Reading and editing the catalog: what the library shows, and the handful of things v1 lets a
 //! user change about it.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use fantom_core::expansions::{self, Family};
 use fantom_core::model::ToneType;
@@ -160,6 +160,7 @@ pub fn facets(ws: &Workspace, query: &Query) -> Result<Facets> {
         engines: Vec::new(),
         models: Vec::new(),
         origin: None,
+        hide_uninstalled_expansions: false,
         limit: None,
         ..query.clone()
     };
@@ -193,11 +194,27 @@ fn select(ws: &Workspace, query: &Query) -> Result<Vec<Asset>> {
     let mut out = rows.collect::<rusqlite::Result<Vec<Asset>>>()?;
     if narrowing {
         out.retain(|asset| facet::matches(asset, query));
+        if query.hide_uninstalled_expansions {
+            let installed = installed_expansions(ws)?;
+            out.retain(|asset| !facet::needs_uninstalled_expansion(asset, &installed));
+        }
         if let Some(limit) = query.limit {
             out.truncate(limit.max(0) as usize);
         }
     }
     Ok(out)
+}
+
+fn installed_expansions(ws: &Workspace) -> Result<HashSet<String>> {
+    let mut statement = ws
+        .db()
+        .prepare("SELECT code FROM expansions WHERE installed != 0")?;
+    let rows = statement.query_map([], |row| row.get::<_, String>(0))?;
+    Ok(rows
+        .collect::<rusqlite::Result<Vec<_>>>()?
+        .into_iter()
+        .map(|code| code.to_ascii_uppercase())
+        .collect())
 }
 
 /// One asset by id, with its tags and every source it was seen in.

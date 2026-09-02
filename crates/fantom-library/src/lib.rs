@@ -65,6 +65,18 @@ mod tests {
         Workspace::open(dir.path()).expect("reopen");
     }
 
+    #[test]
+    fn opening_a_legacy_workspace_retires_its_sound_list_cache() {
+        let (dir, ws) = workspace();
+        let sounds = dir.path().join("sounds");
+        std::fs::create_dir(&sounds).unwrap();
+        std::fs::write(sounds.join("old-dump.tsv"), "a cache, not library data").unwrap();
+        drop(ws);
+
+        Workspace::open(dir.path()).unwrap();
+        assert!(!sounds.exists());
+    }
+
     /// Owning an expansion and having it loaded are two facts, and the inventory keeps them apart.
     ///
     /// The FANTOM's expansion slots are finite, so a player owns more than the instrument holds.
@@ -145,6 +157,106 @@ mod tests {
             .expect("the V-Piano bank");
         assert_eq!(crate::facet::models_of(piano), ["VPiano PRST"]);
         assert!(piano.sources.is_empty(), "no file carries a built-in sound");
+    }
+
+    #[test]
+    fn expansion_catalogs_stay_in_the_library_but_can_be_filtered_by_installation() {
+        let (_dir, mut ws) = workspace();
+        crate::factory::seed(&mut ws).unwrap();
+
+        let exz007 = Query {
+            kind: Some(AssetKind::Tone),
+            ..Default::default()
+        };
+        let has_exz007 = |query: &Query| {
+            catalog::assets(&ws, query)
+                .unwrap()
+                .iter()
+                .any(|asset| matches!(&asset.detail, crate::model::AssetDetail::Tone(tone) if tone.bank.as_deref() == Some("EXZ007")))
+        };
+        assert!(
+            has_exz007(&exz007),
+            "bundled expansion sounds are kept even before the expansion is installed"
+        );
+        let exz007_id = catalog::assets(&ws, &exz007)
+            .unwrap()
+            .into_iter()
+            .find_map(|asset| matches!(&asset.detail, crate::model::AssetDetail::Tone(tone) if tone.bank.as_deref() == Some("EXZ007")).then_some(asset.id))
+            .expect("an EXZ007 tone");
+        catalog::add_tag(&ws, exz007_id, "favourite").unwrap();
+        catalog::set_asset_note(&ws, exz007_id, "use in the encore").unwrap();
+        let song = catalog::create_song(&ws, "Encore", "", "", "").unwrap();
+        catalog::link_song(&ws, song, exz007_id, "chorus").unwrap();
+
+        let unavailable = Query {
+            hide_uninstalled_expansions: true,
+            ..exz007.clone()
+        };
+        assert!(!has_exz007(&unavailable));
+
+        catalog::set_expansion(&ws, "EXZ007", true, true).unwrap();
+        assert!(has_exz007(&unavailable));
+
+        // Removing an installed expansion only changes what the filter shows; it never drops the
+        // factory rows, so notes, tags, and song links on them remain attached.
+        catalog::set_expansion(&ws, "EXZ007", true, false).unwrap();
+        assert!(!has_exz007(&unavailable));
+        assert!(has_exz007(&exz007));
+        let preserved = catalog::asset(&ws, exz007_id).unwrap();
+        assert_eq!(preserved.tags, ["favourite"]);
+        assert_eq!(preserved.note, "use in the encore");
+        assert_eq!(
+            catalog::songs(&ws, "Encore").unwrap()[0].links[0].asset_id,
+            exz007_id
+        );
+    }
+
+    #[test]
+    fn legacy_expansion_rows_keep_their_metadata_when_rekeyed() {
+        let (_dir, mut ws) = workspace();
+        let legacy = fantom_core::expansions::catalog("EXZ007")
+            .next()
+            .expect("bundled EXZ007 catalog");
+        ws.db()
+            .execute(
+                "INSERT INTO assets (kind, identity_hash, fantom_name, imported_name, created_at, origin)
+                 VALUES ('tone', ?1, ?2, ?2, 0, 'factory')",
+                (
+                    format!(
+                        "factory:{}/{}/{}",
+                        legacy.sound.address.msb, legacy.sound.address.lsb, legacy.sound.address.pc
+                    ),
+                    legacy.sound.name,
+                ),
+            )
+            .unwrap();
+        let old_id = ws.db().last_insert_rowid();
+        catalog::add_tag(&ws, old_id, "favourite").unwrap();
+        catalog::set_asset_note(&ws, old_id, "use in the encore").unwrap();
+        let song = catalog::create_song(&ws, "Encore", "", "", "").unwrap();
+        catalog::link_song(&ws, song, old_id, "chorus").unwrap();
+
+        crate::factory::seed(&mut ws).unwrap();
+
+        let migrated = catalog::asset(&ws, old_id).unwrap();
+        assert_eq!(migrated.tags, ["favourite"]);
+        assert_eq!(migrated.note, "use in the encore");
+        assert_eq!(
+            catalog::songs(&ws, "Encore").unwrap()[0].links[0].asset_id,
+            old_id
+        );
+        let factory_rows: i64 = ws
+            .db()
+            .query_row(
+                "SELECT COUNT(*) FROM assets WHERE identity_hash = ?1",
+                [format!(
+                    "factory:EXZ007/{}/{}/{}",
+                    legacy.sound.address.msb, legacy.sound.address.lsb, legacy.sound.address.pc
+                )],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(factory_rows, 1);
     }
 
     #[test]

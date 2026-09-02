@@ -325,6 +325,9 @@ pub struct Query {
     /// Keep only what plays anywhere, or only what asks for something first.
     #[serde(default)]
     pub plays: Option<Plays>,
+    /// Omit scenes and tones that need a bundled expansion not installed on this instrument.
+    #[serde(default)]
+    pub hide_uninstalled_expansions: bool,
 }
 
 impl Query {
@@ -335,6 +338,7 @@ impl Query {
             || !self.models.is_empty()
             || self.origin.is_some()
             || self.plays.is_some()
+            || self.hide_uninstalled_expansions
     }
 }
 

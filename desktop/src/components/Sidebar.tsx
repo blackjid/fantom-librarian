@@ -16,6 +16,7 @@ import {
 import type { AssetKind, Facets, KindCounts, Origin, Plays, Role, Source, Tag } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Toggle } from "@/components/ui/toggle";
 import { fileLabel } from "@/lib/format";
 
 /** Roles get an icon apiece, because "a backup" and "a scene export" behave nothing alike. */
@@ -57,10 +58,12 @@ export function Sidebar({
   models,
   origin,
   plays,
+  hideUninstalledExpansions,
   onToggleEngine,
   onToggleModel,
   onOrigin,
   onPlays,
+  onHideUninstalledExpansions,
   onImport,
 }: {
   /** Dragged by the shell, which owns the bounds. */
@@ -82,10 +85,12 @@ export function Sidebar({
   models: string[];
   origin: Origin | null;
   plays: Plays | null;
+  hideUninstalledExpansions: boolean;
   onToggleEngine: (engine: string) => void;
   onToggleModel: (model: string) => void;
   onOrigin: (origin: Origin) => void;
   onPlays: (plays: Plays) => void;
+  onHideUninstalledExpansions: (hide: boolean) => void;
   onImport: () => void;
 }) {
   // Every imported file, in one run, each still knowing the pack it came from.
@@ -179,6 +184,19 @@ export function Sidebar({
               </div>
             </Section>
           )}
+
+          <Section title="Availability">
+            <div className="px-1">
+              <Toggle
+                pressed={hideUninstalledExpansions}
+                onPressedChange={onHideUninstalledExpansions}
+                size="sm"
+                aria-label="Hide scenes and tones that need an uninstalled expansion"
+              >
+                Hide unavailable expansions
+              </Toggle>
+            </div>
+          </Section>
 
           {facets.engines.length > 1 && (
             <Section title="Engine" collapsible>

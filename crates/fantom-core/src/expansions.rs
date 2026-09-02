@@ -88,6 +88,11 @@ pub fn products() -> &'static [Product] {
     &index().products
 }
 
+/// Whether a bundled catalog names this expansion product.
+pub fn is_product(code: &str) -> bool {
+    products().iter().any(|product| product.code == code)
+}
+
 /// Every sound of one expansion, or nothing if no catalog carries that code.
 pub fn catalog(product: &str) -> impl Iterator<Item = ExpansionSound> + '_ {
     all().filter(move |entry| entry.product == product)
