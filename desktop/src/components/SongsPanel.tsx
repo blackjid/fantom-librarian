@@ -9,6 +9,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -40,7 +48,7 @@ export function SongsPanel({
 
   return (
     <div className="flex h-full min-w-0 flex-1">
-      <div className="flex w-72 shrink-0 flex-col border-r">
+      <div className="flex w-72 min-w-[15rem] flex-col border-r">
         <div className="flex items-center justify-between gap-2 border-b p-3">
           <h2 className="text-sm font-medium">Songs</h2>
           <Button size="sm" variant="outline" onClick={() => setCreating(true)}>
@@ -86,7 +94,7 @@ export function SongsPanel({
         </div>
       </div>
 
-      <div className="min-w-0 flex-1">
+      <div className="min-w-[20rem] flex-1">
         {creating ? (
           <SongForm
             onDone={(created) => {
@@ -196,6 +204,19 @@ function SongDetail({
   const alreadyLinked = linkTarget
     ? song.links.some((link) => link.asset_id === linkTarget.id)
     : false;
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  /** Every mutation here reports: a swallowed rejection looks exactly like a change that worked. */
+  async function run(action: () => Promise<unknown>, after: () => void) {
+    setError(null);
+    try {
+      await action();
+      after();
+    } catch (e) {
+      setError(message(e));
+    }
+  }
 
   return (
     <div className="scroll-region h-full">
@@ -209,18 +230,50 @@ function SongDetail({
                 .join(" · ") || "No artist or key recorded"}
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={async () => {
-              await api.deleteSong(song.id);
-              onDeleted();
-            }}
-          >
+          <Button variant="destructive" size="sm" onClick={() => setConfirming(true)}>
             <Trash2 data-icon="inline-start" />
             Delete
           </Button>
         </div>
+
+        {/* Deleting a song takes its notes and every link with it, and nothing here undoes that. */}
+        <Dialog open={confirming} onOpenChange={setConfirming}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Delete “{song.title}”?</DialogTitle>
+              <DialogDescription>
+                Its notes and {plural(song.links.length, "linked sound")} go with it. The sounds
+                themselves stay in your library. This cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setConfirming(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() =>
+                  void run(
+                    () => api.deleteSong(song.id),
+                    () => {
+                      setConfirming(false);
+                      onDeleted();
+                    },
+                  )
+                }
+              >
+                Delete song
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {error && (
+          <Alert variant="destructive">
+            <AlertTitle>That change was not saved</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
         {song.notes && <p className="rounded-md bg-muted/50 p-3 text-sm">{song.notes}</p>}
 
@@ -248,11 +301,10 @@ function SongDetail({
                     size="icon-sm"
                     variant="ghost"
                     className="ml-auto shrink-0"
-                    aria-label="Unlink"
-                    onClick={async () => {
-                      await api.unlinkSong(song.id, link.asset_id);
-                      onChanged();
-                    }}
+                    aria-label={`Unlink ${link.asset_name}`}
+                    onClick={() =>
+                      void run(() => api.unlinkSong(song.id, link.asset_id), onChanged)
+                    }
                   >
                     <Unlink />
                   </Button>
@@ -266,10 +318,7 @@ function SongDetail({
               variant="outline"
               size="sm"
               className="self-start"
-              onClick={async () => {
-                await api.linkSong(song.id, linkTarget.id);
-                onChanged();
-              }}
+              onClick={() => void run(() => api.linkSong(song.id, linkTarget.id), onChanged)}
             >
               <Plus data-icon="inline-start" />
               Link “{linkTarget.fantom_name}”

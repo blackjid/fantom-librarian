@@ -1,29 +1,33 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Disc3, Piano, Search, X } from "lucide-react";
-import type { Asset, AssetSource } from "@/lib/api";
+import type { Asset } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Button } from "@/components/ui/button";
 import {
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fileLabel, plural } from "@/lib/format";
+import { plural } from "@/lib/format";
 
-export type KindFilter = "all" | "scene" | "tone";
+/** What the user actually narrowed by, so the empty state can name it back to them. */
+function describeFilter(search: string, tags: string[]): string {
+  const parts = [];
+  if (search) parts.push(`“${search}”`);
+  if (tags.length > 0) parts.push(tags.map((t) => `#${t}`).join(" "));
+  return parts.join(" + ");
+}
 
 /**
- * The middle pane: everything in the current scope, searchable across both kinds at once —
- * searching "Rhodes" should reach a standalone tone and the scenes that use it.
- *
- * The kind filter lives here rather than in the sidebar because it applies to every scope: the
- * whole library, one source, or one file inside it.
+ * The middle pane: one kind of material at a time, in the current scope. The sidebar chooses
+ * between scenes and tones, so this list never mixes them and every row means the same thing.
  */
 export function AssetList({
   assets,
@@ -32,9 +36,6 @@ export function AssetList({
   onSelect,
   search,
   onSearch,
-  kind,
-  onKind,
-  counts,
   activeTags,
   onClearTag,
   title,
@@ -47,9 +48,6 @@ export function AssetList({
   onSelect: (asset: Asset) => void;
   search: string;
   onSearch: (value: string) => void;
-  kind: KindFilter;
-  onKind: (kind: KindFilter) => void;
-  counts: { scenes: number; tones: number };
   activeTags: string[];
   onClearTag: (tag: string) => void;
   title: string;
@@ -59,27 +57,14 @@ export function AssetList({
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
-
-  // The same pack loaded into two instruments yields scenes that are byte-different only in which
-  // user-tone slot they point at — same name, same everything else. They stay separate items, so
-  // the rows have to say which is which rather than repeat one name five times.
-  const ambiguous = useMemo(() => {
-    const seen = new Set<string>();
-    const repeated = new Set<string>();
-    for (const asset of assets) {
-      const key = `${asset.kind}:${asset.fantom_name}`;
-      if (seen.has(key)) repeated.add(key);
-      seen.add(key);
-    }
-    return repeated;
-  }, [assets]);
+  const filtered = Boolean(search) || activeTags.length > 0;
 
   // A whole backup is a couple of thousand sounds. Only the visible slice is in the DOM, which is
   // what keeps this list scrolling at the same speed however big the library gets.
   const virtual = useVirtualizer({
     count: assets.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => 56,
+    estimateSize: () => 30,
     overscan: 12,
     getItemKey: (index) => assets[index]?.id ?? index,
   });
@@ -115,7 +100,7 @@ export function AssetList({
   }
 
   return (
-    <div className="flex h-full w-[26rem] shrink-0 flex-col border-r">
+    <div className="flex h-full w-[26rem] min-w-[20rem] flex-col border-r">
       <div className="flex flex-col gap-2 border-b p-3">
         <div className="flex items-baseline justify-between gap-2">
           <div className="flex min-w-0 flex-col">
@@ -152,38 +137,25 @@ export function AssetList({
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <ToggleGroup
-            type="single"
-            size="sm"
-            value={kind}
-            onValueChange={(value) => value && onKind(value as KindFilter)}
-          >
-            <ToggleGroupItem value="all">
-              All
-              <span className="ml-1 text-[10px] tabular-nums opacity-60">
-                {counts.scenes + counts.tones}
-              </span>
-            </ToggleGroupItem>
-            <ToggleGroupItem value="scene">
-              Scenes
-              <span className="ml-1 text-[10px] tabular-nums opacity-60">{counts.scenes}</span>
-            </ToggleGroupItem>
-            <ToggleGroupItem value="tone">
-              Tones
-              <span className="ml-1 text-[10px] tabular-nums opacity-60">{counts.tones}</span>
-            </ToggleGroupItem>
-          </ToggleGroup>
-
-          {activeTags.map((tag) => (
-            <Badge key={tag} variant="secondary" className="gap-1">
-              {tag}
-              <button type="button" onClick={() => onClearTag(tag)} aria-label={`Clear ${tag}`}>
-                <X className="size-3" />
-              </button>
-            </Badge>
-          ))}
-        </div>
+        {/* Only the tag chips live here now; the kind is a place in the sidebar, not a filter. */}
+        {activeTags.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {activeTags.map((tag) => (
+              <Badge key={tag} variant="secondary" className="gap-1">
+                {tag}
+                {/* The chip stays small; only the target grows to 24×24. */}
+                <button
+                  type="button"
+                  onClick={() => onClearTag(tag)}
+                  aria-label={`Clear ${tag}`}
+                  className="relative rounded-full after:absolute after:-inset-[6px] after:content-['']"
+                >
+                  <X className="size-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        )}
       </div>
 
       <div ref={scrollRef} className="scroll-region flex-1">
@@ -199,13 +171,30 @@ export function AssetList({
               <EmptyMedia variant="icon">
                 <Search />
               </EmptyMedia>
-              <EmptyTitle>Nothing here</EmptyTitle>
+              <EmptyTitle>
+                {filtered ? `No results for ${describeFilter(search, activeTags)}` : "Nothing here"}
+              </EmptyTitle>
               <EmptyDescription>
-                {search || activeTags.length > 0
-                  ? "No scene or tone matches this search."
+                {filtered
+                  ? "No scene or tone in this scope matches."
                   : "Import a pack or a backup to fill your library."}
               </EmptyDescription>
             </EmptyHeader>
+            {/* An empty result the user cannot leave is a dead end: the way out goes with it. */}
+            {filtered && (
+              <EmptyContent>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    onSearch("");
+                    for (const tag of activeTags) onClearTag(tag);
+                  }}
+                >
+                  Clear search and filters
+                </Button>
+              </EmptyContent>
+            )}
           </Empty>
         ) : (
           <ul
@@ -216,7 +205,9 @@ export function AssetList({
             aria-activedescendant={selectedId ? `asset-${selectedId}` : undefined}
             onKeyDown={onKeyDown}
             style={{ height: virtual.getTotalSize() }}
-            className="relative p-1.5 outline-none"
+            // `focus`, not `focus-visible`: the list takes focus programmatically, from the search
+            // field's ArrowDown and from a row click, and `:focus-visible` matches neither.
+            className="relative rounded-md p-1.5 outline-none focus:ring-2 focus:ring-ring"
           >
             {virtual.getVirtualItems().map((item) => {
               const asset = assets[item.index];
@@ -229,7 +220,6 @@ export function AssetList({
                   offset={item.start}
                   asset={asset}
                   selected={asset.id === selectedId}
-                  ambiguous={ambiguous.has(`${asset.kind}:${asset.fantom_name}`)}
                   onSelect={() => {
                     // Focus belongs to the list, not the row: one focus ring, and the arrows
                     // keep working after a click.
@@ -252,7 +242,6 @@ function Row({
   offset,
   asset,
   selected,
-  ambiguous,
   onSelect,
 }: {
   /** The virtualizer measures each row, so rows may be any height. */
@@ -261,16 +250,16 @@ function Row({
   offset: number;
   asset: Asset;
   selected: boolean;
-  /** Another item in this list carries the same name, so the row must distinguish itself. */
-  ambiguous: boolean;
   onSelect: () => void;
 }) {
   const isScene = asset.kind === "scene";
   const Icon = isScene ? Disc3 : Piano;
+  // One fact per row: how big a scene is, what engine a tone runs on. Everything else about an
+  // item — its sources, its slot, its tempo — is a click away in the detail pane.
   const summary =
     asset.detail.kind === "scene"
-      ? `${asset.detail.bpm.toFixed(2)} BPM · ${plural(asset.detail.active_zones, "zone")}`
-      : `${asset.detail.engine}${asset.detail.area ? ` · ${asset.detail.area}` : ""}`;
+      ? plural(asset.detail.active_zones, "zone")
+      : asset.detail.engine;
 
   return (
     <li
@@ -288,59 +277,26 @@ function Row({
         tabIndex={-1}
         className={cn(
           // The kind rail is the only colour on a resting row; selection adds a background.
-          "flex w-full items-start gap-2.5 rounded-md border-l-2 px-2 py-2 text-left transition-colors outline-none",
+          "flex w-full items-center gap-2 rounded-md border-l-2 px-2 py-1 text-left transition-colors outline-none",
           selected ? "border-l-current bg-accent" : "border-l-transparent hover:bg-accent/50",
           isScene ? "text-scene" : "text-tone",
           asset.archived_at && "opacity-50",
         )}
       >
-        <Icon className="mt-0.5 size-4 shrink-0" />
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-foreground">
-          <div className="flex items-baseline gap-2">
-            <span className="truncate text-sm font-medium">{asset.fantom_name}</span>
-            {asset.sources.length > 1 && (
-              <Badge variant="outline" className="shrink-0 text-[10px]">
-                {asset.sources.length}×
-              </Badge>
-            )}
-          </div>
-          <span className="truncate text-xs text-muted-foreground">
-            {summary}
-            {ambiguous && asset.sources[0] && (
-              <>
-                {" · "}
-                <span className="opacity-80">{origin(asset.sources[0])}</span>
-              </>
-            )}
-          </span>
-          {asset.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 pt-0.5">
-              {asset.tags.map((tag) => (
-                <Badge key={tag} variant="secondary" className="text-[10px]">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          )}
-        </div>
-        <span className="shrink-0 pt-0.5 text-[10px] tracking-wide uppercase opacity-70">
-          {asset.kind}
-        </span>
+        <Icon className="size-4 shrink-0" />
+        <span className="truncate text-sm font-medium text-foreground">{asset.fantom_name}</span>
+
+        {asset.tags.map((tag) => (
+          <Badge key={tag} variant="secondary" className="shrink-0 text-[10px]">
+            {tag}
+          </Badge>
+        ))}
+
+        {/* Meta sits in its own right-hand column so the names keep one clean left edge. */}
+        <span className="ml-auto shrink-0 truncate text-xs text-muted-foreground">{summary}</span>
       </button>
     </li>
   );
-}
-
-/**
- * Where a row came from, precisely enough to tell it from its namesakes.
- *
- * The same pack loaded into two instruments produces scenes identical but for the tone slot they
- * point at — and one backup can hold two of them. So the file alone is not always enough; the
- * scene number settles it.
- */
-function origin(source: AssetSource): string {
-  const file = fileLabel(source.file_name);
-  return source.area === "PRFa" ? `${file} #${source.slot}` : file;
 }
 
 /** Nothing selected yet — the detail pane's resting state. */

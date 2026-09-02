@@ -25,7 +25,7 @@ export function AssetDetail({
   const [error, setError] = useState<string | null>(null);
 
   return (
-    <div className="flex h-full min-w-0 flex-1 flex-col">
+    <div className="flex h-full min-w-[22rem] flex-1 flex-col">
       <Header asset={asset} onChanged={onChanged} onError={setError} />
       {error && (
         <Alert variant="destructive" className="mx-4 mb-2 w-auto">
@@ -298,9 +298,15 @@ function Tags({
             <button
               type="button"
               aria-label={`Remove ${tag}`}
+              className="relative rounded-full after:absolute after:-inset-[6px] after:content-['']"
               onClick={async () => {
-                await api.removeTag(asset.id, tag);
-                onChanged();
+                onError(null);
+                try {
+                  await api.removeTag(asset.id, tag);
+                  onChanged();
+                } catch (e) {
+                  onError(message(e));
+                }
               }}
             >
               <X className="size-3" />
@@ -345,31 +351,40 @@ function Note({
   useEffect(() => setDraft(asset.note), [asset.id, asset.note]);
   const dirty = draft !== asset.note;
 
+  async function save(value: string) {
+    onError(null);
+    try {
+      await api.setAssetNote(asset.id, value);
+      onChanged();
+    } catch (e) {
+      onError(message(e));
+    }
+  }
+
   return (
     <Block title="Library note" hint="Yours, as long as you like. Never written to a FANTOM file.">
       <Textarea
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
+        // Leaving the field commits it: selecting another asset resets the draft.
+        onBlur={() => {
+          if (draft !== asset.note) void save(draft);
+        }}
         rows={3}
         placeholder="What this is for, where it works, what you changed…"
       />
+      {/* Both hold focus in the field, so pressing one does not fire the blur save first. */}
       {dirty && (
         <div className="flex gap-2">
-          <Button
-            size="sm"
-            onClick={async () => {
-              onError(null);
-              try {
-                await api.setAssetNote(asset.id, draft);
-                onChanged();
-              } catch (e) {
-                onError(message(e));
-              }
-            }}
-          >
+          <Button size="sm" onMouseDown={(e) => e.preventDefault()} onClick={() => void save(draft)}>
             Save note
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => setDraft(asset.note)}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => setDraft(asset.note)}
+          >
             Discard
           </Button>
         </div>
@@ -395,7 +410,7 @@ const ZONE_STATE: Record<ZoneState, { label: string; hint: string; className: st
   unused: {
     label: "—",
     hint: "Never configured: still exactly as the factory left it.",
-    className: "opacity-40",
+    className: "",
   },
 };
 
@@ -409,7 +424,7 @@ function Zones({ detail }: { detail: SceneDetail }) {
             <h3 className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
               Keyboard groups
             </h3>
-            <p className="text-xs text-muted-foreground/70">
+            <p className="text-xs text-muted-foreground">
               Each pad recalls one set of zone switches, so this scene holds several arrangements.
               A zone below marked <span className="text-tone">group</span> is off right now and
               plays when its group is selected.
@@ -429,7 +444,8 @@ function Zones({ detail }: { detail: SceneDetail }) {
         </section>
       )}
 
-      <div className="overflow-x-auto rounded-md border" data-selectable>
+      {/* Fourteen columns outrun a narrow pane; the permanent gutter says the rest are there. */}
+      <div className="scroll-region-x overflow-x-auto rounded-md border" data-selectable>
       <table className="w-full text-xs">
         <thead className="bg-muted/50 text-muted-foreground">
           <tr>
@@ -447,8 +463,10 @@ function Zones({ detail }: { detail: SceneDetail }) {
             <tr
               key={zone.number}
               className={cn(
+                // An unused zone still holds real values, so it stays legible: `muted-foreground`
+                // against `foreground` is hierarchy enough without a second opacity layer.
                 "border-t",
-                zone.state === "unused" ? "text-muted-foreground/40" : "text-foreground",
+                zone.state === "unused" ? "text-muted-foreground" : "text-foreground",
               )}
             >
               <td className="px-2 py-1 tabular-nums">{zone.number}</td>
@@ -533,7 +551,7 @@ function Block({
         <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           {title}
         </h3>
-        {hint && <p className="text-xs text-muted-foreground/70">{hint}</p>}
+        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
       </div>
       {children}
     </section>

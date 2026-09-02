@@ -8,6 +8,7 @@ import {
   onMenu,
   type Asset,
   type ImportReport,
+  type AssetKind,
   type KindCounts,
   type Query,
   type Song,
@@ -17,7 +18,7 @@ import {
 } from "@/lib/api";
 import { Welcome } from "@/components/Welcome";
 import { Sidebar, type Scope } from "@/components/Sidebar";
-import { AssetList, NoSelection, type KindFilter } from "@/components/AssetList";
+import { AssetList, NoSelection } from "@/components/AssetList";
 import { AssetDetail } from "@/components/AssetDetail";
 import { SongsPanel } from "@/components/SongsPanel";
 import { ImportDialog } from "@/components/ImportDialog";
@@ -31,15 +32,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { plural } from "@/lib/format";
+import { fileLabel, plural } from "@/lib/format";
 
 export default function App() {
   const [workspace, setWorkspace] = useState<WorkspaceInfo | null>(null);
   const [resuming, setResuming] = useState(true);
+  const [slowResume, setSlowResume] = useState(false);
 
   const [scope, setScope] = useState<Scope>({ view: "library" });
   const [search, setSearch] = useState("");
-  const [kind, setKind] = useState<KindFilter>("all");
+  const [kind, setKind] = useState<AssetKind>("scene");
   const [activeTags, setActiveTags] = useState<string[]>([]);
 
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -105,11 +107,16 @@ export default function App() {
 
   // Reopen last session's library, so the app lands where it was left.
   useEffect(() => {
+    const slow = setTimeout(() => setSlowResume(true), 150);
     api
       .resumeWorkspace()
       .then(setWorkspace)
       .catch(() => undefined)
-      .finally(() => setResuming(false));
+      .finally(() => {
+        clearTimeout(slow);
+        setResuming(false);
+      });
+    return () => clearTimeout(slow);
   }, []);
 
   const reloadSidebar = useCallback(async () => {
@@ -134,7 +141,7 @@ export default function App() {
     void reloadSidebar();
   }, [reloadSidebar]);
 
-  /** The scope and search, without the kind filter — the counts need the same shape. */
+  /** The scope and search, without the kind — the sidebar counts need both sides of it. */
   const baseQuery: Query = useMemo(
     () => ({
       search,
@@ -150,7 +157,7 @@ export default function App() {
     setLoading(true);
     try {
       const [rows, totals] = await Promise.all([
-        api.listAssets({ ...baseQuery, kind: kind === "all" ? null : kind }),
+        api.listAssets({ ...baseQuery, kind }),
         api.countAssets(baseQuery),
       ]);
       setAssets(rows);
@@ -185,30 +192,32 @@ export default function App() {
 
   /** What the list header calls the current scope, and the path beneath it when there is one. */
   const heading = useMemo(() => {
+    // A source or a file is still only ever showing one kind, so the subtitle says which.
+    const kindLabel = kind === "scene" ? "Scenes" : "Tones";
     if (scope.view === "source") {
       const source = sources.find((s) => s.id === scope.id);
-      return { title: source?.name ?? "Source", subtitle: undefined };
+      return { title: source?.name ?? "Source", subtitle: kindLabel };
     }
     if (scope.view === "file") {
       const file = sources.flatMap((s) => s.files).find((f) => f.id === scope.id);
       const name = file?.file_name ?? "File";
-      const parts = name.split("/");
-      const leaf = parts[parts.length - 1] ?? name;
-      // Same reasoning as the sidebar: `FANTOM.SVD` names nothing, its folder does.
-      const title =
-        leaf.toLowerCase() === "fantom.svd" && parts.length > 1
-          ? (parts[parts.length - 2] ?? leaf)
-          : leaf;
-      return { title, subtitle: parts.length > 1 ? name : undefined };
+      return {
+        title: fileLabel(name),
+        subtitle: name.includes("/") ? `${kindLabel} · ${name}` : kindLabel,
+      };
     }
-    return { title: "Library", subtitle: undefined };
-  }, [scope, sources]);
+    return { title: kindLabel, subtitle: undefined };
+  }, [scope, sources, kind]);
 
+  // Reopening is a local database read and usually beats the eye. Showing the spinner only once
+  // it is genuinely slow keeps a flash of one off every launch.
   if (resuming) {
-    return (
+    return slowResume ? (
       <div className="flex h-screen items-center justify-center">
         <Spinner />
       </div>
+    ) : (
+      <div className="h-screen" />
     );
   }
 
@@ -218,12 +227,8 @@ export default function App() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
-      {/*
-        `deep` rather than a bare attribute: bare means only a click landing on the header element
-        *itself* drags, so a drag starting on the workspace name hit a span and did nothing — the
-        window appeared draggable only while in the background, where macOS moves it for us.
-        Clickable children still block the drag, so the menu button remains a button.
-      */}
+      {/* `deep`, not a bare attribute: bare drags only on the header element itself, so a drag
+          starting on a child span does nothing. Clickable children still block the drag. */}
       <header
         data-tauri-drag-region="deep"
         className="flex h-11 shrink-0 items-center gap-3 border-b pr-3 pl-20"
@@ -269,11 +274,21 @@ export default function App() {
         </Alert>
       )}
 
-      <div className="flex min-h-0 flex-1">
+      {/* Panes shrink to their floors, then the shell scrolls. The detail pane is the only
+          `flex-1`, so without a floor it is the one that collapses to nothing. */}
+      <div className="scroll-region-x flex min-h-0 flex-1 overflow-x-auto">
         <Sidebar
           scope={scope}
           onScope={setScope}
-          stats={workspace.stats}
+          kind={kind}
+          onKind={(next) => {
+            setKind(next);
+            // Picking a kind is a move to the top of that side of the library, not a filter
+            // laid over wherever you happened to be.
+            setScope({ view: "library" });
+            setSelected(null);
+          }}
+          counts={counts}
           sources={sources}
           songCount={songs.length}
           tags={tags}
@@ -303,9 +318,6 @@ export default function App() {
               onSelect={setSelected}
               search={search}
               onSearch={setSearch}
-              kind={kind}
-              onKind={setKind}
-              counts={counts}
               activeTags={activeTags}
               onClearTag={(tag) => setActiveTags((c) => c.filter((t) => t !== tag))}
               title={heading.title}
@@ -315,7 +327,7 @@ export default function App() {
             {selected ? (
               <AssetDetail asset={selected} onChanged={onChanged} />
             ) : (
-              <div className="min-w-0 flex-1">
+              <div className="min-w-[22rem] flex-1">
                 <NoSelection />
               </div>
             )}
