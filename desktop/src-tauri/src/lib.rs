@@ -224,6 +224,23 @@ fn list_songs(state: tauri::State<'_, AppState>, search: String) -> CmdResult<Ve
 }
 
 #[tauri::command]
+fn list_expansions(state: tauri::State<'_, AppState>) -> CmdResult<Vec<ExpansionEntry>> {
+    with(&state, catalog::expansions)
+}
+
+#[tauri::command]
+fn set_expansion(
+    state: tauri::State<'_, AppState>,
+    code: String,
+    owned: bool,
+    installed: bool,
+) -> CmdResult<()> {
+    with(&state, |ws| {
+        catalog::set_expansion(ws, &code, owned, installed)
+    })
+}
+
+#[tauri::command]
 fn get_stats(state: tauri::State<'_, AppState>) -> CmdResult<Stats> {
     with(&state, catalog::stats)
 }
@@ -390,6 +407,8 @@ pub fn run() {
             list_files,
             list_tags,
             list_songs,
+            list_expansions,
+            set_expansion,
             get_stats,
             rename_asset,
             set_asset_note,

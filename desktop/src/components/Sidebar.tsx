@@ -37,7 +37,8 @@ export type Scope =
   | { view: "library" }
   | { view: "source"; id: number }
   | { view: "file"; id: number; sourceId: number }
-  | { view: "songs" };
+  | { view: "songs" }
+  | { view: "expansions" };
 
 export function Sidebar({
   width,
@@ -89,6 +90,9 @@ export function Sidebar({
 }) {
   // Every imported file, in one run, each still knowing the pack it came from.
   const files = sources.flatMap((source) => source.files.map((file) => ({ file, source })));
+  // Songs and the expansion inventory take over the main panel, so neither side of the library is
+  // the thing on screen while one of them is open.
+  const browsing = scope.view !== "songs" && scope.view !== "expansions";
 
   return (
     <div
@@ -103,7 +107,7 @@ export function Sidebar({
               iconClassName="text-scene"
               label="Scenes"
               count={counts.scenes}
-              active={scope.view !== "songs" && kind === "scene"}
+              active={browsing && kind === "scene"}
               onClick={() => onKind("scene")}
             />
             <Row
@@ -111,7 +115,7 @@ export function Sidebar({
               iconClassName="text-tone"
               label="Tones"
               count={counts.tones}
-              active={scope.view !== "songs" && kind === "tone"}
+              active={browsing && kind === "tone"}
               onClick={() => onKind("tone")}
             />
             <Row

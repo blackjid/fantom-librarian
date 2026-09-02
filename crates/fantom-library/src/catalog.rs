@@ -1,6 +1,10 @@
 //! Reading and editing the catalog: what the library shows, and the handful of things v1 lets a
 //! user change about it.
 
+use std::collections::HashMap;
+
+use fantom_core::expansions::{self, Family};
+use fantom_core::model::ToneType;
 use rusqlite::{params, params_from_iter, Row};
 
 use crate::facet;
@@ -595,6 +599,91 @@ pub struct Stats {
     pub sources: i64,
     pub songs: i64,
     pub samples: i64,
+}
+
+/// The expansion inventory: everything the catalogs know about, plus anything else recorded.
+///
+/// Two flags per product, kept apart on purpose. Owning an expansion and having it loaded are
+/// different facts — the FANTOM's slots are finite, so a player owns more than the instrument
+/// holds — and "buy it" and "load it" are different instructions to give.
+///
+/// Ordered by family then code, which is the order a list wants to show them in.
+pub fn expansions(ws: &Workspace) -> Result<Vec<ExpansionEntry>> {
+    let mut stored: HashMap<String, (bool, bool)> = HashMap::new();
+    let mut statement = ws
+        .db()
+        .prepare("SELECT code, owned, installed FROM expansions")?;
+    let mut rows = statement.query([])?;
+    while let Some(row) = rows.next()? {
+        stored.insert(
+            row.get(0)?,
+            (row.get::<_, i64>(1)? != 0, row.get::<_, i64>(2)? != 0),
+        );
+    }
+
+    let mut entries: Vec<ExpansionEntry> = expansions::products()
+        .iter()
+        .map(|product| {
+            let (owned, installed) = stored.remove(product.code).unwrap_or_default();
+            ExpansionEntry {
+                code: product.code.to_string(),
+                family: product.family,
+                engine: product.engine.label().to_string(),
+                sounds: product.sounds,
+                owned,
+                installed,
+                catalogued: true,
+            }
+        })
+        .collect();
+
+    // Whatever is left was recorded by hand, for an expansion this build carries no catalog of.
+    // It is listed too: the inventory is the user's statement about their instrument, not this
+    // build's statement about what it can name.
+    for (code, (owned, installed)) in stored {
+        entries.push(ExpansionEntry {
+            family: Family::of(&code, ToneType::Unknown),
+            code,
+            engine: String::new(),
+            sounds: 0,
+            owned,
+            installed,
+            catalogued: false,
+        });
+    }
+
+    entries.sort_by(|a, b| (a.family, &a.code).cmp(&(b.family, &b.code)));
+    Ok(entries)
+}
+
+/// Record what the player owns and what the instrument holds, for one product.
+///
+/// Any code is accepted, including one no catalog covers: the user knows their instrument better
+/// than this build's catalogs do. A product set back to neither owned nor installed loses its row
+/// rather than keeping a row full of falsehoods.
+pub fn set_expansion(ws: &Workspace, code: &str, owned: bool, installed: bool) -> Result<()> {
+    let entered = code.trim();
+    let code = expansions::products()
+        .iter()
+        .find(|product| product.code.eq_ignore_ascii_case(entered))
+        .map_or_else(
+            || entered.to_ascii_uppercase(),
+            |product| product.code.to_string(),
+        );
+    if code.is_empty() {
+        return Err(Error::Rejected("an expansion needs a product code".into()));
+    }
+    if !owned && !installed {
+        ws.db()
+            .execute("DELETE FROM expansions WHERE code = ?1", [&code])?;
+        return Ok(());
+    }
+    ws.db().execute(
+        "INSERT INTO expansions (code, owned, installed) VALUES (?1, ?2, ?3)
+         ON CONFLICT (code) DO UPDATE SET owned = excluded.owned, installed = excluded.installed",
+        params![code, owned as i64, installed as i64],
+    )?;
+    Ok(())
 }
 
 pub fn stats(ws: &Workspace) -> Result<Stats> {

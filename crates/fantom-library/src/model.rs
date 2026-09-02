@@ -1,6 +1,7 @@
 //! What the catalog stores and the UI shows. Serialisable because the desktop app hands these
 //! straight to its front end.
 
+use fantom_core::expansions::Family;
 use fantom_core::requirements::Requirements;
 use serde::{Deserialize, Serialize};
 
@@ -405,4 +406,26 @@ pub struct ImportReport {
     pub samples_catalogued: usize,
     /// Anything the user should see: an unreadable file, a checksum problem, a skipped record.
     pub warnings: Vec<String>,
+}
+
+/// One expansion in the workspace's inventory.
+///
+/// The list is the bundled catalogs plus whatever else has been recorded, so an expansion nobody
+/// owns still appears — that is what makes it selectable in the first place.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExpansionEntry {
+    /// Product code: `EXZ007`, `EXSN01`, `JP8`.
+    pub code: String,
+    /// What kind of expansion it is, for a list that groups them.
+    pub family: Family,
+    /// The engine that plays it, when a catalog says. Empty for a code nothing here can place.
+    pub engine: String,
+    /// How many sounds the bundled catalog carries for it; zero when there is no catalog.
+    pub sounds: usize,
+    /// The player has bought it, paid or free.
+    pub owned: bool,
+    /// The instrument currently holds it. Independent of `owned`: slots are finite.
+    pub installed: bool,
+    /// Whether this build carries a catalog of its sounds. A code recorded by hand does not.
+    pub catalogued: bool,
 }

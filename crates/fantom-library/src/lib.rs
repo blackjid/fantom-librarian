@@ -65,6 +65,63 @@ mod tests {
         Workspace::open(dir.path()).expect("reopen");
     }
 
+    /// Owning an expansion and having it loaded are two facts, and the inventory keeps them apart.
+    ///
+    /// The FANTOM's expansion slots are finite, so a player owns more than the instrument holds.
+    /// "You own EXSN03, load it" and "you do not own EXSN03" are different instructions, and only
+    /// a store that separates them can say which one applies.
+    #[test]
+    fn owning_an_expansion_and_loading_it_are_recorded_apart() {
+        let (dir, ws) = workspace();
+
+        // Every expansion the catalogs know about is listed, so an unowned one is still selectable.
+        let known = catalog::expansions(&ws).unwrap();
+        assert!(known.len() >= 25, "{} listed", known.len());
+        assert!(known.iter().all(|entry| !entry.owned && !entry.installed));
+        assert!(known.iter().all(|entry| entry.catalogued));
+
+        catalog::set_expansion(&ws, "EXZ007", true, true).unwrap();
+        // Owned, sitting on the shelf: the instrument has no free slot for it.
+        catalog::set_expansion(&ws, "EXSN03", true, false).unwrap();
+        // Loaded by someone else's hand, and not yours to keep.
+        catalog::set_expansion(&ws, "JP8", false, true).unwrap();
+
+        let state = |entries: &[crate::model::ExpansionEntry], code: &str| {
+            entries
+                .iter()
+                .find(|entry| entry.code == code)
+                .map(|entry| (entry.owned, entry.installed))
+        };
+        let listed = catalog::expansions(&ws).unwrap();
+        assert_eq!(state(&listed, "EXZ007"), Some((true, true)));
+        assert_eq!(state(&listed, "EXSN03"), Some((true, false)));
+        assert_eq!(state(&listed, "JP8"), Some((false, true)));
+        assert_eq!(state(&listed, "EXZ008"), Some((false, false)));
+
+        // Casing and surrounding whitespace still address the catalogued product's canonical code.
+        catalog::set_expansion(&ws, " exz007 ", true, false).unwrap();
+        let listed = catalog::expansions(&ws).unwrap();
+        assert_eq!(state(&listed, "EXZ007"), Some((true, false)));
+        assert!(!listed.iter().any(|entry| entry.code == "exz007"));
+
+        // A product no catalog covers is still recordable, and says that it is uncatalogued.
+        catalog::set_expansion(&ws, "EXZ099", true, false).unwrap();
+        let listed = catalog::expansions(&ws).unwrap();
+        let unknown = listed
+            .iter()
+            .find(|entry| entry.code == "EXZ099")
+            .expect("a recorded code the catalogs do not know");
+        assert!(unknown.owned && !unknown.catalogued);
+        assert_eq!(unknown.family, fantom_core::expansions::Family::Wave);
+
+        // It travels with the folder rather than with this machine.
+        drop(ws);
+        let reopened = Workspace::open(dir.path()).unwrap();
+        let listed = catalog::expansions(&reopened).unwrap();
+        assert_eq!(state(&listed, "EXZ007"), Some((true, false)));
+        assert_eq!(state(&listed, "EXZ099"), Some((true, false)));
+    }
+
     #[test]
     fn the_instruments_own_sounds_seed_once_and_stay_put() {
         let (_dir, mut ws) = workspace();
