@@ -40,6 +40,7 @@ export type Scope =
   | { view: "songs" };
 
 export function Sidebar({
+  width,
   scope,
   onScope,
   kind,
@@ -52,6 +53,8 @@ export function Sidebar({
   onToggleTag,
   onImport,
 }: {
+  /** Dragged by the shell, which owns the bounds. */
+  width: number;
   scope: Scope;
   onScope: (scope: Scope) => void;
   kind: AssetKind;
@@ -69,7 +72,10 @@ export function Sidebar({
   const files = sources.flatMap((source) => source.files.map((file) => ({ file, source })));
 
   return (
-    <div className="flex h-full w-60 min-w-[12rem] flex-col text-sidebar-foreground">
+    <div
+      style={{ width }}
+      className="flex h-full shrink-0 flex-col text-sidebar-foreground"
+    >
       <div className="scroll-region flex-1">
         <nav className="flex flex-col gap-5 p-3 pt-4">
           <div className="flex flex-col gap-0.5">

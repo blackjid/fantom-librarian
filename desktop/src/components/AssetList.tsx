@@ -30,6 +30,7 @@ function describeFilter(search: string, tags: string[]): string {
  * between scenes and tones, so this list never mixes them and every row means the same thing.
  */
 export function AssetList({
+  width,
   assets,
   loading,
   selectedId,
@@ -42,6 +43,8 @@ export function AssetList({
   subtitle,
   searchRef,
 }: {
+  /** Dragged by the shell, which owns the bounds. */
+  width: number;
   assets: Asset[];
   loading: boolean;
   selectedId: number | null;
@@ -103,7 +106,7 @@ export function AssetList({
 
   return (
     // The panel's surface and corners belong to the wrapper, which holds the detail card too.
-    <div className="flex h-full w-[26rem] min-w-[20rem] flex-col">
+    <div style={{ width }} className="flex h-full shrink-0 flex-col">
       <div className="flex flex-col p-3">
         <div className="flex min-w-0 flex-col">
           <h2 className="truncate text-sm font-medium" title={subtitle ?? title}>
