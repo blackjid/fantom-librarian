@@ -148,7 +148,8 @@ mod tests {
             ..Default::default()
         };
         let sounds = catalog::assets(&ws, &query).unwrap();
-        assert_eq!(sounds.len(), added);
+        assert!(sounds.len() > 3000);
+        assert!(sounds.len() < added, "factory scenes are seeded too");
 
         // Each one knows the bank it sits in, which is what the model filter offers.
         let piano = sounds
@@ -157,6 +158,53 @@ mod tests {
             .expect("the V-Piano bank");
         assert_eq!(crate::facet::models_of(piano), ["VPiano PRST"]);
         assert!(piano.sources.is_empty(), "no file carries a built-in sound");
+    }
+
+    #[test]
+    fn factory_scenes_are_distinct_from_user_scenes_with_the_same_name() {
+        let (_dir, mut ws) = workspace();
+        ws.db()
+            .execute(
+                "INSERT INTO assets (kind, identity_hash, fantom_name, imported_name, created_at)
+                 VALUES ('scene', 'user-scene', 'Piano+Pad Layer', 'Piano+Pad Layer', 0)",
+                [],
+            )
+            .unwrap();
+
+        crate::factory::seed(&mut ws).unwrap();
+        let scenes = catalog::assets(
+            &ws,
+            &Query {
+                kind: Some(AssetKind::Scene),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let factory = scenes
+            .iter()
+            .find(|scene| {
+                scene.origin == crate::model::Origin::Factory
+                    && scene.fantom_name == "Piano+Pad Layer"
+            })
+            .expect("the bundled factory scene");
+        assert!(matches!(
+            factory.detail,
+            crate::model::AssetDetail::FactoryScene
+        ));
+        assert_eq!(factory.detail.summary(), "Included with the FANTOM");
+        assert!(factory.engine.is_empty(), "the source names no engine");
+        assert_eq!(crate::facet::engine_of(factory), None);
+        assert!(scenes.iter().any(|scene| {
+            scene.origin == crate::model::Origin::User && scene.fantom_name == factory.fantom_name
+        }));
+        assert!(
+            scenes
+                .iter()
+                .filter(|scene| scene.origin == crate::model::Origin::Factory)
+                .count()
+                > 250
+        );
+        assert_eq!(crate::factory::seed(&mut ws).unwrap(), 0);
     }
 
     #[test]

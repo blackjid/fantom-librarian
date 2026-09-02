@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Extract the instrument's built-in sounds from a Roland sound-list PDF.
+"""Extract named built-in sounds and scenes from a Roland sound-list PDF.
 
     pdftotext -layout FANTOM_SoundList.pdf - | tools/gen_sound_list.py > factory_sounds.tsv
 
@@ -33,8 +33,8 @@ both from the address, and one taxonomy is better than two that can disagree.
 import re
 import sys
 
-# Bank Select MSBs the FANTOM uses for sounds, from `fantom_core::model::ToneRef::tone_type`.
-MSB = {86, 87, 89, 90, 91, 92, 93, 97, 100, 101, 103, 105, 107}
+# Bank Select MSBs the FANTOM uses for sounds, plus 85 for factory-scene names.
+MSB = {85, 86, 87, 89, 90, 91, 92, 93, 97, 100, 101, 103, 105, 107}
 CATEGORY = re.compile(r"^(?:\d{1,2}:.+|Drums)$")
 NUMBER = re.compile(r"^\d{1,4}$")
 BANK = re.compile(r"^(?:PR-[A-Z]|CMN|PRST|USER|EXZ\d+|EXSN\d+|M\d\w+)$")

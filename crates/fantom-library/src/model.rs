@@ -157,6 +157,8 @@ pub struct AssetSource {
 #[serde(tag = "kind", rename_all = "lowercase")]
 pub enum AssetDetail {
     Scene(SceneDetail),
+    #[serde(rename = "factory-scene")]
+    FactoryScene,
     Tone(ToneDetail),
 }
 
@@ -170,6 +172,7 @@ impl AssetDetail {
                 s.active_zones,
                 if s.active_zones == 1 { "" } else { "s" }
             ),
+            Self::FactoryScene => "Included with the FANTOM".to_string(),
             Self::Tone(t) => {
                 if t.area.is_empty() {
                     t.engine.clone()

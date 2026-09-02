@@ -88,7 +88,7 @@ function Header({
 
   // Scene names are hardware-verified, so they are editable. Tone renaming waits for a write
   // path that has been proved on the device.
-  const renameable = asset.kind === "scene";
+  const renameable = asset.kind === "scene" && asset.origin === "user";
 
   async function check(value: string) {
     setDraft(value);
@@ -152,7 +152,7 @@ function Header({
             >
               {asset.kind}
             </Badge>
-            <span>{asset.engine}</span>
+            {asset.engine && <span>{asset.engine}</span>}
             {asset.detail.kind === "scene" && (
               <>
                 <span>·</span>
@@ -179,7 +179,7 @@ function Header({
             )}
             {asset.origin === "factory" && (
               <>
-                <span>·</span>
+                {asset.engine && <span>·</span>}
                 <span>in the instrument</span>
               </>
             )}
@@ -281,7 +281,19 @@ function Overview({
         </>
       )}
 
-      {asset.detail.requirements.wave_expansions.length > 0 && (
+      {asset.detail.kind === "factory-scene" && (
+        <Block
+          title="Factory scene"
+          hint="Roland's sound list names this scene but does not contain its serialized settings."
+        >
+          <p className="text-sm text-muted-foreground">
+            Included with the FANTOM. Tempo, zones, and requirements are not inferred from a panel
+            position, because a player can move the scene without changing its data.
+          </p>
+        </Block>
+      )}
+
+      {asset.detail.kind !== "factory-scene" && asset.detail.requirements.wave_expansions.length > 0 && (
         <Block
           title="Expansions it plays"
           hint="Read from the tones' own partials rather than from a bank address, so it holds wherever the expansion was installed. Never substituted — the destination must have it."
