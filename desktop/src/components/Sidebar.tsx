@@ -1,13 +1,37 @@
-import { Archive, Disc3, Import, Music4, Piano, Tag as TagIcon } from "lucide-react";
-import type { AssetKind, KindCounts, Source, Tag } from "@/lib/api";
+import { useState } from "react";
+import {
+  Archive,
+  ChevronRight,
+  Database,
+  Disc3,
+  FileMusic,
+  Import,
+  Music4,
+  Package,
+  Piano,
+  Tag as TagIcon,
+  TriangleAlert,
+  Waves,
+} from "lucide-react";
+import type { AssetKind, KindCounts, Role, Source, Tag } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { fileLabel } from "@/lib/format";
+
+/** Roles get an icon apiece, because "a backup" and "a scene export" behave nothing alike. */
+const ROLE_ICON: Record<Role, React.ComponentType<{ className?: string }>> = {
+  backup: Database,
+  "scene-bank": FileMusic,
+  "tone-bank": Package,
+  "sample-bank": Waves,
+  unknown: FileMusic,
+};
 
 /**
  * Where the list is looking. A scene and a tone are different things to go looking for, so the
  * kind is a destination rather than a filter over a mixed list: the sidebar picks one, and
- * sources and tags narrow within it. A file scope still exists for a single imported file,
- * though nothing in the sidebar points at one now that sources are a flat list.
+ * files and tags narrow within it. The imported files are one flat list — a source is the pack
+ * they arrived in, not a folder to open.
  */
 export type Scope =
   | { view: "library" }
@@ -41,6 +65,9 @@ export function Sidebar({
   onToggleTag: (tag: string) => void;
   onImport: () => void;
 }) {
+  // Every imported file, in one run, each still knowing the pack it came from.
+  const files = sources.flatMap((source) => source.files.map((file) => ({ file, source })));
+
   return (
     <div className="flex h-full w-60 min-w-[12rem] flex-col text-sidebar-foreground">
       <div className="scroll-region flex-1">
@@ -71,19 +98,22 @@ export function Sidebar({
             />
           </div>
 
-          <Section title={`Sources (${sources.length})`}>
-            {sources.length === 0 ? (
+          <Section title={`Sources (${files.length})`} collapsible>
+            {files.length === 0 ? (
               <p className="px-2 py-1 text-xs text-muted-foreground">Nothing imported yet.</p>
             ) : (
-              sources.map((source) => (
+              files.map(({ file, source }) => (
                 <Row
-                  key={source.id}
-                  icon={source.archived_at ? Archive : Import}
-                  label={source.name}
-                  count={source.asset_count}
-                  active={scope.view === "source" && scope.id === source.id}
+                  key={file.id}
+                  icon={fileIcon(file.status, file.role, Boolean(source.archived_at))}
+                  iconClassName={file.status === "invalid" ? "text-destructive" : undefined}
+                  label={fileLabel(file.file_name)}
+                  // Five packs can each hold a `FANTOM.SVD`; the pack names them apart.
+                  title={`${source.name} — ${file.file_name}`}
+                  count={file.asset_count}
+                  active={scope.view === "file" && scope.id === file.id}
                   dim={Boolean(source.archived_at)}
-                  onClick={() => onScope({ view: "source", id: source.id })}
+                  onClick={() => onScope({ view: "file", id: file.id, sourceId: source.id })}
                 />
               ))
             )}
@@ -125,13 +155,42 @@ export function Sidebar({
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  collapsible,
+  children,
+}: {
+  title: string;
+  /** A long run of files is worth folding away; a wrap of tag chips is not. */
+  collapsible?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(true);
+  const heading = "px-2 text-[11px] font-medium tracking-wider text-muted-foreground uppercase";
+
+  if (!collapsible) {
+    return (
+      <div className="flex flex-col gap-1">
+        <h2 className={heading}>{title}</h2>
+        {children}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-1">
-      <h2 className="px-2 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
-        {title}
+      <h2>
+        <button
+          type="button"
+          onClick={() => setOpen((current) => !current)}
+          aria-expanded={open}
+          className={cn(heading, "flex w-full items-center gap-1 py-0.5 hover:text-foreground")}
+        >
+          {title}
+          <ChevronRight className={cn("size-3 transition-transform", open && "rotate-90")} />
+        </button>
       </h2>
-      {children}
+      {open && children}
     </div>
   );
 }
@@ -144,11 +203,14 @@ function Row({
   active,
   onClick,
   dim,
+  title,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   /** Scenes and tones carry their hue here too, so the nav matches the rows it leads to. */
   iconClassName?: string;
   label: string;
+  /** What hovering says, when the label is a shortening of something longer. */
+  title?: string;
   count: number;
   active: boolean;
   onClick: () => void;
@@ -158,7 +220,7 @@ function Row({
     <button
       type="button"
       onClick={onClick}
-      title={label}
+      title={title ?? label}
       aria-current={active ? "true" : undefined}
       className={cn(
         // Selection is the fill alone, as in the asset list.
@@ -176,5 +238,8 @@ function Row({
   );
 }
 
-
-
+function fileIcon(status: string, role: Role, archived: boolean) {
+  if (status === "invalid") return TriangleAlert;
+  if (archived) return Archive;
+  return ROLE_ICON[role] ?? FileMusic;
+}

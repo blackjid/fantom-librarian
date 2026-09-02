@@ -102,9 +102,8 @@ export function AssetList({
   }
 
   return (
-    // The negative margin runs the panel under the detail pane's left edge, so the list reads as
-    // one surface the detail is resting on rather than two panes butted together.
-    <div className="-mr-3 flex h-full w-[26rem] min-w-[20rem] flex-col overflow-hidden rounded-l-xl bg-panel">
+    // The panel's surface and corners belong to the wrapper, which holds the detail card too.
+    <div className="flex h-full w-[26rem] min-w-[20rem] flex-col">
       <div className="flex flex-col p-3">
         <div className="flex min-w-0 flex-col">
           <h2 className="truncate text-sm font-medium" title={subtitle ?? title}>
@@ -213,9 +212,9 @@ export function AssetList({
             aria-activedescendant={selectedId ? `asset-${selectedId}` : undefined}
             onKeyDown={onKeyDown}
             style={{ height: virtual.getTotalSize() }}
-            // `focus`, not `focus-visible`: the list takes focus programmatically, from the search
-            // field's ArrowDown and from a row click, and `:focus-visible` matches neither.
-            className="relative rounded-md p-1.5 outline-none focus:ring-2 focus:ring-ring"
+            // No ring anywhere: a ring around this element lands off-screen — it is as tall as
+            // the whole virtual run — and the selected row's fill is the cue.
+            className="relative p-1.5 outline-none"
           >
             {virtual.getVirtualItems().map((item) => {
               const asset = assets[item.index];
