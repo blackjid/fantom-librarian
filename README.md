@@ -43,12 +43,32 @@ fixtures-local/   # private corpus: backups, docs, purchased packs (gitignored)
 
 ## The desktop app
 
+Two installations, deliberately kept apart. The **personal installation** is the released app a
+musician keeps their real library in; the **development installation** is built from a checkout.
+They carry different bundle identifiers, so macOS gives them separate application state and
+neither can reopen the other's last library by accident. The development build marks itself with a
+`DEV` badge in the window header — standing, but out of the way of the library — and it reopens
+nothing on its own: every library it touches is chosen again by hand, each launch.
+
 ```sh
 cd desktop
 pnpm install
-pnpm app          # dev: vite + a debug build of the Rust side
-pnpm app:build    # a bundled .app / .dmg
+pnpm app          # the development installation: vite + a debug build of the Rust side
+pnpm app:build    # the personal installation: a bundled .app / .dmg
 ```
+
+### Installing and upgrading the personal installation
+
+Releases are macOS disk images attached to a tagged GitHub release. Download the newer DMG and
+replace the app in `/Applications`; nothing else is needed, because the app and the library are
+separate things.
+
+The build is **signed ad-hoc**, not with an Apple Developer ID, so macOS refuses it the first
+time: open **System Settings → Privacy & Security** and choose **Open Anyway**. There is no
+in-app update check — upgrading is something you do, not something that happens to you.
+
+A new library is offered at `~/Documents/FANTOM Librarian`: somewhere visible, so it can be found,
+copied, and backed up without knowing where an app hides its data.
 
 The app manages one **workspace** folder — the library, and ordinary user data you can copy and
 back up:
@@ -60,6 +80,12 @@ My FANTOM Library/
   originals/            # content-addressed copies of everything imported
   exports/              # generated deployment folders
 ```
+
+Upgrading the app can change the shape of that folder. When it has to, the first open **copies the
+whole workspace beside itself** — `My FANTOM Library backup 2026-09-02 201530` — before it writes
+anything, and the app then says where the copy went. A library written by a *newer* build is
+refused outright and left untouched, because this build would migrate it by rules that no longer
+describe it.
 
 Imports are copied, never moved or edited. Identical records consolidate into one library item
 that remembers every source it came from, so re-importing an overlapping pack grows provenance

@@ -9,6 +9,7 @@ use std::sync::Mutex;
 
 use fantom_library::catalog::{self, KindCounts, Stats};
 use fantom_library::model::*;
+use fantom_library::workspace::Upgrade;
 use fantom_library::{workspace, Workspace};
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
@@ -54,23 +55,57 @@ fn with_mut<T>(
     wrap(f(ws))
 }
 
+/// Which installation this window belongs to.
+///
+/// The two are separate apps on the machine, and the front end says which one has the library open
+/// rather than leaving a musician to guess whether a build still under change is the one editing
+/// it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Installation {
+    /// The release installation, the one a real library belongs in.
+    Personal,
+    /// The development installation, built from a checkout.
+    Development,
+}
+
+/// Suffix the development bundle identifier carries; see `tauri.dev.conf.json`.
+const DEVELOPMENT_IDENTIFIER_SUFFIX: &str = ".dev";
+
+/// Read from the bundle identifier, because that is the thing that actually separates the two: it
+/// is what gives each its own application state. Deciding it from the build profile instead would
+/// let a release build of the development config call itself the personal installation.
+fn installation(app: &tauri::AppHandle) -> Installation {
+    if app
+        .config()
+        .identifier
+        .ends_with(DEVELOPMENT_IDENTIFIER_SUFFIX)
+    {
+        Installation::Development
+    } else {
+        Installation::Personal
+    }
+}
+
 /// What the front end needs to render the header and decide whether to show the welcome screen.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkspaceInfo {
     pub path: String,
     /// The folder's own name, which is what the user called their library.
     pub name: String,
+    /// Which installation has it open.
+    pub installation: Installation,
+    /// What opening it had to do to bring it up to this build, and where the copy went.
+    pub upgrade: Option<Upgrade>,
     pub stats: Stats,
 }
 
-fn info(ws: &Workspace) -> fantom_library::Result<WorkspaceInfo> {
+fn info(app: &tauri::AppHandle, ws: &Workspace) -> fantom_library::Result<WorkspaceInfo> {
     Ok(WorkspaceInfo {
         path: ws.root().display().to_string(),
-        name: ws
-            .root()
-            .file_name()
-            .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_else(|| ws.root().display().to_string()),
+        name: ws.name(),
+        installation: installation(app),
+        upgrade: ws.upgrade().cloned(),
         stats: catalog::stats(ws)?,
     })
 }
@@ -91,7 +126,7 @@ fn open_workspace(
         Workspace::open(&path)
     })?;
     catch_up(&mut ws);
-    let info = wrap(info(&ws))?;
+    let info = wrap(info(&app, &ws))?;
     *state
         .workspace
         .lock()
@@ -126,17 +161,22 @@ fn resume_workspace(
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
 ) -> CmdResult<Option<WorkspaceInfo>> {
+    // The development installation never reopens a library by itself. Pointing it at a real one is
+    // a choice that has to be made again each launch rather than a habit it inherits.
+    if installation(&app) == Installation::Development {
+        return Ok(None);
+    }
     let Some(path) = recent(&app) else {
         return Ok(None);
     };
     if !workspace::is_workspace(&path) {
         return Ok(None);
     }
-    let Ok(mut ws) = Workspace::open(&path) else {
-        return Ok(None);
-    };
+    // A library that is there but will not open is exactly what the recovery screen exists for, so
+    // the failure is reported rather than quietly replaced by the welcome screen.
+    let mut ws = wrap(Workspace::open(&path))?;
     catch_up(&mut ws);
-    let info = wrap(info(&ws))?;
+    let info = wrap(info(&app, &ws))?;
     *state
         .workspace
         .lock()
@@ -145,8 +185,11 @@ fn resume_workspace(
 }
 
 #[tauri::command]
-fn workspace_info(state: tauri::State<'_, AppState>) -> CmdResult<WorkspaceInfo> {
-    with(&state, info)
+fn workspace_info(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+) -> CmdResult<WorkspaceInfo> {
+    with(&state, |ws| info(&app, ws))
 }
 
 #[tauri::command]
@@ -156,6 +199,20 @@ fn close_workspace(state: tauri::State<'_, AppState>) -> CmdResult<()> {
         .lock()
         .map_err(|_| "workspace lock poisoned")? = None;
     Ok(())
+}
+
+/// Which installation this is, for a window that has no library open yet.
+#[tauri::command]
+fn app_installation(app: tauri::AppHandle) -> Installation {
+    installation(&app)
+}
+
+/// Where a library goes unless the user says otherwise: a plainly visible folder in Documents,
+/// so it is somewhere they can find, copy, and back up without being told where the app hid it.
+#[tauri::command]
+fn default_workspace_path(app: tauri::AppHandle) -> Option<String> {
+    let documents = app.path().document_dir().ok()?;
+    Some(documents.join("FANTOM Librarian").display().to_string())
 }
 
 /// Whether a folder already holds a workspace, so the picker can say "open" rather than "create".
@@ -398,6 +455,8 @@ pub fn run() {
             workspace_info,
             close_workspace,
             is_workspace,
+            default_workspace_path,
+            app_installation,
             import_files,
             list_assets,
             count_assets,

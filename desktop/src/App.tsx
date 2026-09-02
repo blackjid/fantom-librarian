@@ -27,6 +27,7 @@ import { SongsPanel } from "@/components/SongsPanel";
 import { ExpansionsPanel } from "@/components/ExpansionsPanel";
 import { Resizer } from "@/components/Resizer";
 import { ImportDialog } from "@/components/ImportDialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Spinner } from "@/components/ui/spinner";
@@ -80,6 +81,8 @@ export default function App() {
   /** Width the detail pane has had to absorb because the list was already at a bound. */
   const spill = useRef(0);
   const [importing, setImporting] = useState(false);
+  /** The backup path of an upgrade notice the user has read and closed. */
+  const [dismissedUpgrade, setDismissedUpgrade] = useState<string | null>(null);
   const [report, setReport] = useState<ImportReport | null>(null);
 
   const pickWorkspace = useCallback(async () => {
@@ -169,7 +172,8 @@ export default function App() {
     api
       .resumeWorkspace()
       .then(setWorkspace)
-      .catch(() => undefined)
+      // A library that will not open is the one thing the welcome screen must not stand in for.
+      .catch((e) => setError(message(e)))
       .finally(() => {
         clearTimeout(slow);
         setResuming(false);
@@ -308,6 +312,17 @@ export default function App() {
         className="flex h-11 shrink-0 items-center gap-3 pr-3 pl-20"
       >
         <span className="text-sm font-medium">{workspace.name}</span>
+        {/* Standing, so it cannot sit in the content flow — but it is a real warning, so it keeps
+            the destructive colour rather than reading as another piece of chrome. */}
+        {workspace.installation === "development" && (
+          <Badge
+            variant="outline"
+            className="shrink-0 border-destructive/40 text-[10px] tracking-wide text-destructive uppercase"
+            title="The development installation. Changes it makes to this library are real — keep your own library in the installed app."
+          >
+            Dev
+          </Badge>
+        )}
         <span className="truncate text-xs text-muted-foreground" title={workspace.path}>
           {workspace.path}
         </span>
@@ -338,6 +353,29 @@ export default function App() {
       </header>
 
       {report && <ImportSummary report={report} onDismiss={() => setReport(null)} />}
+      {workspace.upgrade && dismissedUpgrade !== workspace.upgrade.backup_path && (
+        <Alert className="m-3 w-auto">
+          <AlertTitle>Library brought up to date</AlertTitle>
+          <AlertDescription>
+            <div className="flex flex-col items-start gap-2">
+              <span>
+                Upgraded from format {workspace.upgrade.from_format} to{" "}
+                {workspace.upgrade.to_format}. A copy of the library as it was is kept at{" "}
+                <span className="font-mono">{workspace.upgrade.backup_path}</span> — delete it once
+                you are happy.
+              </span>
+              <Button
+                size="xs"
+                variant="outline"
+                onClick={() => setDismissedUpgrade(workspace.upgrade?.backup_path ?? null)}
+              >
+                Got it
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {error && (
         <Alert variant="destructive" className="m-3 w-auto">
           <AlertTitle>Something went wrong</AlertTitle>
