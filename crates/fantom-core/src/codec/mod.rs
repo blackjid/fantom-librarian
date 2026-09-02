@@ -408,7 +408,6 @@ fn records_of(raw: &Raw, svd: &Svd, spec: &AreaSpec) -> Option<Vec<(String, Opti
     )
 }
 
-
 /// The `n`th instance of a named block within a scene record, from the parameter table.
 ///
 /// The table is the map for everything past the handful of offsets this module found by
