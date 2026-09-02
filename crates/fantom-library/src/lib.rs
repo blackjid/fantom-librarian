@@ -192,6 +192,53 @@ mod tests {
         ));
     }
 
+    /// A catalog written before the bundled lists could name an address is brought forward from
+    /// the files it already keeps, rather than by asking for the import again.
+    #[test]
+    fn stale_scene_names_are_read_back_out_of_the_source_file() {
+        let dir = fixtures();
+        if !dir.is_dir() {
+            eprintln!("skipping: no fixtures in {}", dir.display());
+            return;
+        }
+        let (_tmp, mut ws) = workspace();
+        let Ok(report) = import(&mut ws, &[dir], &SourceInfo::default()) else {
+            eprintln!("skipping: no .svd/.svz fixtures committed");
+            return;
+        };
+        assert!(report.scenes_added > 0, "no scene to go stale");
+
+        // What an older build left behind: the zone table, with every name it could not resolve.
+        let (id, fresh): (i64, String) = ws
+            .db()
+            .query_row(
+                "SELECT id, detail FROM assets WHERE kind = 'scene' LIMIT 1",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap();
+        let stale = fresh.replace("\"tone\":\"", "\"tone\":\"—");
+        assert_ne!(stale, fresh, "the fixture scene names no tone at all");
+        ws.db()
+            .execute("UPDATE assets SET detail = ?1 WHERE id = ?2", (&stale, id))
+            .unwrap();
+        ws.db()
+            .execute("DELETE FROM meta WHERE key = 'naming'", [])
+            .unwrap();
+
+        assert_eq!(rescan::scene_names(&ws).unwrap(), 1);
+        let brought_forward: String = ws
+            .db()
+            .query_row("SELECT detail FROM assets WHERE id = ?1", [id], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(brought_forward, fresh);
+
+        // The workspace records where it got to, so opening it again reads no files at all.
+        assert_eq!(rescan::scene_names(&ws).unwrap(), 0);
+    }
+
     /// The real thing, when a fixture is present. Skips rather than fails so the suite still runs
     /// on a checkout without the private corpus.
     #[test]
