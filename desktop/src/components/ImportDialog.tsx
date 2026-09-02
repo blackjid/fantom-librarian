@@ -140,8 +140,8 @@ export function ImportDialog({
               </div>
             )}
             <FieldDescription>
-              A folder and the files inside it count as one pack. `.svd` and `.svz` only — Roland
-              Cloud `.sdz` is not supported.
+              A folder and the files inside it count as one pack. Only .svd and .svz files. Roland
+              Cloud .sdz is not supported.
             </FieldDescription>
           </Field>
 

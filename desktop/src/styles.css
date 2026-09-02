@@ -8,19 +8,10 @@
 @theme inline {
     --font-heading: var(--font-sans);
     --font-sans: 'Geist Variable', sans-serif;
-    --color-sidebar-ring: var(--sidebar-ring);
-    --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
     --color-sidebar-accent: var(--sidebar-accent);
-    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-    --color-sidebar-primary: var(--sidebar-primary);
     --color-sidebar-foreground: var(--sidebar-foreground);
     --color-sidebar: var(--sidebar);
-    --color-chart-5: var(--chart-5);
-    --color-chart-4: var(--chart-4);
-    --color-chart-3: var(--chart-3);
-    --color-chart-2: var(--chart-2);
-    --color-chart-1: var(--chart-1);
     --color-ring: var(--ring);
     --color-input: var(--input);
     --color-border: var(--border);
@@ -67,20 +58,11 @@
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
     --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
     --radius: 0.625rem;
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
     --sidebar-accent: oklch(0.97 0 0);
     --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
 }
 
 .dark {
@@ -102,19 +84,10 @@
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 15%);
     --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
     --sidebar: oklch(0.205 0 0);
     --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
     --sidebar-accent: oklch(0.269 0 0);
     --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
 }
 
 /* ---------------------------------------------------------------------------------------------
@@ -128,12 +101,21 @@
 :root {
     --scene: oklch(0.55 0.13 62);
     --tone: oklch(0.53 0.09 220);
-    /* A warm neutral ground, so the two accents sit on something rather than float on grey. */
+    /* A warm neutral ground, so the two accents sit on something rather than float on grey. The
+       text is tinted to the same anchor: warm ground under untinted grey type reads wrong in a
+       way most people cannot name, and a pure-white surface reads synthetic. */
     --background: oklch(0.995 0.002 80);
+    --card: oklch(0.995 0.003 80);
+    --popover: oklch(0.995 0.003 80);
+    --foreground: oklch(0.2 0.008 80);
+    --card-foreground: oklch(0.2 0.008 80);
+    --popover-foreground: oklch(0.2 0.008 80);
+    --muted-foreground: oklch(0.556 0.01 80);
     --primary: oklch(0.52 0.13 62);
     --primary-foreground: oklch(0.99 0.005 80);
     --ring: oklch(0.62 0.11 62);
     --sidebar: oklch(0.975 0.003 80);
+    --sidebar-foreground: oklch(0.2 0.008 80);
 }
 
 /* The window ships dark (`<html class="dark">`); the light tokens above are what a theme switch
@@ -151,7 +133,19 @@
     --muted: oklch(0.26 0.005 70);
     --accent: oklch(0.27 0.006 70);
     --sidebar-accent: oklch(0.27 0.008 68);
-    --sidebar-primary: oklch(0.78 0.12 68);
+    /* Ink carries the anchor too, and stops short of white — 0.985 neutral over a warm ground is
+       the flat-grey tell, and reads colder than everything it sits on. */
+    --foreground: oklch(0.95 0.006 70);
+    --card-foreground: oklch(0.95 0.006 70);
+    --popover-foreground: oklch(0.95 0.006 70);
+    --secondary-foreground: oklch(0.95 0.006 70);
+    --accent-foreground: oklch(0.95 0.006 70);
+    --sidebar-foreground: oklch(0.95 0.006 70);
+    --sidebar-accent-foreground: oklch(0.95 0.006 70);
+    --muted-foreground: oklch(0.708 0.008 70);
+    /* A control's edge is not a divider: WCAG asks 3:1 where an input begins. `--border` stays
+       at 10%, for structure. */
+    --input: oklch(1 0 0 / 34%);
 }
 
 @theme inline {
@@ -164,11 +158,23 @@
     @apply border-border outline-ring/50;
     }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
     }
   html {
     @apply font-sans;
     }
+
+  /* Motion is opt-in; neither the component registry nor tw-animate-css ships a guard. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
 @layer base {
@@ -191,31 +197,44 @@
   }
 
   /* Native scrolling, natively styled: momentum and overlay behaviour come free, and the bar is
-     dark enough not to interrupt a dense list. */
-  .scroll-region {
-    overflow-y: auto;
-    overscroll-behavior: contain;
+     dark enough not to interrupt a dense list. `-x` is the horizontal variant, and forces a
+     classic bar — a macOS overlay bar hides at rest, leaving cut-off columns with no cue. */
+  .scroll-region,
+  .scroll-region-x {
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
   }
 
-  .scroll-region::-webkit-scrollbar {
+  .scroll-region {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .scroll-region::-webkit-scrollbar,
+  .scroll-region-x::-webkit-scrollbar {
     width: 10px;
     height: 10px;
   }
 
-  .scroll-region::-webkit-scrollbar-track {
+  .scroll-region-x::-webkit-scrollbar {
+    -webkit-appearance: none;
+  }
+
+  .scroll-region::-webkit-scrollbar-track,
+  .scroll-region-x::-webkit-scrollbar-track {
     background: transparent;
   }
 
-  .scroll-region::-webkit-scrollbar-thumb {
-    background-color: color-mix(in oklch, var(--foreground) 18%, transparent);
+  .scroll-region::-webkit-scrollbar-thumb,
+  .scroll-region-x::-webkit-scrollbar-thumb {
+    background-color: color-mix(in oklch, var(--foreground) 22%, transparent);
     border: 3px solid transparent;
     border-radius: 9999px;
     background-clip: content-box;
   }
 
-  .scroll-region:hover::-webkit-scrollbar-thumb {
+  .scroll-region:hover::-webkit-scrollbar-thumb,
+  .scroll-region-x:hover::-webkit-scrollbar-thumb {
     background-color: color-mix(in oklch, var(--foreground) 30%, transparent);
   }
 }

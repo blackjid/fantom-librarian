@@ -3,25 +3,26 @@ import {
   Archive,
   ChevronRight,
   Database,
+  Disc3,
   FileMusic,
   Import,
-  Library,
   Music4,
   Package,
+  Piano,
   Tag as TagIcon,
   TriangleAlert,
   Waves,
 } from "lucide-react";
-import type { LibraryFile, Role, Source, Stats, Tag } from "@/lib/api";
+import type { AssetKind, KindCounts, LibraryFile, Role, Source, Tag } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { fileLabel } from "@/lib/format";
 
 /**
- * Where the list is looking. The sidebar answers only this — *which* material — while the kind
- * filter above the list answers *what sort*. Splitting them that way stops the two controls
- * offering the same three choices.
+ * Where the list is looking. A scene and a tone are different things to go looking for, so the
+ * kind is a destination rather than a filter over a mixed list: the sidebar picks one, and
+ * sources, files and tags all narrow within it.
  */
 export type Scope =
   | { view: "library" }
@@ -41,7 +42,9 @@ const ROLE_ICON: Record<Role, React.ComponentType<{ className?: string }>> = {
 export function Sidebar({
   scope,
   onScope,
-  stats,
+  kind,
+  onKind,
+  counts,
   sources,
   songCount,
   tags,
@@ -51,7 +54,10 @@ export function Sidebar({
 }: {
   scope: Scope;
   onScope: (scope: Scope) => void;
-  stats: Stats;
+  kind: AssetKind;
+  onKind: (kind: AssetKind) => void;
+  /** Scenes and tones in the current scope, so the counts follow a source or a search. */
+  counts: KindCounts;
   sources: Source[];
   songCount: number;
   tags: Tag[];
@@ -76,16 +82,25 @@ export function Sidebar({
     });
 
   return (
-    <div className="flex h-full w-60 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground">
+    <div className="flex h-full w-60 min-w-[12rem] flex-col border-r bg-sidebar text-sidebar-foreground">
       <div className="scroll-region flex-1">
         <nav className="flex flex-col gap-5 p-3 pt-4">
           <div className="flex flex-col gap-0.5">
             <Row
-              icon={Library}
-              label="All sounds"
-              count={stats.scenes + stats.tones}
-              active={scope.view === "library"}
-              onClick={() => onScope({ view: "library" })}
+              icon={Disc3}
+              iconClassName="text-scene"
+              label="Scenes"
+              count={counts.scenes}
+              active={scope.view !== "songs" && kind === "scene"}
+              onClick={() => onKind("scene")}
+            />
+            <Row
+              icon={Piano}
+              iconClassName="text-tone"
+              label="Tones"
+              count={counts.tones}
+              active={scope.view !== "songs" && kind === "tone"}
+              onClick={() => onKind("tone")}
             />
             <Row
               icon={Music4}
@@ -143,7 +158,7 @@ export function Sidebar({
                     type="button"
                     onClick={() => onToggleTag(tag.name)}
                     className={cn(
-                      "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs transition-colors",
+                      "inline-flex min-h-6 items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors",
                       activeTags.includes(tag.name)
                         ? "border-transparent bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
@@ -151,7 +166,7 @@ export function Sidebar({
                   >
                     <TagIcon className="size-3" />
                     {tag.name}
-                    <span className="tabular-nums opacity-60">{tag.count}</span>
+                    <span className="tabular-nums">{tag.count}</span>
                   </button>
                 ))}
               </div>
@@ -184,6 +199,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Row({
   icon: Icon,
+  iconClassName,
   label,
   count,
   active,
@@ -192,6 +208,8 @@ function Row({
   disclosure,
 }: {
   icon: React.ComponentType<{ className?: string }>;
+  /** Scenes and tones carry their hue here too, so the nav matches the rows it leads to. */
+  iconClassName?: string;
   label: string;
   count: number;
   active: boolean;
@@ -205,8 +223,10 @@ function Row({
         <button
           type="button"
           onClick={disclosure.onToggle}
-          aria-label={disclosure.open ? "Collapse" : "Expand"}
-          className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+          // The object matters: a sidebar of ten sources otherwise reads as ten "Expand"s.
+          aria-label={`${disclosure.open ? "Collapse" : "Expand"} ${label}`}
+          aria-expanded={disclosure.open}
+          className="relative rounded p-0.5 text-muted-foreground after:absolute after:-inset-[3px] after:content-[''] hover:text-foreground"
         >
           <ChevronRight
             className={cn("size-3.5 transition-transform", disclosure.open && "rotate-90")}
@@ -219,17 +239,20 @@ function Row({
         type="button"
         onClick={onClick}
         title={label}
+        aria-current={active ? "true" : undefined}
         className={cn(
-          "flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
+          // The rail carries selection: the accent fill alone is too faint to separate a hovered
+          // row from the selected one. Same cue as a row in the asset list.
+          "flex min-w-0 flex-1 items-center gap-2 rounded-md border-l-2 px-2 py-1.5 text-sm transition-colors",
           active
-            ? "bg-sidebar-accent text-sidebar-accent-foreground"
-            : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+            ? "border-l-primary bg-sidebar-accent text-sidebar-accent-foreground"
+            : "border-l-transparent text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
           dim && "opacity-50",
         )}
       >
-        <Icon className="size-4 shrink-0" />
+        <Icon className={cn("size-4 shrink-0", iconClassName)} />
         <span className="truncate">{label}</span>
-        <span className="ml-auto shrink-0 text-xs tabular-nums opacity-70">{count}</span>
+        <span className="ml-auto shrink-0 text-xs tabular-nums">{count}</span>
       </button>
     </div>
   );
@@ -252,11 +275,12 @@ function FileRow({
         type="button"
         onClick={onClick}
         title={`${file.file_name} — ${ROLE_LABEL[file.role]}`}
+        aria-current={active ? "true" : undefined}
         className={cn(
-          "flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors",
+          "flex w-full items-center gap-1.5 rounded-md border-l-2 px-2 py-1 text-xs transition-colors",
           active
-            ? "bg-sidebar-accent text-sidebar-accent-foreground"
-            : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+            ? "border-l-primary bg-sidebar-accent text-sidebar-accent-foreground"
+            : "border-l-transparent text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
         )}
       >
         <Icon className="size-3.5 shrink-0" />
@@ -264,7 +288,7 @@ function FileRow({
         {file.status === "invalid" ? (
           <TriangleAlert className="ml-auto size-3 shrink-0 text-destructive" />
         ) : (
-          <span className="ml-auto shrink-0 rounded border px-1 text-[9px] tracking-wide uppercase opacity-70">
+          <span className="ml-auto shrink-0 rounded border px-1 text-[10px] tracking-wide uppercase">
             {ROLE_LABEL[file.role]}
           </span>
         )}
