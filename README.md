@@ -77,6 +77,9 @@ the whole release process: `release-please` watches `main`, keeps one release pu
 date with the next version and its changelog, and merging that pull request tags the release and
 builds the disk image onto it.
 
+The release before the first automated one is tagged `v0.1.0`, so release-please has a point to
+count from; without it the first changelog would be the entire history of the project.
+
 Versioning stays in **0.x** until it is deliberately taken out: `fix` bumps the patch, `feat` bumps
 the minor, and a breaking change bumps the minor too rather than jumping to 1.0.0
 (`bump-minor-pre-major` in `release-please-config.json`; drop it to release 1.0.0). If features
