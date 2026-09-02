@@ -426,19 +426,16 @@ the FANTOM-6's tone editor and the wave group field read off directly:
 | Value | Panel | The numbers mean | Travels? |
 |-------|-------|------------------|----------|
 | `0` | — | an internal ROM wave | in the instrument |
-| `1` | `EXP` | a wave in an installed expansion; the **group id** picks the bank | must be installed |
+| `1` | `EXP` | a wave in an installed expansion; the **group id** names the product | must be installed |
 | `2` | `SAMP` | a 1-based **user sample** slot | via a companion `.svz` |
 | `3` | `MSAMP` | a 1-based **user multisample** slot | **not yet — `MLSa` is undecoded** |
 
 Evidence, all from one session: `Sledge + Hammer` partials 1 and 2 read `SAMP` waves `0030` and
 `0031`, matching the bytes' slots 30 and 31 — an independent confirmation of the sample decode
-against the instrument's own display. `Money Bass Stab` partial 1 reads `EXP`, bank `EXZ006`, wave
+against the instrument's own display. `Money Bass Stab` partial 1 reads `EXP`, wave
 `355 MG Fat Bs`, right `0 Off` — confirming both the left number and that zero displays as "off".
 `Beat It EP` partial 1 reads `EXP`, bank `EXZ005`, wave `13 Dyn EP 2`. And `Finesse Rise` partial 1
 reads **`MSAMP`**, which is the finding: group 3 is a multisample.
-
-The group id is *not* the displayed bank number — id 1005 shows as `EXZ005` but id 1008 shows as
-`EXZ006`, so the mapping is something else and is reported raw rather than guessed.
 
 > **A multisample's samples are followed; the multisample itself cannot travel in a scene bank.**
 > The record is decoded (see `MLSa` above), so the samples it maps across the keyboard are found and
@@ -473,6 +470,28 @@ dependency scan reads the right number even though its editor never shows it.
 Following it is what keeps this tool's output matching the instrument's. Ignoring it would drop a
 sample the FANTOM carries, and renumbering only the left one would leave the right pointing at
 whatever takes over the old slot.
+
+### The wave group id is the product — CONFIRMED
+
+For group type 1 the id is `1000 + n` for `EXZnnn`: `1005` is `EXZ005`. Zero names no expansion.
+Decoded by `expansions::wave_group_product`, which applies the rule only to products a catalog
+covers — an id past those reads as itself rather than as a code nobody has seen.
+
+Read with `dump-wave-groups` off a FANTOM-6 holding all fifteen wave expansions: every one of the
+26 bank pages they occupy answers with its own product's id, `EXZ001` through `EXZ015`. `EXZ003`
+and `EXZ004` are drum banks, read from their `Inst` blocks rather than a tone's partials.
+
+The id is the product and not the page: a product's drum bank at MSB 92 gives the same id as its
+tone bank at MSB 93 (`92/2` gives 1005, `92/7` 1007, `92/15` 1012, `92/19` 1006). User tones
+corroborate it without the panel — `Sledge EXZ10 Fal` and five more carry 1010.
+
+Only a group-type-1 id means this. An internal ROM wave uses the same field with small ids of its
+own (`8`, `10`, `11`, `16`), and a partial switched away from a sample leaves a stale one behind —
+`PATa`'s group-2 partials in `Black NARFSOUNDS` carry 1010, 8, 1001 and 1007.
+
+> **Correction.** An earlier revision read `Money Bass Stab`'s bank off the panel as `EXZ006` at id
+> 1008 and concluded the id was not the product code. Its id decodes to `EXZ008`; the panel reading
+> is treated as a misread digit against 26 bank pages that agree.
 
 ### A rebuilt scene bank survives the instrument unchanged — HARDWARE-CONFIRMED
 
@@ -1118,6 +1137,9 @@ So the LSB records where a product was *placed*, and a scene stores only that pl
 instruments with different install histories can disagree about what `93/7` means, which is why
 `expansion_sounds.tsv` is keyed by product code: the contents belong to the product, and only the
 address-to-product map is per instrument.
+
+A tone's **wave group id** is the exception: it names the product whatever the install history,
+and it names each run above independently — see "The wave group id is the product".
 
 ### A record on disk is its SysEx parameter blocks, packed
 

@@ -45,6 +45,14 @@ the bank on the instrument and take the name it shows — that is how `EXSN04` w
 how six wrongly labelled MODEL banks were caught. Then add the address to `PRODUCTS` in
 `tools/gen_expansion_catalog.py` and to `ToneRef::bank`; `expansions::tests` fails if they disagree.
 
+`dump-wave-groups` reads the same banks a different way: the wave **group id** each sound's
+partials play from, which for an expansion wave is the product (`1005` is `EXZ005`). It is the
+second opinion on a bank's label, and it needs no panel.
+
+```sh
+cargo run -p fantom-midi --bin dump-wave-groups -- <msb> <lsb>
+```
+
 If the instrument stops answering — no reply even to a Universal Identity Request — check
 `SYSTEM` -> `MIDI` -> `Rx SysEx`, then replug the USB cable. A power cycle alone does not
 re-enumerate it on the host.

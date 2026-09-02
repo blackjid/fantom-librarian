@@ -10,6 +10,8 @@ use std::collections::HashMap;
 mod support;
 use support::{private, public};
 
+use fantom_core::container::{PatArea, Svd, Tone};
+use fantom_core::expansions;
 use fantom_core::model::Scene;
 use fantom_core::requirements::{self, Reader, Verdict};
 
@@ -76,9 +78,44 @@ fn a_pack_states_the_slots_it_demands_and_the_bytes_agree() {
     // The pack bundles every user tone its scenes play; nothing is left dangling.
     assert_eq!(needs.missing_tones().count(), 0);
 
-    // And it needs installed content its instructions do not mention at all.
-    assert!(!needs.wave_expansions.is_empty());
+    // And it needs installed content its instructions do not mention at all — named as the
+    // products a buyer has to own, not as the bank slots this instrument installed them at.
+    let products: Vec<Option<&str>> = needs
+        .wave_expansions
+        .iter()
+        .map(|expansion| expansion.product.as_deref())
+        .collect();
+    assert_eq!(
+        products,
+        [
+            Some("EXZ002"),
+            Some("EXZ005"),
+            Some("EXZ008"),
+            Some("EXZ010"),
+            Some("EXZ012"),
+            Some("EXZ015"),
+        ]
+    );
     assert!(needs.needs_installed_content());
+}
+
+/// One bundled tone says which expansion it plays from, on its own.
+///
+/// This is the whole point of decoding the wave group id: the tone travels, the bank slot does
+/// not, and nothing here consults an inventory of the destination or of this instrument.
+#[test]
+fn a_bundled_tone_names_the_expansion_its_partials_play_from() {
+    let Some(pack) = private(NARF_EXPORT) else {
+        return;
+    };
+    // `Wtng Saw`, a user tone built on EXZ008 waves.
+    let needs = requirements::tone_requirements(&pack, b"PATa", 212).unwrap();
+
+    assert_eq!(needs.wave_expansions.len(), 1);
+    assert_eq!(needs.wave_expansions[0].id, 1008);
+    assert_eq!(needs.wave_expansions[0].label(), "wave expansion EXZ008");
+    // Nothing else in the tone points at that product: no bank reference, no slot map.
+    assert!(needs.banks.is_empty());
 }
 
 /// The oracle: a scene exported to a bank and the same scene sitting in the backup it came from
@@ -198,4 +235,33 @@ fn a_tone_bank_carrying_its_audio_needs_none_of_it() {
     assert!(!needs.samples.is_empty());
     assert_eq!(needs.missing_samples().count(), 0);
     assert!(requirements::compare(&needs, &requirements::Inventory::default()).is_empty());
+}
+
+/// The oracle for the decode: a tone whose author typed the product number into its name.
+///
+/// `Sledge EXZ10 Fal` and its neighbours were built on a FANTOM-6 from EXZ010 waves, and say so in
+/// sixteen characters of ASCII that owe nothing to this crate. Their partials carry group id 1010.
+/// Nobody had to read a panel for this one.
+#[test]
+fn a_tone_named_after_its_expansion_decodes_to_that_expansion() {
+    let Some(backup) = private("TESTv1/FANTOM.SVD") else {
+        return;
+    };
+    let svd = Svd::parse(&backup).unwrap();
+    let pat = PatArea::from_svd(&backup, &svd).unwrap();
+    let named: Vec<&Tone> = pat
+        .tones()
+        .iter()
+        .filter(|tone| tone.name.contains("EXZ10") && !tone.expansions.is_empty())
+        .collect();
+
+    assert!(named.len() >= 4, "{} such tones", named.len());
+    for tone in named {
+        let played: Vec<Option<&str>> = tone
+            .expansions
+            .iter()
+            .map(|&id| expansions::wave_group_product(id))
+            .collect();
+        assert_eq!(played, [Some("EXZ010")], "{}", tone.name);
+    }
 }

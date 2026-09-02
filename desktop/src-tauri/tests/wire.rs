@@ -4,7 +4,7 @@
 //! time, so this pins the field names and tagging a renamed Rust field would silently break.
 
 use fantom_core::model::ToneType;
-use fantom_core::requirements::{Requirements, SlotRequirement};
+use fantom_core::requirements::{Requirements, SlotRequirement, WaveExpansion};
 use fantom_core::role::Role;
 use fantom_library::catalog::Stats;
 use fantom_library::model::*;
@@ -112,7 +112,7 @@ fn requirements_serialise_with_the_fields_the_front_end_reads() {
             silent: false,
             played_by: vec!["Beat It Gong".into()],
         }],
-        wave_expansions: vec![1005],
+        wave_expansions: vec![WaveExpansion::new(1005)],
         ..Requirements::default()
     };
     let json = serde_json::to_value(&requirements).unwrap();
@@ -136,6 +136,22 @@ fn requirements_serialise_with_the_fields_the_front_end_reads() {
         sorted(["slot", "name", "carried", "silent", "played_by"])
     );
     assert_eq!(json["samples"][0]["slot"], 22);
+
+    // A wave expansion crosses as the product it decodes to, with the stored id beside it.
+    assert_eq!(keys(&json["wave_expansions"][0]), sorted(["id", "product"]));
+    assert_eq!(json["wave_expansions"][0]["id"], 1005);
+    assert_eq!(json["wave_expansions"][0]["product"], "EXZ005");
+
+    // A row written before the id was decoded stored bare numbers. It must still read, and read
+    // as the product: `row_to_asset` falls back to a *blank* detail when a row fails to parse, so
+    // a shape change here would silently empty every asset already in a library.
+    let stored: Requirements = serde_json::from_value(json!({
+        "wave_expansions": [1005, 4],
+    }))
+    .expect("a catalog row written before the decode must still deserialise");
+    assert_eq!(stored.wave_expansions[0].id, 1005);
+    assert_eq!(stored.wave_expansions[0].product.as_deref(), Some("EXZ005"));
+    assert_eq!(stored.wave_expansions[1].product, None);
 
     // Old catalog rows predate the field, and must still read.
     let detail: SceneDetail = serde_json::from_value(json!({

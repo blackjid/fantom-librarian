@@ -236,6 +236,22 @@ function Overview({
 
       <Note asset={asset} onChanged={onChanged} onError={onError} />
 
+      {asset.detail.kind === "tone" && asset.detail.requirements.wave_expansions.length > 0 && (
+        <Block
+          title="Expansions it plays"
+          hint="Read from the tone's own partials, so it holds wherever the expansion was installed. Never substituted — the destination must have it."
+        >
+          <ul className="flex flex-col gap-1">
+            {asset.detail.requirements.wave_expansions.map((expansion) => (
+              <li key={expansion.id} className="flex items-center gap-2 text-sm">
+                <Package className="size-3.5 text-muted-foreground" />
+                <span className="font-mono">{expansion.product ?? `group id ${expansion.id}`}</span>
+              </li>
+            ))}
+          </ul>
+        </Block>
+      )}
+
       {asset.detail.kind === "scene" && (
         <>
           <Block

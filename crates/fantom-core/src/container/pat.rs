@@ -31,7 +31,8 @@ pub struct Tone {
     /// Wave group ids of any installed expansion this tone plays from, distinct and in order.
     ///
     /// Like a factory ROM reference, this cannot travel: the destination needs the same expansion
-    /// installed. Unlike one, it is easy to forget, so it is worth naming. See [`expansion_banks`].
+    /// installed. Unlike one, it names the product rather than a bank slot. See
+    /// [`expansion_banks`].
     pub expansions: Vec<u16>,
 }
 
@@ -72,7 +73,7 @@ mod wave {
     /// | value | panel | what the numbers mean |
     /// |-------|-------|-----------------------|
     /// | 0 | — | an internal ROM wave |
-    /// | 1 | `EXP` | a wave in an installed expansion; the group id picks the bank |
+    /// | 1 | `EXP` | a wave in an installed expansion; the group id names the product |
     /// | 2 | `SAMP` | a 1-based user sample slot |
     /// | 3 | `MSAMP` | a 1-based user **multisample** slot |
     pub const GROUP_EXPANSION: u8 = 1;
@@ -129,9 +130,11 @@ pub fn multisample_slots(record: &[u8]) -> Vec<u16> {
 
 /// The wave group ids of installed expansions this tone plays from, distinct and in partial order.
 ///
-/// Group 1 reads `EXP`, and the group id selects the bank: a FANTOM-6 showed id 1005 as `EXZ005`
-/// and id 1008 as `EXZ006`, so the displayed number is *not* simply the id and the mapping is not
-/// decoded. The id is reported raw rather than guessed at.
+/// Group 1 reads `EXP`, and the group id names the **product** — `1005` is `EXZ005`, decoded by
+/// [`crate::expansions::wave_group_product`].
+///
+/// Id zero names no expansion and is skipped: `#Ambien  Sync` partial 2 says `EXP` and selects
+/// wave 122 with id 0, which no install guide can act on.
 pub fn expansion_banks(record: &[u8]) -> Vec<u16> {
     let mut banks = Vec::new();
     for partial in 0..PARTIAL_COUNT {
@@ -147,7 +150,7 @@ pub fn expansion_banks(record: &[u8]) -> Vec<u16> {
             .iter()
             .any(|&at| read_u16(record, base + at).unwrap_or(0) != 0);
         if let (true, Some(id)) = (plays, read_u16(record, base + wave::GROUP_ID)) {
-            if !banks.contains(&id) {
+            if id != 0 && !banks.contains(&id) {
                 banks.push(id);
             }
         }
@@ -363,6 +366,12 @@ mod tests {
         );
     }
 
+    /// Give one partial its wave group id, which [`tone_with_partials`] leaves at zero.
+    fn set_group_id(record: &mut [u8], partial: usize, id: u16) {
+        let at = wave::BASE + partial * PARTIAL_STRIDE + wave::GROUP_ID;
+        record[at..at + 2].copy_from_slice(&id.to_le_bytes());
+    }
+
     /// Build a tone record whose partials use the given `(group, left, right)` triples.
     fn tone_with_partials(partials: &[(u8, u16, u16)]) -> Vec<u8> {
         let mut record =
@@ -414,11 +423,13 @@ mod tests {
     /// be confused with a sample slot or quietly dropped.
     #[test]
     fn a_multisample_reference_is_read_separately_from_a_sample() {
-        let record = tone_with_partials(&[(2, 30, 31), (3, 1, 0), (1, 355, 0), (0, 383, 0)]);
+        let mut record = tone_with_partials(&[(2, 30, 31), (3, 1, 0), (1, 355, 0), (0, 383, 0)]);
+        set_group_id(&mut record, 2, 1008);
+        set_group_id(&mut record, 3, 10);
         assert_eq!(sample_slots(&record), [30, 31]);
         assert_eq!(multisample_slots(&record), [1]);
         // The ROM partial names no bank, and only the group-1 partial contributes one.
-        assert_eq!(expansion_banks(&record), [0]);
+        assert_eq!(expansion_banks(&record), [1008]);
     }
 
     /// A partial whose group says "expansion" but which selects no wave names no bank.
@@ -426,6 +437,17 @@ mod tests {
     fn an_empty_partial_contributes_no_expansion() {
         assert!(expansion_banks(&tone_with_partials(&[(1, 0, 0)])).is_empty());
         assert!(multisample_slots(&tone_with_partials(&[(3, 0, 0)])).is_empty());
+    }
+
+    /// Nor does one that selects a wave but names no bank to take it from.
+    ///
+    /// `#Ambien  Sync` partial 2 is exactly this: group `EXP`, wave 122, group id 0. There is no
+    /// expansion with that id, so the alternative to skipping it is an install-guide line reading
+    /// "group id 0" that nobody can satisfy.
+    #[test]
+    fn a_partial_naming_bank_zero_contributes_no_expansion() {
+        let record = tone_with_partials(&[(1, 122, 0)]);
+        assert!(expansion_banks(&record).is_empty());
     }
 
     /// A multisample reference moves like a sample reference does, and neither drags the other.
