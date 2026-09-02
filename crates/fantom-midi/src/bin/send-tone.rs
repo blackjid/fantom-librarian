@@ -6,13 +6,8 @@
 //!
 //!     cargo run -p fantom-midi --bin send-tone -- path/to/FANTOM.SVD [tone-index] [zone]
 
-use fantom_midi::{dt1, offset_addr, params, rq1, temp_tone, wire_bytes};
-use midir::{MidiInput, MidiOutput};
-use std::sync::mpsc;
+use fantom_midi::{dt1, offset_addr, params, temp_tone, wire_bytes, Session};
 use std::time::Duration;
-
-const PORT: &str = "FANTOM-6 7 8";
-const REPLY: Duration = Duration::from_millis(600);
 
 /// Build one block's wire form from the file record. Gaps between fields, and the addresses
 /// the instrument reserves, go out as zero.
@@ -58,53 +53,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         zone + 1
     );
 
-    let out = MidiOutput::new("send-tone-out")?;
-    let inp = MidiInput::new("send-tone-in")?;
-    let dest = out
-        .ports()
-        .into_iter()
-        .find(|p| out.port_name(p).as_deref() == Ok(PORT))
-        .ok_or("Fantom not found")?;
-    let src = inp
-        .ports()
-        .into_iter()
-        .find(|p| inp.port_name(p).as_deref() == Ok(PORT))
-        .ok_or("Fantom not found")?;
-    let (tx, rx) = mpsc::channel();
-    let mut pending: Vec<u8> = Vec::new();
-    let _ci = inp.connect(
-        &src,
-        "s",
-        move |_, m, _| {
-            if m.first() == Some(&0xF0) {
-                pending.clear();
-            } else if pending.is_empty() {
-                return;
-            }
-            pending.extend_from_slice(m);
-            if pending.last() == Some(&0xF7) {
-                let _ = tx.send(std::mem::take(&mut pending));
-            }
-        },
-        (),
-    )?;
-    let mut co = out.connect(&dest, "s")?;
+    let mut fantom = Session::open(None)?;
 
     // The temporary Z-Core address only applies while the zone holds a Z-Core tone, so point the
     // zone at USER ZEN-Core slot 1 first. Addressing the zone's own block rather than sending
     // bank-select on channel `zone` keeps this right when a scene remaps its receive channels.
     let zone_block = [0x02, 0x00, 0x10 + zone, 0x00];
-    co.send(&dt1(zone_block, &[87, 0, 0]))?;
+    fantom.send(&dt1(zone_block, &[87, 0, 0]))?;
     std::thread::sleep(Duration::from_millis(300));
 
     // Play on whatever channel the zone actually listens to.
-    while rx.try_recv().is_ok() {}
-    co.send(&rq1(zone_block, 0x49))?;
-    let channel = rx
-        .recv_timeout(REPLY)
+    let channel = fantom
+        .read(zone_block, 0x49)
         .ok()
-        .and_then(|r| r.get(15).copied())
-        .filter(|c| *c < 16)
+        .and_then(|zone| zone.get(3).copied())
+        .filter(|channel| *channel < 16)
         .unwrap_or(zone);
     println!("zone {} receives on MIDI channel {}", zone + 1, channel + 1);
 
@@ -112,7 +75,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for inst in params::tone::TONE {
         let frec = &rec[inst.byte_offset as usize..];
         let data = block_bytes(frec, inst.block);
-        co.send(&dt1(offset_addr(base, inst.sysex_offset), &data))?;
+        fantom.send(&dt1(offset_addr(base, inst.sysex_offset), &data))?;
         std::thread::sleep(Duration::from_millis(20)); // Roland's inter-packet interval
     }
     println!("wrote {} blocks", params::tone::TONE.len());
@@ -121,26 +84,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // screen keeps showing the old name until something makes it redraw. Selecting another zone
     // does, and Current Zone is just a parameter — so do it from here and land back on `zone`.
     const CURRENT_ZONE: [u8; 4] = [0x02, 0x00, 0x00, 0x12];
-    co.send(&dt1(CURRENT_ZONE, &[if zone == 0 { 1 } else { 0 }]))?;
+    fantom.send(&dt1(CURRENT_ZONE, &[if zone == 0 { 1 } else { 0 }]))?;
     std::thread::sleep(Duration::from_millis(150));
-    co.send(&dt1(CURRENT_ZONE, &[zone]))?;
-    std::thread::sleep(Duration::from_millis(150));
-
-    std::thread::sleep(Duration::from_millis(300));
-    while rx.try_recv().is_ok() {}
+    fantom.send(&dt1(CURRENT_ZONE, &[zone]))?;
+    std::thread::sleep(Duration::from_millis(450));
 
     let (mut ok, mut bad, mut unread) = (0, 0, 0);
     let mut first: Option<String> = None;
     for inst in params::tone::TONE {
-        co.send(&rq1(
+        let Ok(wire) = fantom.read(
             offset_addr(base, inst.sysex_offset),
             inst.block.sysex_len as u32,
-        ))?;
-        let Ok(r) = rx.recv_timeout(REPLY) else {
+        ) else {
             unread += 1;
             continue;
         };
-        let wire = &r[12..r.len() - 2];
         let frec = &rec[inst.byte_offset as usize..];
         for p in inst.block.params {
             if p.reserved {
@@ -168,13 +126,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let back = {
-        co.send(&rq1(base, 0x36))?;
-        rx.recv_timeout(REPLY)
-            .ok()
-            .map(|r| String::from_utf8_lossy(&r[12..28]).trim_end().to_string())
-    };
-    println!("instrument now reports: {:?}", back.unwrap_or_default());
+    let back = fantom.read_name(base).unwrap_or_default();
+    println!("instrument now reports: {back:?}");
     println!("{ok} fields match, {bad} differ, {unread} blocks unread");
     if let Some(f) = first {
         println!("first difference: {f}");
@@ -183,12 +136,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Play it, so the result is audible and not just a byte count.
     println!("playing…");
     for n in [48u8, 55, 60, 64] {
-        co.send(&[0x90 | channel, n, 90])?;
+        fantom.send(&[0x90 | channel, n, 90])?;
         std::thread::sleep(Duration::from_millis(120));
     }
     std::thread::sleep(Duration::from_millis(1400));
     for n in [48u8, 55, 60, 64] {
-        co.send(&[0x80 | channel, n, 0])?;
+        fantom.send(&[0x80 | channel, n, 0])?;
     }
     Ok(())
 }

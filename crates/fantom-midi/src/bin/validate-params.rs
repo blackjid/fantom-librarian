@@ -7,13 +7,9 @@
 //!
 //!     cargo run -p fantom-midi --bin validate-params -- path/to/FANTOM.SVD [tone-count]
 
-use fantom_midi::{file_value, offset_addr, params, rq1, temp_tone, wire_bytes};
-use midir::{MidiInput, MidiOutput};
+use fantom_midi::{file_value, offset_addr, params, temp_tone, wire_bytes, Session};
 use std::collections::HashMap;
-use std::sync::mpsc;
 use std::time::Duration;
-
-const PORT: &str = "FANTOM-6 7 8";
 
 /// A block the instrument declines to answer for costs this much per tone, so keep it tight.
 const REPLY: Duration = Duration::from_millis(400);
@@ -48,37 +44,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let count = u32::from_le_bytes(b[pata..pata + 4].try_into()?) as usize;
     let rs = u32::from_le_bytes(b[pata + 4..pata + 8].try_into()?) as usize;
 
-    let out = MidiOutput::new("fantom-validate-out")?;
-    let inp = MidiInput::new("fantom-validate-in")?;
-    let dest = out
-        .ports()
-        .into_iter()
-        .find(|p| out.port_name(p).as_deref() == Ok(PORT))
-        .ok_or("Fantom not found")?;
-    let src = inp
-        .ports()
-        .into_iter()
-        .find(|p| inp.port_name(p).as_deref() == Ok(PORT))
-        .ok_or("Fantom not found")?;
-    let (tx, rx) = mpsc::channel();
-    let mut pending: Vec<u8> = Vec::new();
-    let _ci = inp.connect(
-        &src,
-        "v",
-        move |_, m, _| {
-            if m.first() == Some(&0xF0) {
-                pending.clear();
-            } else if pending.is_empty() {
-                return;
-            }
-            pending.extend_from_slice(m);
-            if pending.last() == Some(&0xF7) {
-                let _ = tx.send(std::mem::take(&mut pending));
-            }
-        },
-        (),
-    )?;
-    let mut co = out.connect(&dest, "v")?;
+    let mut fantom = Session::open(None)?.with_timeout(REPLY);
 
     let mut stats: HashMap<(&str, &str), Stat> = HashMap::new();
     let mut misses: HashMap<(&str, &str), usize> = HashMap::new();
@@ -93,18 +59,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             continue;
         }
 
-        co.send(&[0xB0, 0x00, 87])?;
-        co.send(&[0xB0, 0x20, (k / 128) as u8])?;
-        co.send(&[0xC0, (k % 128) as u8])?;
+        fantom.send(&[0xB0, 0x00, 87])?;
+        fantom.send(&[0xB0, 0x20, (k / 128) as u8])?;
+        fantom.send(&[0xC0, (k % 128) as u8])?;
         std::thread::sleep(Duration::from_millis(250));
-        while rx.try_recv().is_ok() {}
 
         // Confirm the instrument really loaded the tone this file record describes.
-        co.send(&rq1(temp_tone(0), 0x36))?;
-        let Ok(r) = rx.recv_timeout(REPLY) else {
+        let Ok(wname) = fantom.read_name(temp_tone(0)) else {
             continue;
         };
-        let wname = String::from_utf8_lossy(&r[12..28]).trim_end().to_string();
         if wname != fname {
             skipped += 1;
             continue;
@@ -114,12 +77,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         for inst in params::tone::TONE {
             let addr = offset_addr(temp_tone(0), inst.sysex_offset);
-            co.send(&rq1(addr, inst.block.sysex_len as u32))?;
-            let Ok(r) = rx.recv_timeout(REPLY) else {
+            // Whatever came back, not what the map predicts: the length difference is the finding.
+            let Some(wire) = fantom.read_available(addr, inst.block.sysex_len as u32) else {
                 *misses.entry((inst.block.name, "no reply")).or_insert(0) += 1;
                 continue;
             };
-            let wire = &r[12..r.len() - 2];
             // The instrument is the authority on block length: PCMS_PTL is documented as 30
             // bytes but a FANTOM-6 returns 29. Only require room for the fields themselves.
             let needed = inst
