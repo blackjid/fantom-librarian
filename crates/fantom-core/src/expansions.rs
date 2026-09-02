@@ -29,10 +29,46 @@ pub struct ExpansionSound {
     pub sound: FactorySound<'static>,
 }
 
+/// The kind of expansion a product is — how Roland sells them and how the panel lists them.
+///
+/// Derived from the product code rather than from the engine its sounds answer on: `EXZ003` is a
+/// wave expansion whose sounds happen to be drum kits, and grouping it under "Drum" would put it
+/// somewhere its owner would never look for it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "kebab-case"))]
+pub enum Family {
+    /// `EXZ*` — waves the ZEN-Core engine plays, and the drum kits built on them.
+    Wave,
+    /// `EXSN*` — SuperNATURAL acoustic and electric piano expansions.
+    SuperNatural,
+    /// The modelled instruments: `JP8`, `JU106`, `SH101`, `n/zyme` and the rest.
+    Model,
+    /// `M09X01` and its kin, played by the V-Piano engine.
+    VPiano,
+    /// A product this version cannot place. Listed rather than hidden.
+    Other,
+}
+
+impl Family {
+    /// Which family a product code belongs to, given the engine its sounds answer on.
+    pub fn of(code: &str, engine: ToneType) -> Self {
+        match () {
+            _ if code.starts_with("EXZ") => Self::Wave,
+            _ if code.starts_with("EXSN") => Self::SuperNatural,
+            _ if engine == ToneType::Model => Self::Model,
+            _ if engine == ToneType::VPiano => Self::VPiano,
+            _ => Self::Other,
+        }
+    }
+}
+
 /// One expansion, as a catalog rather than a list of sounds.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Product {
     pub code: &'static str,
+    /// What kind of expansion it is, for a list that groups them.
+    pub family: Family,
     /// The engine that plays it, derived from the addresses its sounds sit at.
     pub engine: ToneType,
     /// Every `(MSB, LSB)` bank page this product was observed answering at, in address order.
@@ -110,6 +146,7 @@ fn index() -> &'static Index {
                 }
                 None => products.push(Product {
                     code: row.product,
+                    family: Family::of(row.product, row.sound.engine()),
                     engine: row.sound.engine(),
                     banks: vec![bank],
                     sounds: 1,
@@ -226,6 +263,24 @@ mod tests {
         assert_eq!(exz007.engine, ToneType::Exz);
         assert_eq!(exz007.banks, [(93, 7), (93, 8), (93, 9), (93, 10)]);
         assert_eq!(exz007.sounds, catalog("EXZ007").count());
+    }
+
+    /// An expansion belongs to the family its code says it does, not to the engine one of its
+    /// banks happens to sit at: `EXZ003` is a wave expansion whose sounds are drum kits.
+    #[test]
+    fn a_product_is_grouped_by_what_it_is_rather_than_where_it_answers() {
+        let family = |code: &str| {
+            products()
+                .iter()
+                .find(|product| product.code == code)
+                .map(|product| product.family)
+        };
+        assert_eq!(family("EXZ003"), Some(Family::Wave));
+        assert_eq!(family("EXZ012"), Some(Family::Wave));
+        assert_eq!(family("EXSN02"), Some(Family::SuperNatural));
+        assert_eq!(family("JU106"), Some(Family::Model));
+        assert_eq!(family("n/zyme"), Some(Family::Model));
+        assert_eq!(family("M09X01"), Some(Family::VPiano));
     }
 
     /// The wave group id a tone stores decodes to the product, not to a bank slot.

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { open } from "@tauri-apps/plugin-dialog";
-import { FolderOpen, Settings2 } from "lucide-react";
+import { Boxes, FolderOpen, Settings2 } from "lucide-react";
 import {
   api,
   message,
@@ -24,6 +24,7 @@ import { Sidebar, type Scope } from "@/components/Sidebar";
 import { AssetList, NoSelection } from "@/components/AssetList";
 import { AssetDetail } from "@/components/AssetDetail";
 import { SongsPanel } from "@/components/SongsPanel";
+import { ExpansionsPanel } from "@/components/ExpansionsPanel";
 import { Resizer } from "@/components/Resizer";
 import { ImportDialog } from "@/components/ImportDialog";
 import { Button } from "@/components/ui/button";
@@ -116,7 +117,11 @@ export default function App() {
           if (workspace) void revealItemInDir(workspace.path);
           break;
         case "find":
-          setScope((current) => (current.view === "songs" ? { view: "library" } : current));
+          setScope((current) =>
+            current.view === "songs" || current.view === "expansions"
+              ? { view: "library" }
+              : current,
+          );
           searchRef.current?.focus();
           searchRef.current?.select();
           break;
@@ -209,7 +214,7 @@ export default function App() {
   );
 
   const reloadAssets = useCallback(async () => {
-    if (!workspace || scope.view === "songs") return;
+    if (!workspace || scope.view === "songs" || scope.view === "expansions") return;
     setLoading(true);
     try {
       const [rows, totals, available] = await Promise.all([
@@ -304,6 +309,10 @@ export default function App() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuGroup>
+                <DropdownMenuItem onSelect={() => setScope({ view: "expansions" })}>
+                  <Boxes />
+                  Expansion inventory
+                </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => void revealItemInDir(workspace.path)}>
                   <FolderOpen />
                   Reveal library folder
@@ -384,7 +393,9 @@ export default function App() {
           max={SIDEBAR.max}
         />
 
-        {scope.view === "songs" ? (
+        {scope.view === "expansions" ? (
+          <ExpansionsPanel onError={setError} />
+        ) : scope.view === "songs" ? (
           <SongsPanel
             songs={songs}
             selectedId={selectedSong}

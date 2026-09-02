@@ -125,3 +125,14 @@ CREATE TABLE IF NOT EXISTS song_assets (
     note     TEXT    NOT NULL DEFAULT '',
     PRIMARY KEY (song_id, asset_id)
 );
+
+-- What the player owns, and what the instrument currently holds. Two independent facts: the
+-- FANTOM's expansion slots are finite, so an owned expansion is not necessarily a loaded one, and
+-- "buy it" and "load it" are different instructions. A row exists only once one of them is set;
+-- everything the bundled catalogs know about is listed whether or not it has a row here, and a
+-- code they do not know can be recorded all the same.
+CREATE TABLE IF NOT EXISTS expansions (
+    code      TEXT PRIMARY KEY,
+    owned     INTEGER NOT NULL DEFAULT 0,
+    installed INTEGER NOT NULL DEFAULT 0
+);

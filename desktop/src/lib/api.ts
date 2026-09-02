@@ -296,6 +296,27 @@ export interface WorkspaceInfo {
   stats: Stats;
 }
 
+/** How the panel groups a long list of expansions. Mirrors `fantom_core::expansions::Family`. */
+export type ExpansionFamily = "wave" | "super-natural" | "model" | "v-piano" | "other";
+
+/**
+ * One expansion in this library's inventory.
+ *
+ * `owned` and `installed` are independent: the FANTOM's slots are finite, so an expansion can be
+ * bought and not loaded, and "buy it" and "load it" are different things to tell someone.
+ */
+export interface ExpansionEntry {
+  code: string;
+  family: ExpansionFamily;
+  /** The engine that plays it, when a catalog says. Empty for a code recorded by hand. */
+  engine: string;
+  sounds: number;
+  owned: boolean;
+  installed: boolean;
+  /** Whether this build carries a catalog of its sounds. */
+  catalogued: boolean;
+}
+
 export const api = {
   openWorkspace: (path: string, create: boolean) =>
     invoke<WorkspaceInfo>("open_workspace", { path, create }),
@@ -316,6 +337,9 @@ export const api = {
   listFiles: (sourceId: number) => invoke<LibraryFile[]>("list_files", { sourceId }),
   listTags: () => invoke<Tag[]>("list_tags"),
   listSongs: (search = "") => invoke<Song[]>("list_songs", { search }),
+  listExpansions: () => invoke<ExpansionEntry[]>("list_expansions"),
+  setExpansion: (code: string, owned: boolean, installed: boolean) =>
+    invoke<void>("set_expansion", { code, owned, installed }),
   getStats: () => invoke<Stats>("get_stats"),
 
   renameAsset: (id: number, name: string) => invoke<void>("rename_asset", { id, name }),
