@@ -68,7 +68,9 @@ export function Resizer({
         event.currentTarget.releasePointerCapture(event.pointerId);
       }}
       onDoubleClick={onReset}
-      onFocus={() => setFocused(true)}
+      // Pressing the strip focuses it too, and that focus outlives the drag — only a keyboard
+      // landing should light the line.
+      onFocus={(event) => setFocused(event.currentTarget.matches(":focus-visible"))}
       onBlur={() => setFocused(false)}
       onKeyDown={(event) => {
         const step = event.key === "ArrowLeft" ? -16 : event.key === "ArrowRight" ? 16 : 0;
