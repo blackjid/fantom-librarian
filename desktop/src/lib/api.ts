@@ -83,6 +83,14 @@ export interface BankRequirement {
   address: { msb: number; lsb: number; pc: number };
 }
 
+/** An installed wave expansion a tone's partials play waves from. */
+export interface WaveExpansion {
+  /** The wave group id as the tone stores it. */
+  id: number;
+  /** The product it decodes to — `EXZ005`. Null for an id outside the decoded range. */
+  product: string | null;
+}
+
 /** What an asset needs from wherever it is loaded. Mirrors `fantom_core::requirements`. */
 export interface Requirements {
   engines: string[];
@@ -90,8 +98,7 @@ export interface Requirements {
   banks: BankRequirement[];
   samples: SlotRequirement[];
   multisamples: SlotRequirement[];
-  /** Wave-group ids of installed expansions; the panel's own numbering is not decoded. */
-  wave_expansions: number[];
+  wave_expansions: WaveExpansion[];
   unclassified: { msb: number; lsb: number; pc: number }[];
   carries_audio: boolean;
 }

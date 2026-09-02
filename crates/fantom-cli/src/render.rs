@@ -246,8 +246,8 @@ pub fn requirements(needs: &Requirements) -> String {
         for bank in needs.expansions() {
             let _ = writeln!(out, "        {}", bank.label());
         }
-        for id in &needs.wave_expansions {
-            let _ = writeln!(out, "        wave expansion, group id {id}");
+        for expansion in &needs.wave_expansions {
+            let _ = writeln!(out, "        {}", expansion.label());
         }
         for address in &needs.unclassified {
             let _ = writeln!(
@@ -343,7 +343,7 @@ pub fn plural(n: usize) -> &'static str {
 mod requirement_tests {
     use super::*;
     use fantom_core::model::{ToneAddress, ToneType};
-    use fantom_core::requirements::{BankRequirement, ToneRequirement};
+    use fantom_core::requirements::{BankRequirement, ToneRequirement, WaveExpansion};
 
     /// A sample that is present, named, full-length and silent is the one failure every other
     /// check passes.
@@ -457,13 +457,13 @@ mod requirement_tests {
                     pc: 0,
                 },
             }],
-            wave_expansions: vec![1005],
+            wave_expansions: vec![WaveExpansion::new(1005)],
             ..Requirements::default()
         };
         let report = requirements(&needs);
         assert!(report.contains("PATa[443]  MSB 87 LSB 3 PC 059"));
         assert!(report.contains("EXZ EXZ007 PC 000"));
-        assert!(report.contains("wave expansion, group id 1005"));
+        assert!(report.contains("wave expansion EXZ005"));
     }
 }
 

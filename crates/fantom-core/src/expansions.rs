@@ -62,6 +62,28 @@ pub fn lookup(address: ToneAddress) -> Option<ExpansionSound> {
     index().by_address.get(&key(address)).copied()
 }
 
+/// The product a partial's **wave group id** names — `1005` is `EXZ005`.
+///
+/// The id is `1000 + n` for `EXZnnn`, and it identifies the product rather than the bank page the
+/// expansion was installed at. Only a group-type-1 partial carries one at all (see
+/// [`crate::container::expansion_banks`]).
+///
+/// The arithmetic is applied only to products this build carries a catalog for. An id past those
+/// is left undecoded rather than turned into a code for an expansion nobody has seen: the rule
+/// would happily answer `EXZ200` for id 1200, and a confidently wrong name is the failure this
+/// whole decode exists to avoid. Capturing that product's catalog is what makes its id readable.
+pub fn wave_group_product(id: u16) -> Option<&'static str> {
+    let number = id.checked_sub(EXZ_WAVE_GROUP_BASE)?;
+    let code = format!("EXZ{number:03}");
+    products()
+        .iter()
+        .find(|product| product.code == code)
+        .map(|product| product.code)
+}
+
+/// What a wave expansion's group id counts up from; see [`wave_group_product`].
+const EXZ_WAVE_GROUP_BASE: u16 = 1000;
+
 struct Index {
     rows: Vec<ExpansionSound>,
     by_address: HashMap<(u8, u8, u8), ExpansionSound>,
@@ -204,5 +226,43 @@ mod tests {
         assert_eq!(exz007.engine, ToneType::Exz);
         assert_eq!(exz007.banks, [(93, 7), (93, 8), (93, 9), (93, 10)]);
         assert_eq!(exz007.sounds, catalog("EXZ007").count());
+    }
+
+    /// The wave group id a tone stores decodes to the product, not to a bank slot.
+    ///
+    /// Read off a FANTOM-6 with `dump-wave-groups`, one selected sound per bank; see
+    /// `docs/FORMAT.md`.
+    #[test]
+    fn a_wave_group_id_names_the_product_that_carries_the_wave() {
+        assert_eq!(wave_group_product(1005), Some("EXZ005"));
+        assert_eq!(wave_group_product(1006), Some("EXZ006"));
+        assert_eq!(wave_group_product(1015), Some("EXZ015"));
+
+        // An internal ROM wave keeps its own small group ids in the same field, and a partial
+        // that once played a sample leaves a stale one there. Neither is an expansion.
+        assert_eq!(wave_group_product(8), None);
+        assert_eq!(wave_group_product(11), None);
+        assert_eq!(wave_group_product(1000), None);
+        assert_eq!(wave_group_product(10004), None);
+
+        // The arithmetic alone would answer `EXZ200` here. No such expansion has been seen, so
+        // the id reads as itself.
+        assert_eq!(wave_group_product(1200), None);
+    }
+
+    /// Every wave expansion this build catalogs was read back off the instrument, so every one of
+    /// them has to survive the decode — the arithmetic is not fitted to the two ids that started it.
+    #[test]
+    fn every_catalogued_wave_expansion_decodes_from_its_id() {
+        let codes: Vec<&str> = products()
+            .iter()
+            .map(|product| product.code)
+            .filter(|code| code.starts_with("EXZ"))
+            .collect();
+        assert!(codes.len() >= 15, "{codes:?}");
+        for code in codes {
+            let number: u16 = code[3..].parse().expect("EXZnnn");
+            assert_eq!(wave_group_product(EXZ_WAVE_GROUP_BASE + number), Some(code));
+        }
     }
 }

@@ -27,6 +27,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use crate::address::{self, AreaSpec};
 use crate::codec;
 use crate::container::{self, Raw, RecordTable, SampleBank, Svd};
+use crate::expansions;
 use crate::model::{Scene, ToneAddress, ToneRef, ToneType};
 use crate::repackage::{MULTISAMPLE_AREAS, SAMPLE_REF_AREAS};
 use crate::role::{self, Role};
@@ -53,11 +54,12 @@ pub struct Requirements {
     pub samples: Vec<SlotRequirement>,
     /// User multisample slots the material plays, as 1-based panel numbers.
     pub multisamples: Vec<SlotRequirement>,
-    /// Wave-group ids of installed wave expansions a bundled tone's partials play from.
+    /// Installed wave expansions a bundled tone's partials play waves from.
     ///
-    /// Reported raw: a FANTOM-6 showed id 1005 as `EXZ005` and 1008 as `EXZ006`, so the panel
-    /// number is not the id and the mapping is not decoded (see [`container::expansion_banks`]).
-    pub wave_expansions: Vec<u16>,
+    /// The one requirement here that names a *product* rather than an address, which is why it is
+    /// kept apart from `banks`: a wave group id travels in the tone and owes nothing to the bank
+    /// slot the expansion happened to be installed at.
+    pub wave_expansions: Vec<WaveExpansion>,
     /// Tone addresses belonging to no engine this version can name.
     ///
     /// Kept rather than dropped: an address we cannot classify may well need something, and
@@ -195,6 +197,63 @@ impl BankRequirement {
 /// filtering on stored text, say — decides it the same way. See that method for the reasoning.
 pub fn is_factory_bank(bank: &str) -> bool {
     bank.starts_with("PR-") || bank == "PRST" || bank == "CMN"
+}
+
+/// An installed wave expansion a bundled tone's partials play waves from.
+///
+/// Two instruments can hold the same expansion at different bank slots, so a slot number says
+/// nothing portable. The group id does: it is the product, and [`expansions::wave_group_product`]
+/// turns it into the code an install guide names.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+pub struct WaveExpansion {
+    /// The wave group id exactly as the tone record stores it.
+    pub id: u16,
+    /// The product it decodes to — `EXZ005`. `None` for an id outside the decoded range, which is
+    /// reported as itself rather than guessed at.
+    pub product: Option<String>,
+}
+
+/// Read one back from a stored catalog, whichever shape it was written in.
+///
+/// A library stores this type as JSON, and rows written before the id was decoded hold a bare
+/// number. Those rows must keep parsing: a catalog whose detail fails to deserialise falls back to
+/// an empty one, so a shape change here would quietly empty every asset already imported. The
+/// product is decoded from the id either way rather than trusted from the row, so a stored catalog
+/// answers with this build's mapping instead of the one it was written with.
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for WaveExpansion {
+    fn deserialize<D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<Self, D::Error> {
+        #[derive(serde::Deserialize)]
+        #[serde(untagged)]
+        enum Stored {
+            Id(u16),
+            Decoded { id: u16 },
+        }
+        Ok(Self::new(match Stored::deserialize(deserializer)? {
+            Stored::Id(id) | Stored::Decoded { id } => id,
+        }))
+    }
+}
+
+impl WaveExpansion {
+    /// Decode one stored wave group id.
+    pub fn new(id: u16) -> Self {
+        Self {
+            id,
+            product: expansions::wave_group_product(id).map(str::to_string),
+        }
+    }
+
+    /// How it reads in a list: the product where the id decodes, the raw id where it does not.
+    pub fn label(&self) -> String {
+        match &self.product {
+            Some(product) => format!("wave expansion {product}"),
+            None => format!("wave expansion, group id {}", self.id),
+        }
+    }
 }
 
 /// One user sample or multisample slot the material plays.
@@ -338,7 +397,7 @@ struct Scan<'a> {
     banks: Vec<BankRequirement>,
     samples: BTreeMap<u16, SlotRequirement>,
     multisamples: BTreeMap<u16, SlotRequirement>,
-    wave_expansions: Vec<u16>,
+    wave_expansions: Vec<WaveExpansion>,
     unclassified: Vec<ToneAddress>,
     followed: BTreeSet<([u8; 4], usize)>,
 }
@@ -453,8 +512,8 @@ impl<'a> Scan<'a> {
                 self.need_multisample(number, played_by);
             }
             for id in container::expansion_banks(record) {
-                if !self.wave_expansions.contains(&id) {
-                    self.wave_expansions.push(id);
+                if !self.wave_expansions.iter().any(|played| played.id == id) {
+                    self.wave_expansions.push(WaveExpansion::new(id));
                 }
             }
         }
@@ -536,9 +595,9 @@ impl<'a> Scan<'a> {
             samples: self.samples.into_values().collect(),
             multisamples: self.multisamples.into_values().collect(),
             wave_expansions: {
-                let mut ids = self.wave_expansions;
-                ids.sort_unstable();
-                ids
+                let mut played = self.wave_expansions;
+                played.sort_unstable_by_key(|expansion| expansion.id);
+                played
             },
             unclassified: self.unclassified,
             carries_audio: !self.bank.data.is_empty(),
@@ -744,9 +803,9 @@ pub fn compare(needs: &Requirements, held: &Inventory) -> Vec<Finding> {
             detail,
         });
     }
-    for id in &needs.wave_expansions {
+    for expansion in &needs.wave_expansions {
         findings.push(Finding {
-            requirement: format!("wave expansion, group id {id}"),
+            requirement: expansion.label(),
             verdict: Verdict::Unknown,
             detail: INSTALLED_CONTENT.into(),
         });
@@ -972,7 +1031,7 @@ mod tests {
                     pc: 0,
                 },
             }],
-            wave_expansions: vec![1005],
+            wave_expansions: vec![WaveExpansion::new(1005), WaveExpansion::new(4)],
             unclassified: vec![ToneAddress {
                 msb: 120,
                 lsb: 3,
@@ -981,9 +1040,15 @@ mod tests {
             ..Requirements::default()
         };
         let findings = compare(&needs, &Inventory::default());
-        assert_eq!(findings.len(), 3);
+        assert_eq!(findings.len(), 4);
         assert!(findings.iter().all(|f| f.verdict == Verdict::Unknown));
         assert!(needs.needs_installed_content());
+
+        // A decoded id reads as the product an install guide has to name; an undecoded one still
+        // reads, as the number it is.
+        let labels: Vec<&str> = findings.iter().map(|f| f.requirement.as_str()).collect();
+        assert!(labels.contains(&"wave expansion EXZ005"), "{labels:?}");
+        assert!(labels.contains(&"wave expansion, group id 4"), "{labels:?}");
 
         // A scene that only plays factory presets asks nothing of the user.
         let factory = Requirements {
