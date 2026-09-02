@@ -115,6 +115,14 @@ export interface ToneDetail {
   engine: string;
   area: string;
   index: number;
+  /** The bank a built-in sound sits in — `PR-A`, `CMN`, `JP8`. Null for a record from a file. */
+  bank: string | null;
+  /** The address the instrument selects a built-in sound by. */
+  address: { msb: number; lsb: number; pc: number } | null;
+  /** Roland's category for a built-in sound, e.g. `35:Synth Brass`. */
+  category: string | null;
+  /** Which model of its engine family the record is — `MODEL` and `ACB` carry one. */
+  model_id: number | null;
   requirements: Requirements;
 }
 
@@ -139,6 +147,8 @@ export interface Asset {
   memo: string;
   engine: string;
   detail: AssetDetail;
+  /** Whether the instrument ships with it, or one of your files carries it. */
+  origin: Origin;
   created_at: number;
   archived_at: number | null;
   tags: string[];
@@ -231,6 +241,32 @@ export interface Query {
   tags?: string[];
   include_archived?: boolean;
   limit?: number | null;
+  /** Engine labels to keep — `MODEL`, `ZEN-Core`. Empty keeps every one. */
+  engines?: string[];
+  /** Models and expansions to keep, as the facets name them. Empty keeps every one. */
+  models?: string[];
+  origin?: Origin | null;
+  plays?: Plays | null;
+}
+
+/** Where an asset came from: the instrument itself, or one of your files. */
+export type Origin = "factory" | "user";
+
+/** What an asset asks of the instrument it is loaded onto. */
+export type Plays = "factory-only" | "needs-yours";
+
+/** One value a facet takes, and how much of the scope it accounts for. */
+export interface Facet {
+  value: string;
+  count: number;
+}
+
+/** What the current scope can be narrowed by. */
+export interface Facets {
+  engines: Facet[];
+  models: Facet[];
+  origins: Facet[];
+  plays: Facet[];
 }
 
 /** Scene and tone totals for a scope, before its kind filter narrows the list. */
@@ -266,6 +302,7 @@ export const api = {
 
   listAssets: (query: Query) => invoke<Asset[]>("list_assets", { query }),
   countAssets: (query: Query) => invoke<KindCounts>("count_assets", { query }),
+  listFacets: (query: Query) => invoke<Facets>("list_facets", { query }),
   getAsset: (id: number) => invoke<Asset>("get_asset", { id }),
   listSources: (includeArchived = false) =>
     invoke<Source[]>("list_sources", { includeArchived }),
