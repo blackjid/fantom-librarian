@@ -231,20 +231,13 @@ export default function App() {
           starting on a child span does nothing. Clickable children still block the drag. */}
       <header
         data-tauri-drag-region="deep"
-        className="flex h-11 shrink-0 items-center gap-3 border-b pr-3 pl-20"
+        className="flex h-11 shrink-0 items-center gap-3 pr-3 pl-20"
       >
         <span className="text-sm font-medium">{workspace.name}</span>
         <span className="truncate text-xs text-muted-foreground" title={workspace.path}>
           {workspace.path}
         </span>
         <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs tabular-nums text-muted-foreground">
-            <span className="text-scene">{plural(workspace.stats.scenes, "scene")}</span>
-            {" · "}
-            <span className="text-tone">{plural(workspace.stats.tones, "tone")}</span>
-            {" · "}
-            {plural(workspace.stats.samples, "sample")}
-          </span>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon-sm" aria-label="Library menu">
@@ -276,7 +269,7 @@ export default function App() {
 
       {/* Panes shrink to their floors, then the shell scrolls. The detail pane is the only
           `flex-1`, so without a floor it is the one that collapses to nothing. */}
-      <div className="scroll-region-x flex min-h-0 flex-1 overflow-x-auto">
+      <div className="scroll-region-x flex min-h-0 flex-1 overflow-x-auto pr-2 pb-1.5">
         <Sidebar
           scope={scope}
           onScope={setScope}
@@ -324,16 +317,20 @@ export default function App() {
               subtitle={heading.subtitle}
               searchRef={searchRef}
             />
-            {selected ? (
-              <AssetDetail asset={selected} onChanged={onChanged} />
-            ) : (
-              <div className="min-w-[22rem] flex-1">
-                <NoSelection />
-              </div>
-            )}
+            <div className="relative min-w-[22rem] flex-1 overflow-hidden rounded-xl bg-panel-raised">
+              {selected ? <AssetDetail asset={selected} onChanged={onChanged} /> : <NoSelection />}
+            </div>
           </>
         )}
       </div>
+
+      <footer className="flex h-6 shrink-0 items-center justify-end gap-1 pr-3 pl-3 text-[11px] tabular-nums text-muted-foreground">
+        <span>{plural(workspace.stats.scenes, "scene")}</span>
+        <span>·</span>
+        <span>{plural(workspace.stats.tones, "tone")}</span>
+        <span>·</span>
+        <span>{plural(workspace.stats.samples, "sample")}</span>
+      </footer>
 
       <ImportDialog
         open={importing}

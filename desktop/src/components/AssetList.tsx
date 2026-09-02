@@ -1,6 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { Disc3, Piano, Search, X } from "lucide-react";
+import { Disc3, Search, X } from "lucide-react";
 import type { Asset } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -57,7 +57,9 @@ export function AssetList({
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const [focused, setFocused] = useState(false);
   const filtered = Boolean(search) || activeTags.length > 0;
+  const searching = focused || Boolean(search);
 
   // A whole backup is a couple of thousand sounds. Only the visible slice is in the DOM, which is
   // what keeps this list scrolling at the same speed however big the library gets.
@@ -100,38 +102,44 @@ export function AssetList({
   }
 
   return (
-    <div className="flex h-full w-[26rem] min-w-[20rem] flex-col border-r">
-      <div className="flex flex-col gap-2 border-b p-3">
-        <div className="flex items-baseline justify-between gap-2">
-          <div className="flex min-w-0 flex-col">
-            <h2 className="truncate text-sm font-medium" title={subtitle ?? title}>
-              {title}
-            </h2>
-            {subtitle && (
-              <span className="truncate text-xs text-muted-foreground" title={subtitle}>
-                {subtitle}
-              </span>
-            )}
-          </div>
-          <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-            {loading ? "…" : plural(assets.length, "item")}
-          </span>
+    // The negative margin runs the panel under the detail pane's left edge, so the list reads as
+    // one surface the detail is resting on rather than two panes butted together.
+    <div className="-mr-3 flex h-full w-[26rem] min-w-[20rem] flex-col overflow-hidden rounded-l-xl bg-panel">
+      <div className="flex flex-col p-3">
+        <div className="flex min-w-0 flex-col">
+          <h2 className="truncate text-sm font-medium" title={subtitle ?? title}>
+            {title}
+          </h2>
+          {subtitle && (
+            <span className="truncate text-xs text-muted-foreground" title={subtitle}>
+              {subtitle}
+            </span>
+          )}
         </div>
 
-        <div className="relative">
+        {/* The field is not part of the resting list: it is here for Find and for as long as a
+            search stands, then it folds away. Collapsed, not unmounted — Find focuses it. */}
+        <div className={cn("relative", searching ? "mt-2" : "h-0 overflow-hidden opacity-0")}>
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             ref={searchRef}
             value={search}
             onChange={(e) => onSearch(e.target.value)}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
             placeholder="Search names and notes…"
             className="pl-8"
-            // Down out of the search field lands on the list without a mouse.
             onKeyDown={(e) => {
+              // Down out of the search field lands on the list without a mouse.
               if (e.key === "ArrowDown") {
                 e.preventDefault();
                 listRef.current?.focus();
                 if (selectedId === null && assets[0]) onSelect(assets[0]);
+              }
+              // Escape drops the search and the field with it.
+              if (e.key === "Escape") {
+                onSearch("");
+                e.currentTarget.blur();
               }
             }}
           />
@@ -139,7 +147,7 @@ export function AssetList({
 
         {/* Only the tag chips live here now; the kind is a place in the sidebar, not a filter. */}
         {activeTags.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             {activeTags.map((tag) => (
               <Badge key={tag} variant="secondary" className="gap-1">
                 {tag}
@@ -252,8 +260,6 @@ function Row({
   selected: boolean;
   onSelect: () => void;
 }) {
-  const isScene = asset.kind === "scene";
-  const Icon = isScene ? Disc3 : Piano;
   // One fact per row: how big a scene is, what engine a tone runs on. Everything else about an
   // item — its sources, its slot, its tempo — is a click away in the detail pane.
   const summary =
@@ -276,14 +282,13 @@ function Row({
         onClick={onSelect}
         tabIndex={-1}
         className={cn(
-          // The kind rail is the only colour on a resting row; selection adds a background.
-          "flex w-full items-center gap-2 rounded-md border-l-2 px-2 py-1 text-left transition-colors outline-none",
-          selected ? "border-l-current bg-accent" : "border-l-transparent hover:bg-accent/50",
-          isScene ? "text-scene" : "text-tone",
+          // A row carries no kind mark of its own: the list is one kind at a time, and the
+          // sidebar already says which. Selection is a background, nothing more.
+          "flex w-full items-center gap-2 rounded-md px-2 py-1 text-left transition-colors outline-none",
+          selected ? "bg-accent" : "hover:bg-accent/50",
           asset.archived_at && "opacity-50",
         )}
       >
-        <Icon className="size-4 shrink-0" />
         <span className="truncate text-sm font-medium text-foreground">{asset.fantom_name}</span>
 
         {asset.tags.map((tag) => (

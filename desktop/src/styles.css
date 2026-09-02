@@ -104,7 +104,6 @@
     /* A warm neutral ground, so the two accents sit on something rather than float on grey. The
        text is tinted to the same anchor: warm ground under untinted grey type reads wrong in a
        way most people cannot name, and a pure-white surface reads synthetic. */
-    --background: oklch(0.995 0.002 80);
     --card: oklch(0.995 0.003 80);
     --popover: oklch(0.995 0.003 80);
     --foreground: oklch(0.2 0.008 80);
@@ -114,8 +113,13 @@
     --primary: oklch(0.52 0.13 62);
     --primary-foreground: oklch(0.99 0.005 80);
     --ring: oklch(0.62 0.11 62);
-    --sidebar: oklch(0.975 0.003 80);
+    --sidebar: oklch(0.965 0.004 80);
     --sidebar-foreground: oklch(0.2 0.008 80);
+    /* Three grounds, one ramp: the window itself, the list resting on it, the detail resting on
+       the list. Nothing else in the app is allowed a surface of its own. */
+    --background: oklch(0.965 0.004 80);
+    --panel: oklch(0.982 0.003 80);
+    --panel-raised: oklch(0.997 0.002 80);
 }
 
 /* The window ships dark (`<html class="dark">`); the light tokens above are what a theme switch
@@ -130,6 +134,8 @@
     --primary-foreground: oklch(0.2 0.02 70);
     --ring: oklch(0.6 0.08 68);
     --sidebar: oklch(0.185 0.005 70);
+    --panel: oklch(0.205 0.005 70);
+    --panel-raised: oklch(0.245 0.006 70);
     --muted: oklch(0.26 0.005 70);
     --accent: oklch(0.27 0.006 70);
     --sidebar-accent: oklch(0.27 0.008 68);
@@ -151,6 +157,8 @@
 @theme inline {
     --color-scene: var(--scene);
     --color-tone: var(--tone);
+    --color-panel: var(--panel);
+    --color-panel-raised: var(--panel-raised);
 }
 
 @layer base {
