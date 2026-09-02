@@ -214,6 +214,42 @@ impl ToneType {
             Self::Unknown => "Unknown",
         }
     }
+
+    /// The engine a stored label names, for a catalog reading its own text back.
+    pub fn parse(label: &str) -> Option<Self> {
+        [
+            Self::Drum,
+            Self::ZenCore,
+            Self::SnA,
+            Self::SnAp,
+            Self::SnEp,
+            Self::Exsn,
+            Self::Vtw,
+            Self::VPiano,
+            Self::Model,
+            Self::Exz,
+            Self::Acb,
+        ]
+        .into_iter()
+        .find(|engine| engine.label() == label)
+    }
+}
+
+/// The model a record's selector names — see `crate::address::AreaSpec::model_id`.
+///
+/// Only what has been checked against an instrument or Roland's own sound list is here; every
+/// other number is left to be reported as itself rather than guessed at.
+///
+/// - `MODEL` 7 is JUPITER-8 — panel-confirmed on a FANTOM-6, and the value an empty `INITIAL TONE`
+///   slot carries.
+/// - `ACB` 4102 is JUPITER-8 — every ACB record in the fixtures reads it, and their names are
+///   copies of `Soft & Subtle`, which the FANTOM Sound List gives as JUPITER-8 tone 1
+///   (MSB 107, LSB 64, the `JP8` bank).
+pub fn model_label(engine: ToneType, id: u32) -> Option<&'static str> {
+    match (engine, id) {
+        (ToneType::Model, 7) | (ToneType::Acb, 4102) => Some("JP8"),
+        _ => None,
+    }
 }
 
 /// Which tone a zone plays, retaining its complete on-disk address.
@@ -252,7 +288,10 @@ impl ToneRef {
     }
 
     /// User-facing bank label when its byte mapping is confirmed.
-    pub fn bank(&self) -> Option<&str> {
+    ///
+    /// Every label is a literal or comes from the bundled sound list, so it outlives the reference
+    /// that named it — a catalogue entry can keep one without keeping the zone.
+    pub fn bank(&self) -> Option<&'static str> {
         match (self.tone_type(), self.address.lsb) {
             (ToneType::ZenCore, lsb) if lsb < 64 => Some("USER"),
             (ToneType::Drum | ToneType::SnAp | ToneType::Vtw, 0)

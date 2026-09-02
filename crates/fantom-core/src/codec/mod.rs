@@ -53,6 +53,9 @@ pub struct BundledTone {
     pub index: usize,
     /// Decoded 16-byte tone name.
     pub name: String,
+    /// Which model of its engine family the record is, for `MDLa` and `ACBa`; `None` elsewhere.
+    /// See [`crate::address::AreaSpec::model_id`].
+    pub model_id: Option<u32>,
 }
 
 /// Whether a record's name is the factory's placeholder for an unused slot.
@@ -370,22 +373,23 @@ fn bundled_tones_from_svd(raw: &Raw, svd: &Svd) -> Vec<BundledTone> {
     address::AREAS
         .iter()
         .flat_map(|spec| {
-            let names = record_names(raw, svd, spec).unwrap_or_default();
-            names
+            records_of(raw, svd, spec)
+                .unwrap_or_default()
                 .into_iter()
                 .enumerate()
-                .map(move |(index, name)| BundledTone {
+                .map(move |(index, (name, model_id))| BundledTone {
                     area: spec.tag,
                     tone_type: spec.tone_type,
                     index,
                     name,
+                    model_id,
                 })
         })
         .collect()
 }
 
-/// The 16-byte name of every record in `spec`'s area, in storage order.
-fn record_names(raw: &Raw, svd: &Svd, spec: &AreaSpec) -> Option<Vec<String>> {
+/// Each record of `spec`'s area as its name and, where the engine hosts several models, which one.
+fn records_of(raw: &Raw, svd: &Svd, spec: &AreaSpec) -> Option<Vec<(String, Option<u32>)>> {
     let table = RecordTable::from_svd(raw, svd, &spec.tag).ok()??;
     if table.record_size < spec.name_offset + NAME_LEN {
         return None;
@@ -395,11 +399,12 @@ fn record_names(raw: &Raw, svd: &Svd, spec: &AreaSpec) -> Option<Vec<String>> {
             .records()
             .filter_map(|record| {
                 let bytes = record.get(spec.name_offset..spec.name_offset + NAME_LEN)?;
-                Some(spec.decode_name(bytes))
+                Some((spec.decode_name(bytes), spec.model_id(record)))
             })
             .collect(),
     )
 }
+
 
 /// The `n`th instance of a named block within a scene record, from the parameter table.
 ///
@@ -1122,6 +1127,8 @@ mod tests {
         {
             target.copy_from_slice(&[source[3], source[2], source[1], source[0]]);
         }
+        // The model selector every ACB record in the fixtures carries.
+        acb_record[0x08..0x0c].copy_from_slice(&0x1006u32.to_le_bytes());
         let mut acba = Vec::new();
         acba.extend_from_slice(&1u32.to_le_bytes());
         acba.extend_from_slice(&(acb_record.len() as u32).to_le_bytes());
@@ -1138,6 +1145,7 @@ mod tests {
                 tone_type: ToneType::Acb,
                 index: 0,
                 name: "Soft & Subtle3".into(),
+                model_id: Some(0x1006),
             }]
         );
     }
