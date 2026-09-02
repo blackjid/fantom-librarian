@@ -108,6 +108,11 @@ fn catch_up(ws: &mut Workspace) {
     if let Err(e) = fantom_library::rescan::model_ids(ws) {
         eprintln!("could not fill in tone models: {e}");
     }
+    // Zone names are decided at import, so a catalog written before the bundled lists learned an
+    // address keeps showing that zone as unnamed until its scenes are read again.
+    if let Err(e) = fantom_library::rescan::scene_names(ws) {
+        eprintln!("could not bring scene names up to date: {e}");
+    }
     // The instrument's own sounds are part of the library too, and they arrive from a bundled
     // list rather than from anything the user imported.
     if let Err(e) = fantom_library::factory::seed(ws) {

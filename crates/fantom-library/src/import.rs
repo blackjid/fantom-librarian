@@ -371,7 +371,10 @@ fn link(
 }
 
 /// Everything the library shows about a scene without reopening its file.
-fn scene_detail(scene: &Scene, reader: Option<&Reader<'_>>) -> SceneDetail {
+///
+/// Crate-visible because [`crate::rescan`] rebuilds the same value when the bundled sound lists
+/// learn a name the catalog was written too early to hold.
+pub(crate) fn scene_detail(scene: &Scene, reader: Option<&Reader<'_>>) -> SceneDetail {
     let mut engines: Vec<String> = Vec::new();
     let mut user_tones: Vec<String> = Vec::new();
     let mut external: BTreeSet<String> = BTreeSet::new();
