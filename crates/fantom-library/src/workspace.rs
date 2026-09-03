@@ -18,7 +18,7 @@ pub const ORIGINALS_DIR: &str = "originals";
 pub const EXPORTS_DIR: &str = "exports";
 
 /// Bumped when the on-disk layout changes in a way an older build cannot read.
-pub const FORMAT_VERSION: u32 = 2;
+pub const FORMAT_VERSION: u32 = 3;
 
 /// What opening a workspace had to do to bring it up to this build.
 ///
@@ -182,6 +182,23 @@ fn migrate(db: &mut Connection) -> Result<()> {
                 "ALTER TABLE {table} ADD COLUMN {column} {definition}"
             ))?;
         }
+    }
+    // The inventory kept `owned` and `installed` as independent flags, which could say an
+    // expansion was loaded but not owned — a state nothing ever acted on differently. One column
+    // holds the ladder instead, and a row that claimed neither is dropped rather than migrated.
+    if has_column(&tx, "expansions", "owned")? {
+        tx.execute_batch(
+            "CREATE TABLE expansions_ladder (
+                 code  TEXT PRIMARY KEY,
+                 state TEXT NOT NULL
+             );
+             INSERT INTO expansions_ladder (code, state)
+                 SELECT code, CASE WHEN installed != 0 THEN 'loaded' ELSE 'owned' END
+                   FROM expansions
+                  WHERE owned != 0 OR installed != 0;
+             DROP TABLE expansions;
+             ALTER TABLE expansions_ladder RENAME TO expansions;",
+        )?;
     }
     // Indexes over a migrated column belong here rather than in `schema.sql`, which runs first and
     // would name a column an older catalog does not have yet.

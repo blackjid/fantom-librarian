@@ -2,7 +2,7 @@
 //! straight to its front end.
 
 use fantom_core::expansions::Family;
-use fantom_core::requirements::Requirements;
+use fantom_core::requirements::{Holding, Requirements};
 use serde::{Deserialize, Serialize};
 
 /// The two things the main library browses. Samples are first-class internally but live in their
@@ -426,10 +426,8 @@ pub struct ExpansionEntry {
     pub engine: String,
     /// How many sounds the bundled catalog carries for it; zero when there is no catalog.
     pub sounds: usize,
-    /// The player has bought it, paid or free.
-    pub owned: bool,
-    /// The instrument currently holds it. Independent of `owned`: slots are finite.
-    pub installed: bool,
+    /// How far it has got towards playing: unowned, owned, or loaded into a slot.
+    pub state: Holding,
     /// Whether this build carries a catalog of its sounds. A code recorded by hand does not.
     pub catalogued: bool,
 }

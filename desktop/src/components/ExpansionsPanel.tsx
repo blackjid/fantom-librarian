@@ -1,10 +1,16 @@
 import { useEffect, useState } from "react";
-import { CircleAlert, HardDriveDownload, Plus, ShoppingBag } from "lucide-react";
-import { api, message, type ExpansionEntry, type ExpansionFamily } from "@/lib/api";
+import { CircleAlert, HardDriveDownload, Minus, Plus, ShoppingBag } from "lucide-react";
+import {
+  api,
+  message,
+  type ExpansionEntry,
+  type ExpansionFamily,
+  type Holding,
+} from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Toggle } from "@/components/ui/toggle";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { plural } from "@/lib/format";
 
@@ -26,19 +32,26 @@ const FAMILIES: { key: ExpansionFamily; title: string; hint: string }[] = [
 ];
 
 /**
- * A set flag has to read as set at a glance, and the default toggle only shades its background —
- * which on this theme is all but invisible next to an unset one. Two flags per row across a long
- * list is exactly where that matters, so a set toggle takes the accent colour outright.
+ * The rung an expansion is on has to read at a glance, and the default toggle only shades its
+ * background — which on this theme is all but invisible next to an unset one. A long list of rows
+ * is exactly where that matters, so the chosen rung takes the accent colour outright.
  */
 const SET =
   "data-[state=on]:border-primary/50 data-[state=on]:bg-primary/15 data-[state=on]:text-primary";
 
+/** The ladder, in the order it climbs. */
+const RUNGS: { value: Holding; label: string; icon: typeof Minus }[] = [
+  { value: "unowned", label: "No", icon: Minus },
+  { value: "owned", label: "Owned", icon: ShoppingBag },
+  { value: "loaded", label: "Loaded", icon: HardDriveDownload },
+];
+
 /**
- * What you own, and what the instrument is holding right now.
+ * How far each expansion has got: not owned, owned, or loaded into a slot.
  *
- * Two facts, not one. The FANTOM's expansion slots are finite, so a player owns more than fits at
- * once — and "you own EXSN03, load it" and "you do not own EXSN03" are different things to be
- * told. Nothing here is read off the instrument: no file says what is installed, so this is the
+ * Three rungs, not two flags. The FANTOM's expansion slots are finite, so a player owns more than
+ * fits at once — and "you own EXSN03, load it" and "you do not own EXSN03" are different things to
+ * be told. Nothing here is read off the instrument: no file says what is loaded, so this is the
  * user's own statement about their setup, kept with the library folder so it travels with it.
  */
 export function ExpansionsPanel({ onError }: { onError: (error: string | null) => void }) {
@@ -61,9 +74,9 @@ export function ExpansionsPanel({ onError }: { onError: (error: string | null) =
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function set(code: string, owned: boolean, installed: boolean) {
+  async function set(code: string, holding: Holding) {
     try {
-      await api.setExpansion(code, owned, installed);
+      await api.setExpansion(code, holding);
       onError(null);
     } catch (error) {
       onError(message(error));
@@ -77,11 +90,12 @@ export function ExpansionsPanel({ onError }: { onError: (error: string | null) =
     const code = adding.trim();
     if (!code) return;
     setAdding("");
-    await set(code, true, false);
+    await set(code, "owned");
   }
 
-  const owned = entries?.filter((entry) => entry.owned).length ?? 0;
-  const installed = entries?.filter((entry) => entry.installed).length ?? 0;
+  // Loaded implies owned, so the counts nest rather than compete.
+  const owned = entries?.filter((entry) => entry.state !== "unowned").length ?? 0;
+  const installed = entries?.filter((entry) => entry.state === "loaded").length ?? 0;
 
   return (
     <div className="surface flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-2xl bg-panel">
@@ -96,10 +110,11 @@ export function ExpansionsPanel({ onError }: { onError: (error: string | null) =
         <div className="flex flex-col gap-6 p-4">
           <Alert>
             <CircleAlert />
-            <AlertTitle>Owned and loaded are separate</AlertTitle>
+            <AlertTitle>Owning one and loading it are different</AlertTitle>
             <AlertDescription>
-              The instrument's expansion slots are finite, so you can own more than it holds. No
-              FANTOM file records either one — this is your own note, kept with the library folder.
+              The instrument's expansion slots are finite, so you can own more than it holds — and
+              only what is loaded plays. No FANTOM file records any of this: it is your own note,
+              kept with the library folder.
             </AlertDescription>
           </Alert>
 
@@ -133,28 +148,30 @@ export function ExpansionsPanel({ onError }: { onError: (error: string | null) =
                           ? `${entry.engine} · ${plural(entry.sounds, "sound")}`
                           : "no bundled catalog — recorded by hand"}
                       </span>
-                      <Toggle
+                      <ToggleGroup
+                        type="single"
                         size="sm"
                         variant="outline"
-                        aria-label={`${entry.code} owned`}
-                        pressed={entry.owned}
-                        onPressedChange={(next) => void set(entry.code, next, entry.installed)}
-                        className={cn(SET, entry.owned || "text-muted-foreground")}
+                        value={entry.state}
+                        // Radix clears the value when the pressed item is pressed again; a rung is
+                        // where the expansion *is*, so re-pressing it changes nothing.
+                        onValueChange={(next) =>
+                          next && void set(entry.code, next as Holding)
+                        }
+                        aria-label={`${entry.code} status`}
                       >
-                        <ShoppingBag data-icon="inline-start" />
-                        Owned
-                      </Toggle>
-                      <Toggle
-                        size="sm"
-                        variant="outline"
-                        aria-label={`${entry.code} loaded`}
-                        pressed={entry.installed}
-                        onPressedChange={(next) => void set(entry.code, entry.owned, next)}
-                        className={cn(SET, entry.installed || "text-muted-foreground")}
-                      >
-                        <HardDriveDownload data-icon="inline-start" />
-                        Loaded
-                      </Toggle>
+                        {RUNGS.map(({ value, label, icon: Icon }) => (
+                          <ToggleGroupItem
+                            key={value}
+                            value={value}
+                            aria-label={`${entry.code} ${value}`}
+                            className={cn(SET, entry.state === value || "text-muted-foreground")}
+                          >
+                            <Icon data-icon="inline-start" />
+                            {label}
+                          </ToggleGroupItem>
+                        ))}
+                      </ToggleGroup>
                     </li>
                   ))}
                 </ul>

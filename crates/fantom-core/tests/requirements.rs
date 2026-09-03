@@ -13,7 +13,7 @@ use support::{private, public};
 use fantom_core::container::{PatArea, Svd, Tone};
 use fantom_core::expansions;
 use fantom_core::model::Scene;
-use fantom_core::requirements::{self, Reader, Verdict};
+use fantom_core::requirements::{self, Holding, Reader, Verdict};
 
 const NARF_EXPORT: &str = "backup/ROLAND/SOUND/NARF/FANTOM.SVD";
 const NARF_BACKUP: &str = "backup/ROLAND/FANTOM/BACKUP/Black NARFSOUNDS/FANTOM.SVD";
@@ -219,15 +219,15 @@ fn an_inventory_turns_the_packs_expansions_into_instructions() {
 
     // A note that names other products, and not this one, is saying it is not owned.
     let mut inventory = requirements::ExpansionInventory::default();
-    inventory.record("EXZ007", true, true);
+    inventory.record("EXZ007", Holding::Loaded);
     let elsewhere = from_file.clone().with_expansions(inventory.clone());
     assert_eq!(weigh(&elsewhere), vec![Verdict::Missing]);
 
-    inventory.record("EXZ008", true, false);
+    inventory.record("EXZ008", Holding::Owned);
     let shelved = from_file.clone().with_expansions(inventory.clone());
     assert_eq!(weigh(&shelved), vec![Verdict::NotLoaded]);
 
-    inventory.record("EXZ008", true, true);
+    inventory.record("EXZ008", Holding::Loaded);
     let loaded = from_file.with_expansions(inventory);
     assert_eq!(weigh(&loaded), vec![Verdict::Met]);
 }

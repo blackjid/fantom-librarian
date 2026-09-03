@@ -7,6 +7,7 @@
 use std::path::PathBuf;
 use std::sync::Mutex;
 
+use fantom_core::requirements::Holding;
 use fantom_library::catalog::{self, KindCounts, Stats};
 use fantom_library::model::*;
 use fantom_library::workspace::Upgrade;
@@ -289,12 +290,9 @@ fn list_expansions(state: tauri::State<'_, AppState>) -> CmdResult<Vec<Expansion
 fn set_expansion(
     state: tauri::State<'_, AppState>,
     code: String,
-    owned: bool,
-    installed: bool,
+    holding: Holding,
 ) -> CmdResult<()> {
-    with(&state, |ws| {
-        catalog::set_expansion(ws, &code, owned, installed)
-    })
+    with(&state, |ws| catalog::set_expansion(ws, &code, holding))
 }
 
 #[tauri::command]
