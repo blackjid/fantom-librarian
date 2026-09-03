@@ -19,8 +19,8 @@
 //! it because its two halves come from different places. A backup names every occupied sample slot,
 //! so those can be checked one by one. Nothing in any file has been found to list which expansions
 //! an instrument has installed, so that half arrives as an [`ExpansionInventory`] the player keeps
-//! by hand: with one, an expansion requirement reads as installed, owned but not loaded, or not
-//! owned; without one it stays [`Verdict::Unknown`] — "here is what it needs, compare by hand" —
+//! by hand: with one, an expansion requirement reads as loaded, owned but not loaded, or not owned;
+//! without one it stays [`Verdict::Unknown`] — "here is what it needs, compare by hand" —
 //! rather than becoming a guess. Silence is the dangerous answer here, so an address we cannot even
 //! classify is reported too, as [`Requirements::unclassified`].
 
@@ -706,58 +706,103 @@ fn held<'a>(slots: impl Iterator<Item = (usize, &'a String)>) -> Vec<HeldSlot> {
         .collect()
 }
 
-/// Which expansions a player owns, and which the instrument currently holds.
+/// How far one expansion has got towards playing on this instrument.
+///
+/// A ladder, not two flags: loading an expansion you do not own is not a state anything acts on,
+/// while owning one you have not loaded is the whole reason the note is worth keeping. The
+/// FANTOM's slots are finite, so a player owns more than the instrument holds, and each rung is a
+/// different instruction — buy it, load it, nothing.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "kebab-case"))]
+pub enum Holding {
+    /// Not bought. The rung everything starts on, so it is what an unrecorded product reads as.
+    #[default]
+    Unowned,
+    /// Bought, but not in one of the instrument's slots.
+    Owned,
+    /// In a slot: it plays.
+    Loaded,
+}
+
+impl Holding {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Unowned => "unowned",
+            Self::Owned => "owned",
+            Self::Loaded => "loaded",
+        }
+    }
+
+    /// Read one back from a catalog, where anything unrecognised is the rung nothing is claimed on.
+    pub fn parse(text: &str) -> Self {
+        match text {
+            "loaded" => Self::Loaded,
+            "owned" => Self::Owned,
+            _ => Self::Unowned,
+        }
+    }
+}
+
+/// How far up that ladder each expansion is, by product code.
 ///
 /// The one thing about a destination that no file states, so this arrives from wherever that
-/// hand-kept note lives rather than from bytes. The two flags are independent; see
-/// `fantom_library::catalog::expansions` for why.
+/// hand-kept note lives rather than from bytes.
 ///
 /// Codes are addressed case-insensitively: a catalogued product keeps its own case (`n/zyme`) while
 /// a hand-recorded one is whatever was typed.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(default))]
+#[cfg_attr(feature = "serde", serde(transparent))]
 pub struct ExpansionInventory {
-    /// Product codes the player has bought, loaded or not.
-    pub owned: BTreeSet<String>,
-    /// Product codes the instrument currently holds.
-    pub installed: BTreeSet<String>,
+    held: BTreeMap<String, Holding>,
 }
 
 impl ExpansionInventory {
-    /// Record one product, as the two flags a workspace stores.
-    pub fn record(&mut self, product: &str, owned: bool, installed: bool) {
+    /// Record where one product stands. [`Holding::Unowned`] is the absence of a claim, so it
+    /// forgets the product rather than storing a row saying nothing.
+    pub fn record(&mut self, product: &str, holding: Holding) {
         let code = product.to_ascii_uppercase();
-        if owned {
-            self.owned.insert(code.clone());
-        }
-        if installed {
-            self.installed.insert(code);
-        }
+        match holding {
+            Holding::Unowned => self.held.remove(&code),
+            held => self.held.insert(code, held),
+        };
     }
 
-    /// Whether the instrument currently holds this product.
-    ///
-    /// The question a browse filter asks, and the first thing a verdict asks: what plays is what is
-    /// loaded, whether or not anyone recorded buying it.
+    /// Where one product stands. Unrecorded is [`Holding::Unowned`]: a lookup, so whether the note
+    /// is worth believing at all is [`compare`]'s question.
+    pub fn holding(&self, product: &str) -> Holding {
+        self.held
+            .get(&product.to_ascii_uppercase())
+            .copied()
+            .unwrap_or_default()
+    }
+
+    /// Whether the instrument currently holds this product — what a browse filter asks, and what a
+    /// verdict asks first.
     pub fn is_installed(&self, product: &str) -> bool {
-        self.installed.contains(&product.to_ascii_uppercase())
+        self.holding(product) == Holding::Loaded
     }
 
     /// Whether nothing at all has been recorded — a note nobody has written in yet.
     pub fn is_empty(&self) -> bool {
-        self.owned.is_empty() && self.installed.is_empty()
+        self.held.is_empty()
     }
 
-    /// How one product stands: [`Verdict::Met`] when the instrument holds it,
-    /// [`Verdict::NotLoaded`] when it is owned and has to be loaded, [`Verdict::Missing`] when it
-    /// has to be bought. A lookup, so an unrecorded product reads as unowned; whether the note is
-    /// worth believing is [`compare`]'s question.
+    /// The products recorded at one rung, in code order.
+    pub fn at(&self, holding: Holding) -> impl Iterator<Item = &str> {
+        self.held
+            .iter()
+            .filter(move |(_, held)| **held == holding)
+            .map(|(code, _)| code.as_str())
+    }
+
+    /// How one product stands, as the answer a requirement report gives.
     pub fn verdict(&self, product: &str) -> Verdict {
-        match () {
-            _ if self.is_installed(product) => Verdict::Met,
-            _ if self.owned.contains(&product.to_ascii_uppercase()) => Verdict::NotLoaded,
-            _ => Verdict::Missing,
+        match self.holding(product) {
+            Holding::Loaded => Verdict::Met,
+            Holding::Owned => Verdict::NotLoaded,
+            Holding::Unowned => Verdict::Missing,
         }
     }
 }
@@ -1190,20 +1235,27 @@ mod tests {
     /// Three answers, not two: owning an expansion and having it loaded are different facts, so
     /// "buy it" and "load it" are different instructions.
     #[test]
-    fn an_expansion_inventory_answers_installed_owned_and_neither() {
+    fn an_expansion_inventory_answers_loaded_owned_and_neither() {
         let mut held = ExpansionInventory::default();
-        held.record("EXZ007", true, true);
-        held.record("EXSN03", true, false);
-        // What plays is what the instrument holds, not what was paid for.
-        held.record("JP8", false, true);
-        held.record("n/zyme", true, false);
+        held.record("EXZ007", Holding::Loaded);
+        held.record("EXSN03", Holding::Owned);
+        held.record("n/zyme", Holding::Owned);
 
         assert_eq!(held.verdict("EXZ007"), Verdict::Met);
         assert_eq!(held.verdict("EXSN03"), Verdict::NotLoaded);
-        assert_eq!(held.verdict("JP8"), Verdict::Met);
         assert_eq!(held.verdict("EXZ001"), Verdict::Missing);
         // A catalogued code keeps its own case, so codes are addressed case-insensitively.
         assert_eq!(held.verdict("N/ZYME"), Verdict::NotLoaded);
+
+        // Down a rung, and off the ladder entirely: nothing is claimed, so nothing is stored.
+        held.record("EXZ007", Holding::Owned);
+        assert_eq!(held.holding("EXZ007"), Holding::Owned);
+        held.record("EXZ007", Holding::Unowned);
+        assert_eq!(held.holding("EXZ007"), Holding::Unowned);
+        assert_eq!(
+            held.at(Holding::Owned).collect::<Vec<_>>(),
+            ["EXSN03", "N/ZYME"]
+        );
     }
 
     /// The inventory is the input that turns "compare by hand" into an instruction.
@@ -1240,9 +1292,9 @@ mod tests {
         };
 
         let mut inventory = ExpansionInventory::default();
-        inventory.record("EXZ007", true, true);
-        inventory.record("EXZ008", true, false);
-        inventory.record("EXZ005", true, true);
+        inventory.record("EXZ007", Holding::Loaded);
+        inventory.record("EXZ008", Holding::Owned);
+        inventory.record("EXZ005", Holding::Loaded);
         let held = Inventory::default().with_expansions(inventory);
 
         let findings = compare(&needs, &held);
@@ -1283,7 +1335,7 @@ mod tests {
 
         // One product recorded is a note, and it speaks for the products it does not name.
         let mut kept = ExpansionInventory::default();
-        kept.record("EXZ007", true, true);
+        kept.record("EXZ007", Holding::Loaded);
         let held = Inventory::default().with_expansions(kept);
         assert_eq!(compare(&needs, &held)[0].verdict, Verdict::Missing);
     }

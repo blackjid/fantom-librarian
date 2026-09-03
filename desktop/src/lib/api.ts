@@ -321,14 +321,21 @@ export type ExpansionFamily = "wave" | "super-natural" | "model" | "v-piano" | "
  * `owned` and `installed` are independent: the FANTOM's slots are finite, so an expansion can be
  * bought and not loaded, and "buy it" and "load it" are different things to tell someone.
  */
+/**
+ * How far an expansion has got towards playing. Mirrors `fantom_core::requirements::Holding`.
+ *
+ * A ladder, not two flags: loading one you do not own is not a state anything acts on, while
+ * owning one you have not loaded is the whole reason the note is worth keeping.
+ */
+export type Holding = "unowned" | "owned" | "loaded";
+
 export interface ExpansionEntry {
   code: string;
   family: ExpansionFamily;
   /** The engine that plays it, when a catalog says. Empty for a code recorded by hand. */
   engine: string;
   sounds: number;
-  owned: boolean;
-  installed: boolean;
+  state: Holding;
   /** Whether this build carries a catalog of its sounds. */
   catalogued: boolean;
 }
@@ -356,8 +363,7 @@ export const api = {
   listTags: () => invoke<Tag[]>("list_tags"),
   listSongs: (search = "") => invoke<Song[]>("list_songs", { search }),
   listExpansions: () => invoke<ExpansionEntry[]>("list_expansions"),
-  setExpansion: (code: string, owned: boolean, installed: boolean) =>
-    invoke<void>("set_expansion", { code, owned, installed }),
+  setExpansion: (code: string, holding: Holding) => invoke<void>("set_expansion", { code, holding }),
   getStats: () => invoke<Stats>("get_stats"),
 
   renameAsset: (id: number, name: string) => invoke<void>("rename_asset", { id, name }),

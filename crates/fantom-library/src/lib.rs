@@ -43,7 +43,7 @@ pub(crate) fn now() -> i64 {
 mod tests {
     use super::*;
     use crate::model::{AssetKind, Query, SourceInfo};
-    use fantom_core::requirements::Verdict;
+    use fantom_core::requirements::{Holding, Verdict};
     use std::path::PathBuf;
 
     /// A workspace in a temp dir, plus the repo's committed fixtures.
@@ -180,61 +180,112 @@ mod tests {
         assert_eq!(backups, 1, "the same upgrade was copied twice");
     }
 
-    /// Owning an expansion and having it loaded are two facts, and the inventory keeps them apart.
+    /// Owning an expansion and having it loaded are two rungs of one ladder, not two flags.
     ///
     /// The FANTOM's expansion slots are finite, so a player owns more than the instrument holds.
     /// "You own EXSN03, load it" and "you do not own EXSN03" are different instructions, and only
-    /// a store that separates them can say which one applies.
+    /// a store that keeps the rungs apart can say which one applies.
     #[test]
-    fn owning_an_expansion_and_loading_it_are_recorded_apart() {
+    fn an_expansion_is_recorded_at_the_rung_it_has_reached() {
         let (dir, ws) = workspace();
 
         // Every expansion the catalogs know about is listed, so an unowned one is still selectable.
         let known = catalog::expansions(&ws).unwrap();
         assert!(known.len() >= 25, "{} listed", known.len());
-        assert!(known.iter().all(|entry| !entry.owned && !entry.installed));
+        assert!(known.iter().all(|entry| entry.state == Holding::Unowned));
         assert!(known.iter().all(|entry| entry.catalogued));
 
-        catalog::set_expansion(&ws, "EXZ007", true, true).unwrap();
+        catalog::set_expansion(&ws, "EXZ007", Holding::Loaded).unwrap();
         // Owned, sitting on the shelf: the instrument has no free slot for it.
-        catalog::set_expansion(&ws, "EXSN03", true, false).unwrap();
-        // Loaded by someone else's hand, and not yours to keep.
-        catalog::set_expansion(&ws, "JP8", false, true).unwrap();
+        catalog::set_expansion(&ws, "EXSN03", Holding::Owned).unwrap();
 
         let state = |entries: &[crate::model::ExpansionEntry], code: &str| {
             entries
                 .iter()
                 .find(|entry| entry.code == code)
-                .map(|entry| (entry.owned, entry.installed))
+                .map(|entry| entry.state)
         };
         let listed = catalog::expansions(&ws).unwrap();
-        assert_eq!(state(&listed, "EXZ007"), Some((true, true)));
-        assert_eq!(state(&listed, "EXSN03"), Some((true, false)));
-        assert_eq!(state(&listed, "JP8"), Some((false, true)));
-        assert_eq!(state(&listed, "EXZ008"), Some((false, false)));
+        assert_eq!(state(&listed, "EXZ007"), Some(Holding::Loaded));
+        assert_eq!(state(&listed, "EXSN03"), Some(Holding::Owned));
+        assert_eq!(state(&listed, "EXZ008"), Some(Holding::Unowned));
 
         // Casing and surrounding whitespace still address the catalogued product's canonical code.
-        catalog::set_expansion(&ws, " exz007 ", true, false).unwrap();
+        catalog::set_expansion(&ws, " exz007 ", Holding::Owned).unwrap();
         let listed = catalog::expansions(&ws).unwrap();
-        assert_eq!(state(&listed, "EXZ007"), Some((true, false)));
+        assert_eq!(state(&listed, "EXZ007"), Some(Holding::Owned));
         assert!(!listed.iter().any(|entry| entry.code == "exz007"));
 
+        // Back to the bottom rung: the row goes, rather than claiming nothing.
+        catalog::set_expansion(&ws, "EXSN03", Holding::Unowned).unwrap();
+        assert_eq!(
+            state(&catalog::expansions(&ws).unwrap(), "EXSN03"),
+            Some(Holding::Unowned)
+        );
+
         // A product no catalog covers is still recordable, and says that it is uncatalogued.
-        catalog::set_expansion(&ws, "EXZ099", true, false).unwrap();
+        catalog::set_expansion(&ws, "EXZ099", Holding::Owned).unwrap();
         let listed = catalog::expansions(&ws).unwrap();
         let unknown = listed
             .iter()
             .find(|entry| entry.code == "EXZ099")
             .expect("a recorded code the catalogs do not know");
-        assert!(unknown.owned && !unknown.catalogued);
+        assert!(unknown.state == Holding::Owned && !unknown.catalogued);
         assert_eq!(unknown.family, fantom_core::expansions::Family::Wave);
 
         // It travels with the folder rather than with this machine.
         drop(ws);
         let reopened = Workspace::open(dir.path()).unwrap();
         let listed = catalog::expansions(&reopened).unwrap();
-        assert_eq!(state(&listed, "EXZ007"), Some((true, false)));
-        assert_eq!(state(&listed, "EXZ099"), Some((true, false)));
+        assert_eq!(state(&listed, "EXZ007"), Some(Holding::Owned));
+        assert_eq!(state(&listed, "EXZ099"), Some(Holding::Owned));
+    }
+
+    /// A library written when the inventory was two flags reads back on the ladder.
+    ///
+    /// The pair could say an expansion was loaded but not owned, which nothing ever acted on
+    /// differently — so it lands on `loaded`, the rung that decides whether it plays. A row
+    /// claiming neither said nothing and is not carried over.
+    #[test]
+    fn a_two_flag_inventory_migrates_onto_the_ladder() {
+        let (dir, ws) = workspace();
+        ws.db()
+            .execute_batch(
+                "DROP TABLE expansions;
+                 CREATE TABLE expansions (
+                     code      TEXT PRIMARY KEY,
+                     owned     INTEGER NOT NULL DEFAULT 0,
+                     installed INTEGER NOT NULL DEFAULT 0
+                 );
+                 INSERT INTO expansions (code, owned, installed) VALUES
+                     ('EXZ007', 1, 1),
+                     ('EXSN03', 1, 0),
+                     ('JP8',    0, 1),
+                     ('EXZ099', 0, 0);",
+            )
+            .unwrap();
+        drop(ws);
+        std::fs::write(
+            dir.path().join(workspace::MARKER),
+            "{\n  \"format\": 2\n}\n",
+        )
+        .unwrap();
+
+        let ws = Workspace::open(dir.path()).unwrap();
+        assert_eq!(ws.upgrade().expect("an upgrade ran").from_format, 2);
+
+        let held = catalog::expansion_inventory(&ws).unwrap();
+        assert_eq!(held.holding("EXZ007"), Holding::Loaded);
+        assert_eq!(held.holding("EXSN03"), Holding::Owned);
+        assert_eq!(held.holding("JP8"), Holding::Loaded);
+        assert_eq!(held.holding("EXZ099"), Holding::Unowned);
+
+        // And the table is the new shape, so the next write does not have to satisfy both.
+        catalog::set_expansion(&ws, "EXZ008", Holding::Owned).unwrap();
+        assert_eq!(
+            catalog::expansion_inventory(&ws).unwrap().holding("EXZ008"),
+            Holding::Owned
+        );
     }
 
     /// The inventory is the input a requirements check had no way to ask for.
@@ -250,9 +301,9 @@ mod tests {
         // lets a check tell "not owned" apart from "never said".
         assert!(catalog::expansion_inventory(&ws).unwrap().is_empty());
 
-        catalog::set_expansion(&ws, "EXZ007", true, true).unwrap();
-        catalog::set_expansion(&ws, "EXSN03", true, false).unwrap();
-        catalog::set_expansion(&ws, "n/zyme", false, true).unwrap();
+        catalog::set_expansion(&ws, "EXZ007", Holding::Loaded).unwrap();
+        catalog::set_expansion(&ws, "EXSN03", Holding::Owned).unwrap();
+        catalog::set_expansion(&ws, "n/zyme", Holding::Loaded).unwrap();
 
         let held = catalog::expansion_inventory(&ws).unwrap();
         assert_eq!(held.verdict("EXZ007"), Verdict::Met);
@@ -345,12 +396,12 @@ mod tests {
         };
         assert!(!has_exz007(&unavailable));
 
-        catalog::set_expansion(&ws, "EXZ007", true, true).unwrap();
+        catalog::set_expansion(&ws, "EXZ007", Holding::Loaded).unwrap();
         assert!(has_exz007(&unavailable));
 
-        // Removing an installed expansion only changes what the filter shows; it never drops the
-        // factory rows, so notes, tags, and song links on them remain attached.
-        catalog::set_expansion(&ws, "EXZ007", true, false).unwrap();
+        // Unloading an expansion only changes what the filter shows; it never drops the factory
+        // rows, so notes, tags, and song links on them remain attached.
+        catalog::set_expansion(&ws, "EXZ007", Holding::Owned).unwrap();
         assert!(!has_exz007(&unavailable));
         assert!(has_exz007(&exz007));
         let preserved = catalog::asset(&ws, exz007_id).unwrap();

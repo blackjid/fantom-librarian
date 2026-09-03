@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use fantom_core::expansions::{self, Family};
 use fantom_core::model::ToneType;
-use fantom_core::requirements::ExpansionInventory;
+use fantom_core::requirements::{ExpansionInventory, Holding};
 use rusqlite::{params, params_from_iter, Row};
 
 use crate::facet;
@@ -208,33 +208,27 @@ fn select(ws: &Workspace, query: &Query) -> Result<Vec<Asset>> {
 
 /// What the workspace says the instrument has, in the shape a requirements check weighs against.
 ///
-/// The two flags a player keeps by hand are the half of a compatibility check no file carries, so
-/// this is what turns "compare EXSN03 by hand" into "you own it, load it". Only the flags travel:
-/// which expansion a requirement actually needs is [`fantom_core::requirements`]' question.
+/// The rung a player keeps by hand is the half of a compatibility check no file carries, so this is
+/// what turns "compare EXSN03 by hand" into "you own it, load it". Only the rungs travel: which
+/// expansion a requirement actually needs is [`fantom_core::requirements`]' question.
 pub fn expansion_inventory(ws: &Workspace) -> Result<ExpansionInventory> {
     let mut inventory = ExpansionInventory::default();
-    for (code, owned, installed) in recorded_expansions(ws)? {
-        inventory.record(&code, owned, installed);
+    for (code, state) in recorded_expansions(ws)? {
+        inventory.record(&code, state);
     }
     Ok(inventory)
 }
 
-/// Every row of the inventory table as it is stored: code, owned, installed.
+/// Every row of the inventory table as it is stored.
 ///
 /// The one reader of the table, so the list and the verdicts cannot come to disagree about what is
 /// in it. The stored code keeps its case here; normalising it is the caller's business.
-fn recorded_expansions(ws: &Workspace) -> Result<Vec<(String, bool, bool)>> {
-    let mut statement = ws
-        .db()
-        .prepare("SELECT code, owned, installed FROM expansions")?;
+fn recorded_expansions(ws: &Workspace) -> Result<Vec<(String, Holding)>> {
+    let mut statement = ws.db().prepare("SELECT code, state FROM expansions")?;
     let mut rows = statement.query([])?;
     let mut out = Vec::new();
     while let Some(row) = rows.next()? {
-        out.push((
-            row.get(0)?,
-            row.get::<_, i64>(1)? != 0,
-            row.get::<_, i64>(2)? != 0,
-        ));
+        out.push((row.get(0)?, Holding::parse(&row.get::<_, String>(1)?)));
     }
     Ok(out)
 }
@@ -644,44 +638,35 @@ pub struct Stats {
 
 /// The expansion inventory: everything the catalogs know about, plus anything else recorded.
 ///
-/// Two flags per product, kept apart on purpose. Owning an expansion and having it loaded are
-/// different facts — the FANTOM's slots are finite, so a player owns more than the instrument
-/// holds — and "buy it" and "load it" are different instructions to give.
+/// One rung per product — unowned, owned, loaded — because each is a different instruction to
+/// give, and because the FANTOM's slots are finite: a player owns more than the instrument holds.
 ///
 /// Ordered by family then code, which is the order a list wants to show them in.
 pub fn expansions(ws: &Workspace) -> Result<Vec<ExpansionEntry>> {
-    let mut stored: HashMap<String, (bool, bool)> = recorded_expansions(ws)?
-        .into_iter()
-        .map(|(code, owned, installed)| (code, (owned, installed)))
-        .collect();
+    let mut stored: HashMap<String, Holding> = recorded_expansions(ws)?.into_iter().collect();
 
     let mut entries: Vec<ExpansionEntry> = expansions::products()
         .iter()
-        .map(|product| {
-            let (owned, installed) = stored.remove(product.code).unwrap_or_default();
-            ExpansionEntry {
-                code: product.code.to_string(),
-                family: product.family,
-                engine: product.engine.label().to_string(),
-                sounds: product.sounds,
-                owned,
-                installed,
-                catalogued: true,
-            }
+        .map(|product| ExpansionEntry {
+            code: product.code.to_string(),
+            family: product.family,
+            engine: product.engine.label().to_string(),
+            sounds: product.sounds,
+            state: stored.remove(product.code).unwrap_or_default(),
+            catalogued: true,
         })
         .collect();
 
     // Whatever is left was recorded by hand, for an expansion this build carries no catalog of.
     // It is listed too: the inventory is the user's statement about their instrument, not this
     // build's statement about what it can name.
-    for (code, (owned, installed)) in stored {
+    for (code, state) in stored {
         entries.push(ExpansionEntry {
             family: Family::of(&code, ToneType::Unknown),
             code,
             engine: String::new(),
             sounds: 0,
-            owned,
-            installed,
+            state,
             catalogued: false,
         });
     }
@@ -690,12 +675,12 @@ pub fn expansions(ws: &Workspace) -> Result<Vec<ExpansionEntry>> {
     Ok(entries)
 }
 
-/// Record what the player owns and what the instrument holds, for one product.
+/// Record how far one product has got towards playing.
 ///
 /// Any code is accepted, including one no catalog covers: the user knows their instrument better
-/// than this build's catalogs do. A product set back to neither owned nor installed loses its row
-/// rather than keeping a row full of falsehoods.
-pub fn set_expansion(ws: &Workspace, code: &str, owned: bool, installed: bool) -> Result<()> {
+/// than this build's catalogs do. A product set back to [`Holding::Unowned`] loses its row rather
+/// than keeping one that claims nothing.
+pub fn set_expansion(ws: &Workspace, code: &str, state: Holding) -> Result<()> {
     let entered = code.trim();
     let code = expansions::products()
         .iter()
@@ -707,15 +692,15 @@ pub fn set_expansion(ws: &Workspace, code: &str, owned: bool, installed: bool) -
     if code.is_empty() {
         return Err(Error::Rejected("an expansion needs a product code".into()));
     }
-    if !owned && !installed {
+    if state == Holding::Unowned {
         ws.db()
             .execute("DELETE FROM expansions WHERE code = ?1", [&code])?;
         return Ok(());
     }
     ws.db().execute(
-        "INSERT INTO expansions (code, owned, installed) VALUES (?1, ?2, ?3)
-         ON CONFLICT (code) DO UPDATE SET owned = excluded.owned, installed = excluded.installed",
-        params![code, owned as i64, installed as i64],
+        "INSERT INTO expansions (code, state) VALUES (?1, ?2)
+         ON CONFLICT (code) DO UPDATE SET state = excluded.state",
+        params![code, state.as_str()],
     )?;
     Ok(())
 }

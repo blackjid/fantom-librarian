@@ -7,7 +7,7 @@ use std::process::ExitCode;
 use clap::Parser;
 use fantom_core::container::Raw;
 use fantom_core::params;
-use fantom_core::requirements::ExpansionInventory;
+use fantom_core::requirements::{ExpansionInventory, Holding};
 
 mod cli;
 mod render;
@@ -729,35 +729,25 @@ fn run_edit(
 /// unanswered rather than reporting every one of them as unowned.
 fn expansion_inventory(installed: &[String], owned: &[String]) -> ExpansionInventory {
     let mut inventory = ExpansionInventory::default();
-    for code in installed {
-        inventory.record(code, true, true);
-    }
+    // Owned first, so naming a code both ways leaves it on the higher rung rather than the last
+    // one typed.
     for code in owned {
-        inventory.record(code, true, false);
+        inventory.record(code, Holding::Owned);
+    }
+    for code in installed {
+        inventory.record(code, Holding::Loaded);
     }
     inventory
 }
 
-/// What the report says it was told, so a verdict can be read back to the flags behind it.
-///
-/// The shelved list is what is owned and not loaded, because that is the line the two flags exist
-/// to draw; an expansion in both would otherwise read as an instruction to load what is loaded.
+/// What the report says it was told, so a verdict can be read back to the note behind it.
 fn inventory_note(inventory: &ExpansionInventory) -> String {
-    let list = |codes: &[&String]| {
-        codes
-            .iter()
-            .map(|code| code.as_str())
-            .collect::<Vec<_>>()
-            .join(", ")
-    };
     let mut out = String::new();
-    let installed: Vec<&String> = inventory.installed.iter().collect();
-    if !installed.is_empty() {
-        let _ = writeln!(out, "installed: {}", list(&installed));
-    }
-    let shelved: Vec<&String> = inventory.owned.difference(&inventory.installed).collect();
-    if !shelved.is_empty() {
-        let _ = writeln!(out, "owned:     {}", list(&shelved));
+    for (label, rung) in [("installed:", Holding::Loaded), ("owned:", Holding::Owned)] {
+        let codes: Vec<&str> = inventory.at(rung).collect();
+        if !codes.is_empty() {
+            let _ = writeln!(out, "{label:<10} {}", codes.join(", "));
+        }
     }
     out
 }
@@ -1077,6 +1067,10 @@ mod tests {
         assert_eq!(held.verdict("EXZ008"), Verdict::Met);
         assert_eq!(held.verdict("EXZ005"), Verdict::NotLoaded);
         assert_eq!(held.verdict("EXZ002"), Verdict::Missing);
+
+        // Named both ways, it stays on the rung that decides whether it plays.
+        let both = expansion_inventory(&["EXZ008".into()], &["EXZ008".into()]);
+        assert_eq!(both.verdict("EXZ008"), Verdict::Met);
     }
 
     #[test]
