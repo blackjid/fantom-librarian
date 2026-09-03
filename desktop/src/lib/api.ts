@@ -113,7 +113,10 @@ export interface SceneDetail {
   /** Empty when the scene leaves its keyboard groups at the factory default. */
   groups: KeyboardGroup[];
   user_tones: string[];
+  /** Content that has to be installed before it plays as its author heard it. */
   external_refs: string[];
+  /** Content every FANTOM ships with: a dependency, but not one to act on. */
+  factory_refs: string[];
   requirements: Requirements;
 }
 

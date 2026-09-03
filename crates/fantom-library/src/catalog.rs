@@ -253,6 +253,25 @@ pub fn asset(ws: &Workspace, id: i64) -> Result<Asset> {
     Ok(asset)
 }
 
+/// Separate the references anybody has to act on from the ones every FANTOM already answers.
+///
+/// A scene naming one `PR-A` preset depends on it as surely as one naming `EXZ007`, and the catalog
+/// stores both the same way — but only one of them is news. Done on the way out rather than at
+/// import, so a catalog written before the distinction existed reads correctly without being
+/// rebuilt from its files.
+fn split_factory_refs(detail: AssetDetail) -> AssetDetail {
+    let AssetDetail::Scene(mut scene) = detail else {
+        return detail;
+    };
+    let (factory, external) = scene
+        .external_refs
+        .drain(..)
+        .partition(|reference| facet::is_factory_ref(reference));
+    scene.external_refs = external;
+    scene.factory_refs.extend(factory);
+    AssetDetail::Scene(scene)
+}
+
 fn row_to_asset(row: &Row<'_>) -> Asset {
     let kind = row
         .get::<_, String>(1)
@@ -263,6 +282,7 @@ fn row_to_asset(row: &Row<'_>) -> Asset {
         .get::<_, String>(7)
         .ok()
         .and_then(|json| serde_json::from_str(&json).ok())
+        .map(split_factory_refs)
         .unwrap_or(AssetDetail::Tone(ToneDetail {
             engine: String::new(),
             area: String::new(),

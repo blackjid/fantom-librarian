@@ -194,8 +194,16 @@ pub struct SceneDetail {
     pub groups: Vec<KeyboardGroupDetail>,
     /// Bundled user tones this scene needs, by resolved name.
     pub user_tones: Vec<String>,
-    /// Zones pointing at factory, expansion, or model content the app never substitutes.
+    /// Zones pointing at content that has to be installed before the scene plays as its author
+    /// heard it — expansions and the modelled banks.
+    ///
+    /// Stored as every external reference the scene makes, factory ones included; the two are told
+    /// apart when the asset is read, so a catalog written before this split still answers.
     pub external_refs: Vec<String>,
+    /// Zones pointing at content every FANTOM ships with — the preset banks. A dependency, but not
+    /// one anybody has to act on, which is why it is kept apart from `external_refs`.
+    #[serde(default)]
+    pub factory_refs: Vec<String>,
     /// Everything this scene needs from wherever it is loaded, decided from the bytes.
     ///
     /// Defaulted so a catalog written before requirements existed still reads; those assets get

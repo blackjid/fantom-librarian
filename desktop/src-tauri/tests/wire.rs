@@ -48,6 +48,7 @@ fn an_asset_serialises_with_the_fields_the_front_end_reads() {
             groups: Vec::new(),
             user_tones: vec!["Mk1 Rhodes".into()],
             external_refs: Vec::new(),
+            factory_refs: Vec::new(),
             requirements: Requirements::default(),
         }),
         origin: Origin::User,
@@ -167,6 +168,8 @@ fn requirements_serialise_with_the_fields_the_front_end_reads() {
     }))
     .expect("a detail written before requirements existed must still deserialise");
     assert!(detail.requirements.is_empty());
+    // Every catalog wrote one list; the factory half is separated when the asset is read.
+    assert!(detail.factory_refs.is_empty());
 }
 
 #[test]
@@ -389,6 +392,7 @@ fn a_scene_detail_carries_its_keyboard_groups() {
         }],
         user_tones: vec!["Sub Bass".into()],
         external_refs: Vec::new(),
+        factory_refs: Vec::new(),
     };
 
     let json = serde_json::to_value(&detail).unwrap();

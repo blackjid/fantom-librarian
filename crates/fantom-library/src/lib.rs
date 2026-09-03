@@ -288,6 +288,71 @@ mod tests {
         );
     }
 
+    /// A preset every FANTOM ships with is a dependency, but not one to warn anybody about.
+    ///
+    /// The catalog stores every external reference a scene makes in one list, so the two have to be
+    /// told apart on the way out — and on the way out rather than at import, so a library
+    /// catalogued before the distinction existed reads correctly without being rebuilt.
+    #[test]
+    fn factory_references_are_told_from_the_ones_to_act_on() {
+        let (_dir, ws) = workspace();
+        let stored = crate::model::SceneDetail {
+            bpm: 120.0,
+            level: 100,
+            active_zones: 2,
+            zones: Vec::new(),
+            engines: Vec::new(),
+            groups: Vec::new(),
+            user_tones: Vec::new(),
+            // As every catalog wrote it: one list, factory and installable together.
+            external_refs: vec![
+                "ZEN-Core PR-A PC 060 \"Ac Pop Piano 1\"".into(),
+                "SN-AP EXSN03 PC 000 \"Classic Piano\"".into(),
+                "Drum CMN PC 051 \"TR-707&727 comp\"".into(),
+                "MODEL JP8 PC 001 \"Brass\"".into(),
+            ],
+            factory_refs: Vec::new(),
+            requirements: Default::default(),
+        };
+        ws.db()
+            .execute(
+                "INSERT INTO assets (kind, identity_hash, fantom_name, imported_name, created_at, detail)
+                 VALUES ('scene', 'split', 'Encore', 'Encore', 0, ?1)",
+                [serde_json::to_string(&crate::model::AssetDetail::Scene(stored)).unwrap()],
+            )
+            .unwrap();
+        let id = ws.db().last_insert_rowid();
+
+        let asset = catalog::asset(&ws, id).unwrap();
+        let crate::model::AssetDetail::Scene(scene) = &asset.detail else {
+            panic!("a scene");
+        };
+        assert_eq!(
+            scene.external_refs,
+            [
+                "SN-AP EXSN03 PC 000 \"Classic Piano\"",
+                "MODEL JP8 PC 001 \"Brass\"",
+            ]
+        );
+        assert_eq!(
+            scene.factory_refs,
+            [
+                "ZEN-Core PR-A PC 060 \"Ac Pop Piano 1\"",
+                "Drum CMN PC 051 \"TR-707&727 comp\"",
+            ]
+        );
+
+        // Which list a reference lands in is about acting on it, not finding it: both are still
+        // filterable, and a scene needing an expansion still reads as needing yours.
+        let models = facet::models_of(&asset);
+        assert!(models.contains(&"ZEN-Core PR-A".to_string()), "{models:?}");
+        assert!(models.contains(&"MODEL JP8".to_string()), "{models:?}");
+        assert_eq!(
+            facet::plays_of(&asset),
+            Some(crate::model::Plays::NeedsYours)
+        );
+    }
+
     /// The inventory is the input a requirements check had no way to ask for.
     ///
     /// A file states what it needs and a backup states what samples an instrument holds, but only
