@@ -42,6 +42,15 @@ pub(crate) enum Command {
         /// A destination to check against — a full backup of the instrument you will load onto.
         #[arg(long, value_name = "FILE")]
         against: Option<PathBuf>,
+        /// An expansion the destination instrument has loaded, e.g. `EXZ007`. Repeatable.
+        ///
+        /// No file lists what is installed, so this is how you say. Naming any expansion at all
+        /// turns the guesswork into answers: one you do not name reads as not owned.
+        #[arg(long, value_name = "CODE")]
+        installed: Vec<String>,
+        /// An expansion you own but have not loaded into a slot. Repeatable.
+        #[arg(long, value_name = "CODE")]
+        owned: Vec<String>,
     },
     /// Inspect a file's envelope: size, magic, and a hexdump of its head.
     Inspect {

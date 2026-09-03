@@ -7,6 +7,7 @@ use std::process::ExitCode;
 use clap::Parser;
 use fantom_core::container::Raw;
 use fantom_core::params;
+use fantom_core::requirements::ExpansionInventory;
 
 mod cli;
 mod render;
@@ -30,7 +31,12 @@ fn main() -> ExitCode {
         Command::Areas { command } => match command {
             AreasCommand::List { file } => run_areas(&file),
         },
-        Command::Check { file, against } => run_check(&file, against.as_ref()),
+        Command::Check {
+            file,
+            against,
+            installed,
+            owned,
+        } => run_check(&file, against.as_ref(), &installed, &owned),
         Command::Tones { command } => match command {
             TonesCommand::List { file } => run_tones(&file),
             TonesCommand::Extract {
@@ -316,9 +322,16 @@ fn window(raw: &Raw, at: usize, len: usize) -> Vec<u8> {
 ///
 /// The dependency closure is the single most important fact about a file somebody hands you: a
 /// bank referencing EXZ007 or sample slot 7 loads on any instrument and quietly plays something
-/// else. Without `--against` this names the requirements; with it, each one is weighed against
-/// what the other file shows it holds, and anything unmet exits non-zero so it works as a gate.
-fn run_check(file: &PathBuf, against: Option<&PathBuf>) -> fantom_core::Result<String> {
+/// else. With neither `--against` nor an expansion named this only lists the requirements; each
+/// input answers a different half of them — a backup answers for the sample slots, the expansion
+/// flags for the content that lives in the instrument — and anything unmet exits non-zero so it
+/// works as a gate.
+fn run_check(
+    file: &PathBuf,
+    against: Option<&PathBuf>,
+    installed: &[String],
+    owned: &[String],
+) -> fantom_core::Result<String> {
     let raw = Raw::open(file)?;
     let needs = fantom_core::requirements::requirements(&raw)?;
 
@@ -343,7 +356,8 @@ fn run_check(file: &PathBuf, against: Option<&PathBuf>) -> fantom_core::Result<S
     }
     let _ = writeln!(out);
 
-    let Some(destination) = against else {
+    let inventory = expansion_inventory(installed, owned);
+    if against.is_none() && inventory.is_empty() {
         match render::requirements(&needs) {
             report if report.is_empty() => {
                 let _ = writeln!(out, "needs nothing from its destination");
@@ -351,15 +365,26 @@ fn run_check(file: &PathBuf, against: Option<&PathBuf>) -> fantom_core::Result<S
             report => out.push_str(&report),
         }
         return Ok(out);
-    };
+    }
 
-    let held = fantom_core::requirements::inventory(&Raw::open(destination)?)?;
-    let _ = writeln!(
-        out,
-        "against: {} ({})\n",
-        destination.display(),
-        held.role.as_str()
-    );
+    let mut held = match against {
+        Some(destination) => {
+            let held = fantom_core::requirements::inventory(&Raw::open(destination)?)?;
+            let _ = writeln!(
+                out,
+                "against: {} ({})",
+                destination.display(),
+                held.role.as_str()
+            );
+            held
+        }
+        None => fantom_core::requirements::Inventory::default(),
+    };
+    if !inventory.is_empty() {
+        out.push_str(&inventory_note(&inventory));
+        held = held.with_expansions(inventory);
+    }
+    let _ = writeln!(out);
 
     let findings = fantom_core::requirements::compare(&needs, &held);
     if findings.is_empty() {
@@ -393,9 +418,10 @@ fn run_check(file: &PathBuf, against: Option<&PathBuf>) -> fantom_core::Result<S
     if unknown > 0 {
         let _ = writeln!(
             out,
-            "{unknown} requirement{} no file can answer: nothing in one lists the expansions an\n\
-             instrument has installed, and a bank naming no samples of its own cannot be matched\n\
-             by name against the slots it points at. Check those on the panel.",
+            "{unknown} requirement{} nothing here can answer: no file lists the expansions an\n\
+             instrument has installed — name them with --installed/--owned — and a bank naming no\n\
+             samples of its own cannot be matched by name against the slots it points at. Check\n\
+             those on the panel.",
             render::plural(unknown)
         );
     }
@@ -697,6 +723,45 @@ fn run_edit(
     Ok(out)
 }
 
+/// The expansions the player named on the command line, as the inventory a check weighs against.
+///
+/// Nothing named is nothing said: an empty inventory leaves the installed-content requirements
+/// unanswered rather than reporting every one of them as unowned.
+fn expansion_inventory(installed: &[String], owned: &[String]) -> ExpansionInventory {
+    let mut inventory = ExpansionInventory::default();
+    for code in installed {
+        inventory.record(code, true, true);
+    }
+    for code in owned {
+        inventory.record(code, true, false);
+    }
+    inventory
+}
+
+/// What the report says it was told, so a verdict can be read back to the flags behind it.
+///
+/// The shelved list is what is owned and not loaded, because that is the line the two flags exist
+/// to draw; an expansion in both would otherwise read as an instruction to load what is loaded.
+fn inventory_note(inventory: &ExpansionInventory) -> String {
+    let list = |codes: &[&String]| {
+        codes
+            .iter()
+            .map(|code| code.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+    let mut out = String::new();
+    let installed: Vec<&String> = inventory.installed.iter().collect();
+    if !installed.is_empty() {
+        let _ = writeln!(out, "installed: {}", list(&installed));
+    }
+    let shelved: Vec<&String> = inventory.owned.difference(&inventory.installed).collect();
+    if !shelved.is_empty() {
+        let _ = writeln!(out, "owned:     {}", list(&shelved));
+    }
+    out
+}
+
 /// What a rebuilt bank still needs from wherever it is loaded.
 ///
 /// The output is the file the user will carry across, so it is the one whose requirements matter —
@@ -994,11 +1059,24 @@ mod tests {
     use super::*;
     use clap::CommandFactory;
     use fantom_core::diff::ByteRun;
+    use fantom_core::requirements::Verdict;
 
     #[test]
     fn scenes_list_is_accepted() {
         let cli = Cli::try_parse_from(["fantom", "scenes", "list", "bank.svd"]);
         assert!(cli.is_ok());
+    }
+
+    /// Naming nothing has to stay distinguishable from naming an instrument that holds nothing:
+    /// an empty inventory leaves the expansions unanswered instead of calling them all unowned.
+    #[test]
+    fn the_named_expansions_read_as_an_inventory() {
+        assert!(expansion_inventory(&[], &[]).is_empty());
+
+        let held = expansion_inventory(&["exz008".into()], &["EXZ005".into()]);
+        assert_eq!(held.verdict("EXZ008"), Verdict::Met);
+        assert_eq!(held.verdict("EXZ005"), Verdict::NotLoaded);
+        assert_eq!(held.verdict("EXZ002"), Verdict::Missing);
     }
 
     #[test]
@@ -1076,6 +1154,15 @@ mod tests {
             &["fantom", "areas", "list", "bank.svd"],
             &["fantom", "check", "bank.svd"],
             &["fantom", "check", "theirs.svd", "--against", "mine.SVD"],
+            &[
+                "fantom",
+                "check",
+                "theirs.svd",
+                "--installed",
+                "EXZ008",
+                "--owned",
+                "EXZ005",
+            ],
             &["fantom", "inspect", "bank.svd", "--length", "512"],
             &[
                 "fantom",

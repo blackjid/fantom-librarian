@@ -10,9 +10,7 @@
 //! SQL — is the kind of split that drifts.
 
 use fantom_core::model::{model_label, ToneType};
-use fantom_core::requirements::is_factory_bank;
-
-use std::collections::HashSet;
+use fantom_core::requirements::{is_factory_bank, ExpansionInventory};
 
 use crate::model::{Asset, AssetDetail, Facet, Facets, Plays, Query};
 
@@ -89,15 +87,18 @@ pub fn plays_of(asset: &Asset) -> Option<Plays> {
     })
 }
 
-/// Whether an asset depends on a named expansion that is absent from the instrument inventory.
+/// Whether an asset depends on a named expansion the instrument does not currently hold.
 ///
 /// A tone can name an expansion through its own bank or the waves its partials use. A scene can
 /// do the same through its zones. Unknown bank addresses remain visible: without a product code,
 /// the inventory cannot honestly say whether they are installed.
-pub fn needs_uninstalled_expansion(asset: &Asset, installed: &HashSet<String>) -> bool {
+///
+/// Owning it does not count: this filter is about what plays right now, and it asks the inventory
+/// the same question a requirement's verdict asks first.
+pub fn needs_uninstalled_expansion(asset: &Asset, held: &ExpansionInventory) -> bool {
     expansion_codes(asset)
         .into_iter()
-        .any(|code| !installed.contains(&code.to_ascii_uppercase()))
+        .any(|code| !held.is_installed(code))
 }
 
 fn expansion_codes(asset: &Asset) -> Vec<&str> {

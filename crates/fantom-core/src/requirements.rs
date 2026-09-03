@@ -13,14 +13,16 @@
 //! answers many times, or the free functions ([`requirements`], [`scene_requirements`],
 //! [`tone_requirements`]) for a one-shot answer.
 //!
-//! # What a second file can and cannot answer
+//! # What a destination can and cannot answer
 //!
-//! [`compare`] weighs a requirement list against an [`Inventory`] read from the destination, and is
-//! deliberately uneven about it because the format is. A backup names every occupied sample slot,
+//! [`compare`] weighs a requirement list against an [`Inventory`], and is deliberately uneven about
+//! it because its two halves come from different places. A backup names every occupied sample slot,
 //! so those can be checked one by one. Nothing in any file has been found to list which expansions
-//! an instrument has installed, so those come back [`Verdict::Unknown`] — "here is what it needs,
-//! compare by hand" — rather than as a guess. Silence is the dangerous answer here, so an address
-//! we cannot even classify is reported too, as [`Requirements::unclassified`].
+//! an instrument has installed, so that half arrives as an [`ExpansionInventory`] the player keeps
+//! by hand: with one, an expansion requirement reads as installed, owned but not loaded, or not
+//! owned; without one it stays [`Verdict::Unknown`] — "here is what it needs, compare by hand" —
+//! rather than becoming a guess. Silence is the dangerous answer here, so an address we cannot even
+//! classify is reported too, as [`Requirements::unclassified`].
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -169,6 +171,17 @@ impl BankRequirement {
     /// error is to mention something the destination turns out to have.
     pub fn is_factory(&self) -> bool {
         self.bank.as_deref().is_some_and(is_factory_bank)
+    }
+
+    /// The expansion product this asks for, when the bank names one.
+    ///
+    /// The bank label *is* the product code for everything that has to be installed, which is what
+    /// lets a requirement be weighed against an [`ExpansionInventory`]. Factory banks name no
+    /// product because nobody installs them, and `USER` names the instrument's own memory.
+    pub fn product(&self) -> Option<&str> {
+        self.bank
+            .as_deref()
+            .filter(|bank| !is_factory_bank(bank) && *bank != "USER")
     }
 
     /// How the requirement reads in a list. An unconfirmed bank shows its raw `LSB` rather than an
@@ -350,11 +363,15 @@ impl<'a> Reader<'a> {
     }
 
     /// What this file shows it holds, for weighing another file's requirements against it.
+    ///
+    /// Samples only: the expansions are a fact about the instrument, not about the file, so they
+    /// are left for [`Inventory::with_expansions`] to add.
     pub fn inventory(&self) -> Inventory {
         Inventory {
             role: role::of(self.raw),
             samples: held(self.bank.slots.iter().map(|s| (s.index, &s.name))),
             multisamples: held(self.bank.multisamples.iter().map(|m| (m.index, &m.name))),
+            expansions: None,
         }
     }
 
@@ -645,6 +662,9 @@ pub struct Inventory {
     pub samples: Vec<HeldSlot>,
     /// Multisample slots the file defines, 1-based.
     pub multisamples: Vec<HeldSlot>,
+    /// The expansions the destination has, when anyone has said. `None` is not "owns nothing": no
+    /// file lists them, so an inventory only exists where a player kept one.
+    pub expansions: Option<ExpansionInventory>,
 }
 
 /// One slot a destination holds, and what is in it.
@@ -664,6 +684,12 @@ impl Inventory {
     pub fn knows_samples(&self) -> bool {
         self.role == Role::Backup || !self.samples.is_empty()
     }
+
+    /// Add what the player says their instrument has, which no file can say for them.
+    pub fn with_expansions(mut self, expansions: ExpansionInventory) -> Self {
+        self.expansions = Some(expansions);
+        self
+    }
 }
 
 /// Read what a destination file holds. See [`Reader::inventory`].
@@ -680,6 +706,62 @@ fn held<'a>(slots: impl Iterator<Item = (usize, &'a String)>) -> Vec<HeldSlot> {
         .collect()
 }
 
+/// Which expansions a player owns, and which the instrument currently holds.
+///
+/// The one thing about a destination that no file states, so this arrives from wherever that
+/// hand-kept note lives rather than from bytes. The two flags are independent; see
+/// `fantom_library::catalog::expansions` for why.
+///
+/// Codes are addressed case-insensitively: a catalogued product keeps its own case (`n/zyme`) while
+/// a hand-recorded one is whatever was typed.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(default))]
+pub struct ExpansionInventory {
+    /// Product codes the player has bought, loaded or not.
+    pub owned: BTreeSet<String>,
+    /// Product codes the instrument currently holds.
+    pub installed: BTreeSet<String>,
+}
+
+impl ExpansionInventory {
+    /// Record one product, as the two flags a workspace stores.
+    pub fn record(&mut self, product: &str, owned: bool, installed: bool) {
+        let code = product.to_ascii_uppercase();
+        if owned {
+            self.owned.insert(code.clone());
+        }
+        if installed {
+            self.installed.insert(code);
+        }
+    }
+
+    /// Whether the instrument currently holds this product.
+    ///
+    /// The question a browse filter asks, and the first thing a verdict asks: what plays is what is
+    /// loaded, whether or not anyone recorded buying it.
+    pub fn is_installed(&self, product: &str) -> bool {
+        self.installed.contains(&product.to_ascii_uppercase())
+    }
+
+    /// Whether nothing at all has been recorded — a note nobody has written in yet.
+    pub fn is_empty(&self) -> bool {
+        self.owned.is_empty() && self.installed.is_empty()
+    }
+
+    /// How one product stands: [`Verdict::Met`] when the instrument holds it,
+    /// [`Verdict::NotLoaded`] when it is owned and has to be loaded, [`Verdict::Missing`] when it
+    /// has to be bought. A lookup, so an unrecorded product reads as unowned; whether the note is
+    /// worth believing is [`compare`]'s question.
+    pub fn verdict(&self, product: &str) -> Verdict {
+        match () {
+            _ if self.is_installed(product) => Verdict::Met,
+            _ if self.owned.contains(&product.to_ascii_uppercase()) => Verdict::NotLoaded,
+            _ => Verdict::Missing,
+        }
+    }
+}
+
 /// How one requirement stands against a destination.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -689,6 +771,8 @@ pub enum Verdict {
     Met,
     /// The destination does not have it.
     Missing,
+    /// The player owns the expansion, but the instrument does not currently hold it.
+    NotLoaded,
     /// Something is at that slot, but not this.
     Differs,
     /// The format cannot answer: compare by hand.
@@ -700,14 +784,18 @@ impl Verdict {
         match self {
             Self::Met => "met",
             Self::Missing => "missing",
+            Self::NotLoaded => "not loaded",
             Self::Differs => "differs",
             Self::Unknown => "unknown",
         }
     }
 
     /// Whether this verdict should stop an import or fail a gate.
+    ///
+    /// An expansion sitting unloaded on the shelf is as unmet as one nobody owns: the material
+    /// plays the wrong sound until someone acts. What differs is the instruction, not the verdict.
     pub fn is_problem(self) -> bool {
-        matches!(self, Self::Missing | Self::Differs)
+        matches!(self, Self::Missing | Self::Differs | Self::NotLoaded)
     }
 }
 
@@ -789,13 +877,14 @@ pub fn compare(needs: &Requirements, held: &Inventory) -> Vec<Finding> {
         });
     }
 
-    // Everything below lives in the instrument rather than in any file, so no file can confirm
-    // it — except the factory banks, which are in every instrument by definition.
+    // Everything below lives in the instrument rather than in any file, so only the player's
+    // inventory can confirm it — except the factory banks, which are in every instrument by
+    // definition.
     for bank in &needs.banks {
         let (verdict, detail) = if bank.is_factory() {
             (Verdict::Met, "factory content, in every FANTOM".into())
         } else {
-            (Verdict::Unknown, INSTALLED_CONTENT.to_string())
+            weigh_expansion(bank.product(), held)
         };
         findings.push(Finding {
             requirement: bank.label(),
@@ -804,10 +893,11 @@ pub fn compare(needs: &Requirements, held: &Inventory) -> Vec<Finding> {
         });
     }
     for expansion in &needs.wave_expansions {
+        let (verdict, detail) = weigh_expansion(expansion.product.as_deref(), held);
         findings.push(Finding {
             requirement: expansion.label(),
-            verdict: Verdict::Unknown,
-            detail: INSTALLED_CONTENT.into(),
+            verdict,
+            detail,
         });
     }
     for address in &needs.unclassified {
@@ -824,10 +914,34 @@ pub fn compare(needs: &Requirements, held: &Inventory) -> Vec<Finding> {
     findings
 }
 
-/// Why an installed-content requirement can never be confirmed from a file: no area listing what
-/// an instrument has installed has been identified. Named once so the three places using it cannot
-/// drift, and kept short because a report repeats it per requirement.
-const INSTALLED_CONTENT: &str = "not listed by any file";
+/// Weigh one installed-content requirement against the inventory, and say what to do about it.
+///
+/// Three ways to answer nothing but honestly, all reported as [`Verdict::Unknown`] rather than
+/// guessed at: no inventory at all; an inventory nobody has written in yet, which is not a
+/// statement that nothing is owned; and a requirement naming no product to look up — an address
+/// whose bank is unconfirmed, or a wave group id past what this build decodes.
+fn weigh_expansion(product: Option<&str>, held: &Inventory) -> (Verdict, String) {
+    let (Some(product), Some(inventory)) = (product, held.expansions.as_ref()) else {
+        return (Verdict::Unknown, INSTALLED_CONTENT.to_string());
+    };
+    if inventory.is_empty() {
+        return (Verdict::Unknown, INSTALLED_CONTENT.to_string());
+    }
+    let verdict = inventory.verdict(product);
+    let detail = match verdict {
+        Verdict::Met => format!("{product} is installed"),
+        Verdict::NotLoaded => format!("{product} is owned: load it into a slot"),
+        Verdict::Missing | Verdict::Differs | Verdict::Unknown => {
+            format!("{product} is not in the inventory")
+        }
+    };
+    (verdict, detail)
+}
+
+/// Why an installed-content requirement is unanswerable: no area listing what an instrument has
+/// installed has been identified, and no inventory was given to make up for it. Kept short because
+/// a report repeats it per requirement.
+const INSTALLED_CONTENT: &str = "no file lists this, and no inventory says";
 
 fn sample_label(kind: &str, slot: &SlotRequirement) -> String {
     match &slot.name {
@@ -845,6 +959,8 @@ mod tests {
         assert!(Verdict::Missing.is_problem());
         assert!(Verdict::Differs.is_problem());
         assert!(!Verdict::Met.is_problem());
+        // Owned but not loaded is unmet: the sound does not play until someone loads it.
+        assert!(Verdict::NotLoaded.is_problem());
         // The whole point of the honest answer: it informs without pretending to decide.
         assert!(!Verdict::Unknown.is_problem());
     }
@@ -925,7 +1041,7 @@ mod tests {
                 slot: 3,
                 name: name.into(),
             }],
-            multisamples: Vec::new(),
+            ..Inventory::default()
         };
 
         assert_eq!(
@@ -974,7 +1090,7 @@ mod tests {
                 slot: 22,
                 name: "doh duh 2".into(),
             }],
-            multisamples: Vec::new(),
+            ..Inventory::default()
         };
         assert_eq!(
             needs.named_from(&source).samples[0].name.as_deref(),
@@ -1069,5 +1185,106 @@ mod tests {
             compare(&factory, &Inventory::default())[0].verdict,
             Verdict::Met
         );
+    }
+
+    /// Three answers, not two: owning an expansion and having it loaded are different facts, so
+    /// "buy it" and "load it" are different instructions.
+    #[test]
+    fn an_expansion_inventory_answers_installed_owned_and_neither() {
+        let mut held = ExpansionInventory::default();
+        held.record("EXZ007", true, true);
+        held.record("EXSN03", true, false);
+        // What plays is what the instrument holds, not what was paid for.
+        held.record("JP8", false, true);
+        held.record("n/zyme", true, false);
+
+        assert_eq!(held.verdict("EXZ007"), Verdict::Met);
+        assert_eq!(held.verdict("EXSN03"), Verdict::NotLoaded);
+        assert_eq!(held.verdict("JP8"), Verdict::Met);
+        assert_eq!(held.verdict("EXZ001"), Verdict::Missing);
+        // A catalogued code keeps its own case, so codes are addressed case-insensitively.
+        assert_eq!(held.verdict("N/ZYME"), Verdict::NotLoaded);
+    }
+
+    /// The inventory is the input that turns "compare by hand" into an instruction.
+    #[test]
+    fn expansions_weighed_against_an_inventory_stop_answering_unknown() {
+        let exz = |code: &str, lsb: u8| BankRequirement {
+            engine: ToneType::Exz,
+            bank: Some(code.into()),
+            tone: None,
+            address: ToneAddress {
+                msb: 93,
+                lsb,
+                pc: 3,
+            },
+        };
+        let needs = Requirements {
+            banks: vec![
+                exz("EXZ007", 7),
+                exz("EXZ008", 11),
+                exz("EXZ012", 15),
+                BankRequirement {
+                    engine: ToneType::Acb,
+                    bank: None,
+                    tone: None,
+                    address: ToneAddress {
+                        msb: 107,
+                        lsb: 72,
+                        pc: 3,
+                    },
+                },
+            ],
+            wave_expansions: vec![WaveExpansion::new(1005), WaveExpansion::new(4)],
+            ..Requirements::default()
+        };
+
+        let mut inventory = ExpansionInventory::default();
+        inventory.record("EXZ007", true, true);
+        inventory.record("EXZ008", true, false);
+        inventory.record("EXZ005", true, true);
+        let held = Inventory::default().with_expansions(inventory);
+
+        let findings = compare(&needs, &held);
+        let finding = |needle: &str| {
+            findings
+                .iter()
+                .find(|finding| finding.requirement.contains(needle))
+                .unwrap_or_else(|| panic!("nothing reported for {needle}"))
+        };
+        assert_eq!(finding("EXZ007").verdict, Verdict::Met);
+        assert_eq!(finding("EXZ008").verdict, Verdict::NotLoaded);
+        assert_eq!(finding("EXZ012").verdict, Verdict::Missing);
+        assert_eq!(finding("wave expansion EXZ005").verdict, Verdict::Met);
+        // Unknown survives only where it is the honest answer: an address no bank name covers, and
+        // a wave group id this build cannot decode into a product.
+        assert_eq!(finding("ACB LSB 72").verdict, Verdict::Unknown);
+        assert_eq!(finding("group id 4").verdict, Verdict::Unknown);
+
+        // Each answer says what to do about it, and names the product to act on.
+        assert!(finding("EXZ008").detail.contains("EXZ008"));
+        assert!(finding("EXZ012").detail.contains("EXZ012"));
+    }
+
+    /// A note nobody has written in is not a statement that nothing is owned.
+    ///
+    /// The inventory is kept by hand, so an empty one is the same silence a file gives — and
+    /// answering "buy all of these" to a player who simply never filled it in would be the
+    /// confident wrong answer this type exists to avoid.
+    #[test]
+    fn an_inventory_with_nothing_recorded_answers_unknown_rather_than_unowned() {
+        let needs = Requirements {
+            wave_expansions: vec![WaveExpansion::new(1008)],
+            ..Requirements::default()
+        };
+
+        let blank = Inventory::default().with_expansions(ExpansionInventory::default());
+        assert_eq!(compare(&needs, &blank)[0].verdict, Verdict::Unknown);
+
+        // One product recorded is a note, and it speaks for the products it does not name.
+        let mut kept = ExpansionInventory::default();
+        kept.record("EXZ007", true, true);
+        let held = Inventory::default().with_expansions(kept);
+        assert_eq!(compare(&needs, &held)[0].verdict, Verdict::Missing);
     }
 }

@@ -1,10 +1,11 @@
 //! Reading and editing the catalog: what the library shows, and the handful of things v1 lets a
 //! user change about it.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use fantom_core::expansions::{self, Family};
 use fantom_core::model::ToneType;
+use fantom_core::requirements::ExpansionInventory;
 use rusqlite::{params, params_from_iter, Row};
 
 use crate::facet;
@@ -195,8 +196,8 @@ fn select(ws: &Workspace, query: &Query) -> Result<Vec<Asset>> {
     if narrowing {
         out.retain(|asset| facet::matches(asset, query));
         if query.hide_uninstalled_expansions {
-            let installed = installed_expansions(ws)?;
-            out.retain(|asset| !facet::needs_uninstalled_expansion(asset, &installed));
+            let held = expansion_inventory(ws)?;
+            out.retain(|asset| !facet::needs_uninstalled_expansion(asset, &held));
         }
         if let Some(limit) = query.limit {
             out.truncate(limit.max(0) as usize);
@@ -205,16 +206,37 @@ fn select(ws: &Workspace, query: &Query) -> Result<Vec<Asset>> {
     Ok(out)
 }
 
-fn installed_expansions(ws: &Workspace) -> Result<HashSet<String>> {
+/// What the workspace says the instrument has, in the shape a requirements check weighs against.
+///
+/// The two flags a player keeps by hand are the half of a compatibility check no file carries, so
+/// this is what turns "compare EXSN03 by hand" into "you own it, load it". Only the flags travel:
+/// which expansion a requirement actually needs is [`fantom_core::requirements`]' question.
+pub fn expansion_inventory(ws: &Workspace) -> Result<ExpansionInventory> {
+    let mut inventory = ExpansionInventory::default();
+    for (code, owned, installed) in recorded_expansions(ws)? {
+        inventory.record(&code, owned, installed);
+    }
+    Ok(inventory)
+}
+
+/// Every row of the inventory table as it is stored: code, owned, installed.
+///
+/// The one reader of the table, so the list and the verdicts cannot come to disagree about what is
+/// in it. The stored code keeps its case here; normalising it is the caller's business.
+fn recorded_expansions(ws: &Workspace) -> Result<Vec<(String, bool, bool)>> {
     let mut statement = ws
         .db()
-        .prepare("SELECT code FROM expansions WHERE installed != 0")?;
-    let rows = statement.query_map([], |row| row.get::<_, String>(0))?;
-    Ok(rows
-        .collect::<rusqlite::Result<Vec<_>>>()?
-        .into_iter()
-        .map(|code| code.to_ascii_uppercase())
-        .collect())
+        .prepare("SELECT code, owned, installed FROM expansions")?;
+    let mut rows = statement.query([])?;
+    let mut out = Vec::new();
+    while let Some(row) = rows.next()? {
+        out.push((
+            row.get(0)?,
+            row.get::<_, i64>(1)? != 0,
+            row.get::<_, i64>(2)? != 0,
+        ));
+    }
+    Ok(out)
 }
 
 /// One asset by id, with its tags and every source it was seen in.
@@ -628,17 +650,10 @@ pub struct Stats {
 ///
 /// Ordered by family then code, which is the order a list wants to show them in.
 pub fn expansions(ws: &Workspace) -> Result<Vec<ExpansionEntry>> {
-    let mut stored: HashMap<String, (bool, bool)> = HashMap::new();
-    let mut statement = ws
-        .db()
-        .prepare("SELECT code, owned, installed FROM expansions")?;
-    let mut rows = statement.query([])?;
-    while let Some(row) = rows.next()? {
-        stored.insert(
-            row.get(0)?,
-            (row.get::<_, i64>(1)? != 0, row.get::<_, i64>(2)? != 0),
-        );
-    }
+    let mut stored: HashMap<String, (bool, bool)> = recorded_expansions(ws)?
+        .into_iter()
+        .map(|(code, owned, installed)| (code, (owned, installed)))
+        .collect();
 
     let mut entries: Vec<ExpansionEntry> = expansions::products()
         .iter()
