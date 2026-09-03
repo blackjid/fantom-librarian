@@ -43,6 +43,7 @@ pub(crate) fn now() -> i64 {
 mod tests {
     use super::*;
     use crate::model::{AssetKind, Query, SourceInfo};
+    use fantom_core::requirements::Verdict;
     use std::path::PathBuf;
 
     /// A workspace in a temp dir, plus the repo's committed fixtures.
@@ -234,6 +235,31 @@ mod tests {
         let listed = catalog::expansions(&reopened).unwrap();
         assert_eq!(state(&listed, "EXZ007"), Some((true, false)));
         assert_eq!(state(&listed, "EXZ099"), Some((true, false)));
+    }
+
+    /// The inventory is the input a requirements check had no way to ask for.
+    ///
+    /// A file states what it needs and a backup states what samples an instrument holds, but only
+    /// the player can say which expansions are bought and which are loaded — so the verdicts are
+    /// only as good as this reading of their note.
+    #[test]
+    fn the_recorded_inventory_answers_what_no_file_can() {
+        let (_dir, ws) = workspace();
+
+        // A workspace nobody has told anything reads as a note with nothing in it, which is what
+        // lets a check tell "not owned" apart from "never said".
+        assert!(catalog::expansion_inventory(&ws).unwrap().is_empty());
+
+        catalog::set_expansion(&ws, "EXZ007", true, true).unwrap();
+        catalog::set_expansion(&ws, "EXSN03", true, false).unwrap();
+        catalog::set_expansion(&ws, "n/zyme", false, true).unwrap();
+
+        let held = catalog::expansion_inventory(&ws).unwrap();
+        assert_eq!(held.verdict("EXZ007"), Verdict::Met);
+        assert_eq!(held.verdict("EXSN03"), Verdict::NotLoaded);
+        assert_eq!(held.verdict("EXZ008"), Verdict::Missing);
+        // Stored under the catalog's own case, addressed by the case a bank label uses.
+        assert_eq!(held.verdict("N/ZYME"), Verdict::Met);
     }
 
     #[test]

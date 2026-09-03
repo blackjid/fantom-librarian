@@ -247,11 +247,15 @@ cannot classify, which is reported rather than dropped. It is serde-serialisable
 `scenes show`, `extract`, `canary`, and `merge` all report from it, and the library stores it per
 asset at import.
 
-Against a second file it goes as far as the format allows and no further. Sample slots are checked
-one by one — reading NARF against the backup it came from resolves all 50 by name — while nothing
-in any file has been found to list an instrument's installed expansions, so those come back
-`unknown` with the requirement named, rather than as a guess. Derived from the bytes alone, NARF's
-closure is exactly user sample slots 1–50: the placement its printed instructions demand.
+Against a destination it goes as far as its inputs allow and no further, and the two halves of a
+check have different inputs. Sample slots are read out of a second file — `check --against` a full
+backup resolves all 50 of NARF's by name. Nothing in any file has been found to list an instrument's
+installed expansions, so that half is stated rather than read: `check --installed EXZ008 --owned
+EXZ005`, or the workspace's expansion inventory, which the library keeps per product. Given one, a
+requirement reads `met`, `not loaded` (owned, still on the shelf) or `missing` (not owned at all);
+given none, it is named and left `unknown` rather than guessed at — and an inventory nobody has
+written in counts as none. Derived from the bytes alone, NARF's closure is exactly user sample
+slots 1–50: the placement its printed instructions demand.
 
 ## Usage
 
@@ -289,6 +293,10 @@ cargo run -p fantom-cli -- check theirs/FANTOM.SVD
 # Weigh those requirements against a destination — a backup of the instrument you will load
 # onto. Unmet requirements exit non-zero, so this works as a preflight gate too.
 cargo run -p fantom-cli -- check theirs/FANTOM.SVD --against mine/FANTOM.SVD
+
+# No file says which expansions an instrument has, so name them: one you leave out reads as
+# not owned, and one you own but have not loaded reads as the load it needs.
+cargo run -p fantom-cli -- check theirs/FANTOM.SVD --installed EXZ008 --owned EXZ005
 
 # Lift a user tone out of a backup as a self-contained .svz, carrying the samples it plays.
 # --area RHYa takes a drum kit instead. Works on an .svz source too, repackaging in place.

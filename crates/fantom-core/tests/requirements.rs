@@ -195,6 +195,43 @@ fn a_bank_checked_against_its_own_instrument_finds_its_samples() {
         .any(|f| f.requirement.starts_with("wave expansion") && f.verdict == Verdict::Unknown));
 }
 
+/// The half of a check no file carries: which expansions the player owns, and which are loaded.
+///
+/// The same pack against the same instrument reads three different ways, and the difference is
+/// entirely the note the player kept. Without that note the honest answer is still unknown.
+#[test]
+fn an_inventory_turns_the_packs_expansions_into_instructions() {
+    let (Some(pack), Some(instrument)) = (private(NARF_EXPORT), private(NARF_BACKUP)) else {
+        return;
+    };
+    let needs = requirements::requirements(&pack).unwrap();
+    let from_file = Reader::open(&instrument).unwrap().inventory();
+
+    let weigh = |held: &requirements::Inventory| -> Vec<Verdict> {
+        requirements::compare(&needs, held)
+            .into_iter()
+            .filter(|finding| finding.requirement == "wave expansion EXZ008")
+            .map(|finding| finding.verdict)
+            .collect()
+    };
+
+    assert_eq!(weigh(&from_file), vec![Verdict::Unknown]);
+
+    // A note that names other products, and not this one, is saying it is not owned.
+    let mut inventory = requirements::ExpansionInventory::default();
+    inventory.record("EXZ007", true, true);
+    let elsewhere = from_file.clone().with_expansions(inventory.clone());
+    assert_eq!(weigh(&elsewhere), vec![Verdict::Missing]);
+
+    inventory.record("EXZ008", true, false);
+    let shelved = from_file.clone().with_expansions(inventory.clone());
+    assert_eq!(weigh(&shelved), vec![Verdict::NotLoaded]);
+
+    inventory.record("EXZ008", true, true);
+    let loaded = from_file.with_expansions(inventory);
+    assert_eq!(weigh(&loaded), vec![Verdict::Met]);
+}
+
 /// What an extracted bank needs is what the scenes in it needed, no more.
 ///
 /// Repackaging renumbers the tones it bundles, so the closure has to survive being rebuilt: the
