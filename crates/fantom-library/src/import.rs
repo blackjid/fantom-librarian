@@ -450,6 +450,8 @@ pub(crate) fn scene_detail(scene: &Scene, reader: Option<&Reader<'_>>) -> SceneD
             .collect(),
         user_tones,
         external_refs: external.into_iter().collect(),
+        // Told apart when the asset is read, so one catalog shape answers however old the row is.
+        factory_refs: Vec::new(),
         requirements: reader.map(|reader| reader.scene(scene)).unwrap_or_default(),
     }
 }

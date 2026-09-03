@@ -35,7 +35,9 @@ pub fn models_of(asset: &Asset) -> Vec<String> {
             .collect(),
         AssetDetail::Scene(scene) => {
             let mut out: Vec<String> = Vec::new();
-            for reference in &scene.external_refs {
+            // Both lists: a filter for `ZEN-Core PR-A` is as good a way to find a scene as one for
+            // `MODEL JP8`, and which list a reference sits in is about acting on it, not finding it.
+            for reference in scene.external_refs.iter().chain(&scene.factory_refs) {
                 let bank = bank_of(reference);
                 if !bank.is_empty() && !out.contains(&bank) {
                     out.push(bank);
@@ -132,6 +134,16 @@ fn expansion_codes(asset: &Asset) -> Vec<&str> {
     }
     codes.retain(|code| fantom_core::expansions::is_product(code));
     codes
+}
+
+/// Whether a stored reference names content every FANTOM ships with, rather than something that
+/// has to be installed.
+///
+/// The reference is text by the time a catalog holds it, so this is where the string is turned back
+/// into the question [`fantom_core::requirements::BankRequirement::is_factory`] answers from typed
+/// data. One reader, so a browse filter, a detail pane and a requirements report cannot disagree.
+pub fn is_factory_ref(reference: &str) -> bool {
+    is_factory_bank(bank_label(reference))
 }
 
 /// The bank alone — `PR-A`, `JP8` — out of an `ENGINE BANK PC nnn` reference.
@@ -235,6 +247,7 @@ mod tests {
             groups: Vec::new(),
             user_tones: user_tones.iter().map(|t| t.to_string()).collect(),
             external_refs: refs.iter().map(|r| r.to_string()).collect(),
+            factory_refs: Vec::new(),
             requirements: Default::default(),
         }))
     }

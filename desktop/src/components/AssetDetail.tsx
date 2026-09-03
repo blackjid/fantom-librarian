@@ -258,24 +258,34 @@ function Overview({
             )}
           </Block>
 
-          {asset.detail.external_refs.length > 0 && (
+          {(asset.detail.external_refs.length > 0 || asset.detail.factory_refs.length > 0) && (
             <Block
               title="External requirements"
-              hint="Never substituted. These have to be present on the instrument."
+              hint="What its zones point at that lives in the instrument rather than in the file. Never substituted."
             >
-              <Alert>
-                <AlertTriangle />
-                <AlertTitle>
-                  {plural(asset.detail.external_refs.length, "reference")} outside your library
-                </AlertTitle>
-                <AlertDescription>
-                  <ul className="flex flex-col gap-0.5 font-mono text-xs">
-                    {asset.detail.external_refs.map((ref) => (
-                      <li key={ref}>{ref}</li>
-                    ))}
-                  </ul>
-                </AlertDescription>
-              </Alert>
+              {asset.detail.external_refs.length > 0 && (
+                <Alert>
+                  <AlertTriangle />
+                  <AlertTitle>
+                    {plural(asset.detail.external_refs.length, "reference")} that must be installed
+                  </AlertTitle>
+                  <AlertDescription>
+                    <ul className="flex flex-col gap-0.5 font-mono text-xs">
+                      {asset.detail.external_refs.map((ref) => (
+                        <li key={ref}>{ref}</li>
+                      ))}
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+              )}
+              {/* A preset is a dependency, but every FANTOM has it — so it is worth one line and
+                  no more. Listing them beside the ones to act on is what buries those. */}
+              {asset.detail.factory_refs.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Also plays {plural(asset.detail.factory_refs.length, "factory sound")}, which every
+                  FANTOM has.
+                </p>
+              )}
             </Block>
           )}
         </>
