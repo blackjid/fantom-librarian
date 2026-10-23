@@ -212,7 +212,7 @@ impl ToneBank {
             .map(|area| area.format)
             .unwrap_or(family[0].format);
 
-        // Anything else (DIFa) travels untouched.
+        // Anything else (DIFa) travels, with its origin stamp blanked.
         let handled: Vec<[u8; 4]> = family
             .iter()
             .map(|a| a.tag)
@@ -221,7 +221,13 @@ impl ToneBank {
         let mut other = Vec::new();
         for area in &svd.areas {
             if !handled.contains(&area.tag) {
-                other.push((area.clone(), svd.area_bytes(raw, area)?.to_vec()));
+                let body = svd.area_bytes(raw, area)?;
+                let body = if &area.tag == b"DIFa" {
+                    crate::origin::blank(area, body)
+                } else {
+                    body.to_vec()
+                };
+                other.push((area.clone(), body));
             }
         }
 

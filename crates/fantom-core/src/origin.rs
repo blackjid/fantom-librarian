@@ -9,7 +9,8 @@
 //! Layout and permutations recovered from Roland's ZENOLOGY plugin; decoding round-trips every
 //! FANTOM-6 backup in the corpus. See `docs/FORMAT.md`.
 
-use crate::container::{Raw, RecordTable, Svd};
+use crate::checksum::crc32;
+use crate::container::{Area, Raw, RecordTable, Svd};
 use crate::Result;
 
 /// Bytes in a stamp.
@@ -99,6 +100,27 @@ pub fn read(raw: &Raw) -> Result<Option<Origin>> {
         .map(decode))
 }
 
+/// `bytes` of a `DIFa` area with its stamp zeroed, and the record checksum refreshed when the area
+/// carries one. Anything that is not a one-stamp record table comes back unchanged.
+///
+/// What leaves the tool should not carry the source instrument's serial number. Zero is what the
+/// instrument writes in every SVZ export.
+pub fn blank(area: &Area, bytes: &[u8]) -> Vec<u8> {
+    let mut out = bytes.to_vec();
+    let Ok(table) = RecordTable::parse(area, bytes) else {
+        return out;
+    };
+    if table.record(0).map(<[u8]>::len) != Some(LEN) {
+        return out;
+    }
+    out[table.info_len..table.info_len + LEN].fill(0);
+    if table.info_stride() == 4 {
+        let at = RecordTable::HEADER_LEN;
+        out[at..at + 4].copy_from_slice(&crc32(&[0; LEN]).to_le_bytes());
+    }
+    out
+}
+
 fn shuffle(from: &[u8; LEN], map: impl Fn(u16, &[u8; 16]) -> u16) -> [u8; LEN] {
     let mut out = *from;
     let permutation = &PERMUTATIONS[(from[0] as usize + 4) % 5];
@@ -157,6 +179,52 @@ mod tests {
         let stamp = zenology(1);
         assert_eq!(stamp.product_str(), "423521A");
         assert_eq!(stamp.serial_str(), "");
+    }
+
+    fn area(body: &[u8]) -> Area {
+        Area {
+            tag: *b"DIFa",
+            format: *b"ZCOR",
+            offset: 0,
+            size: body.len() as u32,
+        }
+    }
+
+    /// One record of 32 bytes, with or without the SVZ checksum word.
+    fn stamped_area(with_checksum: bool) -> Vec<u8> {
+        let stamp = zenology(3).encode();
+        let info_len: u32 = if with_checksum { 20 } else { 16 };
+        let mut body = Vec::new();
+        for word in [1, LEN as u32, info_len, 0] {
+            body.extend_from_slice(&word.to_le_bytes());
+        }
+        if with_checksum {
+            body.extend_from_slice(&crc32(&stamp).to_le_bytes());
+        }
+        body.extend_from_slice(&stamp);
+        body
+    }
+
+    #[test]
+    fn blanking_an_svd_stamp_zeroes_the_record() {
+        let body = stamped_area(false);
+        let blanked = blank(&area(&body), &body);
+        assert_eq!(&blanked[..16], &body[..16]);
+        assert_eq!(&blanked[16..], &[0; LEN]);
+    }
+
+    #[test]
+    fn blanking_an_svz_stamp_refreshes_its_checksum() {
+        let body = stamped_area(true);
+        let blanked = blank(&area(&body), &body);
+        assert_eq!(&blanked[16..20], &crc32(&[0; LEN]).to_le_bytes());
+        assert_eq!(&blanked[20..], &[0; LEN]);
+    }
+
+    #[test]
+    fn an_unparseable_area_is_left_alone() {
+        let body = vec![0u8; 48];
+        assert_eq!(blank(&area(&body), &body), body);
     }
 
     /// Each row is a permutation, or decoding would lose bits.
