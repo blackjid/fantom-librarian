@@ -61,9 +61,8 @@ pub(crate) mod smpd {
     }
 }
 
-/// `DIFa` is 32 bytes and **all zero** in every SVZ the instrument writes — both the pack's
-/// sample-only file and a fresh single-tone export. It is not recomputed here because there is
-/// nothing to recompute.
+/// `DIFa` is 32 bytes and **all zero** in every SVZ the instrument writes — a blank origin stamp
+/// (see [`crate::origin`]).
 const DIF_LEN: usize = 32;
 
 /// The area order an SVZ sample file uses.

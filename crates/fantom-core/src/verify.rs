@@ -7,9 +7,12 @@
 //! What it can prove: every area's declared geometry matches its actual size, and every record
 //! whose area carries a CRC-32 still matches it. What it cannot: whether the *contents* mean what
 //! we think — only the instrument can answer that, which is what `canary` is for.
+//!
+//! It also reports the `DIFa` stamp: which device wrote the file. See [`crate::origin`].
 
 use crate::checksum::crc32;
 use crate::container::{Raw, RecordTable, Svd};
+use crate::origin::{self, Origin};
 use crate::Result;
 
 /// Something wrong with a file's structure.
@@ -76,6 +79,8 @@ pub struct Report {
     /// Areas that carry per-record checksums.
     pub areas_with_checksums: usize,
     pub problems: Vec<Problem>,
+    /// The `DIFa` stamp, when the file has one.
+    pub origin: Option<Origin>,
 }
 
 impl Report {
@@ -88,12 +93,15 @@ impl Report {
 /// Check a container's geometry and every record checksum it carries.
 pub fn check(raw: &Raw) -> Result<Report> {
     let svd = Svd::parse(raw)?;
-    let mut report = Report::default();
+    let mut report = Report {
+        origin: origin::read(raw)?,
+        ..Report::default()
+    };
 
     for area in &svd.areas {
         let bytes = svd.area_bytes(raw, area)?;
         let Ok(table) = RecordTable::parse(area, bytes) else {
-            continue; // not a record table (a bare DIFa blob, say) — nothing to check
+            continue; // not a record table (a zeroed DIFa, say) — nothing to check
         };
         let tag = area.tag_str();
 
