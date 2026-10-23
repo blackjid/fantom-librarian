@@ -1220,7 +1220,8 @@ moves to bit `P[(key-1) % 5][i]`. The five rows are in `crates/fantom-core/src/o
 
 Decoding round-trips every FANTOM-6 backup in the
 corpus. Every SVZ the instrument writes, and the PRISMA/TOP80 backups, carry a blank stamp.
-A copied stamp carries the source instrument's serial number. `fantom verify` prints it.
+The tool blanks it on every rebuild, so an output never carries the source's serial. `fantom verify`
+prints it.
 
 Smirnov75/svd5tool repacks backups without touching `DIFa`. Its `[xxxx]` filename tag is
 CRC-16/CCITT (poly `0x1021`, init `0xFFFF`) over each area body from `+0x10` — a label, not part of
@@ -1248,7 +1249,7 @@ the results decode identically.
 The output is always a self-contained scene-export bank. Writing a full backup — placing records
 back into fixed USER slots — is a separate problem and is not supported.
 
-`SYSa` and `DIFa` are copied verbatim. `SMPa`, `MLSa`, and `USDa` are recognised and deliberately
+`SYSa` is copied verbatim; `DIFa` is blanked. `SMPa`, `MLSa`, and `USDa` are recognised and deliberately
 **dropped**, because no decoded field links a tone to a sample; the CLI warns when a source carries
 user samples. Any area outside those sets stops the rebuild rather than being silently lost.
 

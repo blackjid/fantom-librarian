@@ -41,3 +41,13 @@ fn an_older_backup_is_blank() {
     };
     assert_eq!(origin::read(&raw).unwrap(), Some(Origin::Blank));
 }
+
+/// What leaves the tool does not carry the source instrument's serial number.
+#[test]
+fn an_extracted_bank_carries_a_blank_stamp() {
+    let Some(raw) = private("TONEMAP4/FANTOM.SVD") else {
+        return;
+    };
+    let bank = fantom_core::repackage::extract_scenes(&raw, &[1]).unwrap();
+    assert_eq!(origin::read(&bank).unwrap(), Some(Origin::Blank));
+}
