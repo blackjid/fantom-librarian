@@ -22,7 +22,8 @@ const COUNT_OFFSET: usize = 0;
 const RECORD_SIZE_OFFSET: usize = 4;
 const NAME_LEN: usize = address::NAME_LEN;
 
-/// Areas carried into the output unchanged: they belong to every SVD whatever its scope.
+/// Areas carried into the output: they belong to every SVD whatever its scope. `SYSa` is copied
+/// verbatim; `DIFa` has its origin stamp blanked (see [`crate::origin::blank`]).
 const PRESERVED: [&[u8; 4]; 2] = crate::container::COMMON_AREAS;
 
 /// Areas we recognise but deliberately leave behind — the user sample bank (23 MB in a full
@@ -466,7 +467,13 @@ fn rebuild_container(
             // A dependency area with nothing referencing it is left out; everything else that
             // survived the check above is copied verbatim.
             if let Some(area) = svd.area(&tag) {
-                areas.push((area.tag, area.format, svd.area_bytes(raw, area)?.to_vec()));
+                let body = svd.area_bytes(raw, area)?;
+                let body = if &tag == b"DIFa" {
+                    crate::origin::blank(area, body)
+                } else {
+                    body.to_vec()
+                };
+                areas.push((area.tag, area.format, body));
             }
         }
     }
