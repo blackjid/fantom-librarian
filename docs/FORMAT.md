@@ -71,7 +71,7 @@ USDa`; a scene export carries only the subset its scenes need, plus `SYSa`.
 | `USDa` | User sample waveform data (`SMPd` sections) |
 | `ACBa` | ACB user tones (scene exports; absent from the backups seen) |
 | `SYSa` | System settings — one 904-byte record, undecoded |
-| `DIFa` | 32-byte checksum-like value, not enforced by the instrument |
+| `DIFa` | Origin stamp: product code and serial of the writing device — see below |
 
 ### PRFa area = Scenes: 16-byte header, then fixed-stride records
 The `PRFa` area opens with a 16-byte header, then an array of fixed-stride scene records:
@@ -1202,23 +1202,35 @@ cargo run -p fantom-cli -- diff a.svd b.svd --area MDLa --context 4
 Every offset in the tables above reproduces through this command. Record what you learn here, with
 the fixture pair that proves it.
 
-## Writing / metadata edits (DIFa checksum)
+## `DIFa` — origin stamp, not a checksum (CONFIRMED)
 
-The `DIFa` area holds a 32-byte value that looks like a checksum (high-entropy on freshly exported
-files, e.g. TONEMAP `05 00 ac 0a 84 0a c4 1e …`; **all-zero** on older exports like PRISMA). It does
-**not** match SHA-1/256/512, MD5, or BLAKE over any obvious region — likely keyed or proprietary.
+One 32-byte record naming the device that wrote the file. It covers no file content, so the
+instrument cannot check it; a stale or zeroed stamp loads.
 
-**It appears the FANTOM does not hard-enforce it.** [Smirnov75/svd5tool](https://github.com/Smirnov75/svd5tool)
-unpacks and **repacks** SVD5 backups without recomputing `DIFa`, and that workflow is used
-successfully — so an edited file with a stale (or zeroed) `DIFa` should still load. (Its `[xxxx]`
-filename tag is **CRC-16/CCITT**, poly `0x1021`, init `0xFFFF`, over each area body from `+0x10` — a
-convenience label, not the file checksum.) svd5tool also independently confirms this doc's structure:
-header + record table of `id / signature / offset / length`, each area prefixed with
-`count / record_length / info_length`.
+| Off | Size | Field | Notes |
+|-----|------|-------|-------|
+| 0x00 | 1 | key | 1–5; 0 = blank stamp |
+| 0x01 | 1 | zero | |
+| 0x02 | 7 | product code | `420031` on FANTOM-6; `423521A` from ZENOLOGY |
+| 0x09 | 7 | serial number | the instrument's; spaces from ZENOLOGY |
+| 0x10 | 16 | token | zero from ZENOLOGY; undecoded on the instrument |
 
-Metadata edits are therefore done **in place**: a scene rename overwrites the 16-byte name field, a
-comment overwrites the 64-byte field at `+0x40`, and nothing else changes (verified: renaming a
-7-char scene touches exactly the differing name bytes). A renamed scene-export bank was loaded
+Bytes `0x02`–`0x1f` are stored as fifteen LE u16 words with their bits permuted: plain bit `i`
+moves to bit `P[(key-1) % 5][i]`. The five rows are in `crates/fantom-core/src/origin.rs`.
+
+Decoding round-trips every FANTOM-6 backup in the
+corpus. Every SVZ the instrument writes, and the PRISMA/TOP80 backups, carry a blank stamp.
+A copied stamp carries the source instrument's serial number. `fantom verify` prints it.
+
+Smirnov75/svd5tool repacks backups without touching `DIFa`. Its `[xxxx]` filename tag is
+CRC-16/CCITT (poly `0x1021`, init `0xFFFF`) over each area body from `+0x10` — a label, not part of
+the file.
+
+## Writing / metadata edits
+
+Since nothing checks `DIFa`, metadata edits are done **in place**: a scene rename overwrites the
+16-byte name field, a comment overwrites the 64-byte field at `+0x40`, and nothing else changes
+(verified: renaming a 7-char scene touches exactly the differing name bytes). A renamed scene-export bank was loaded
 successfully on a FANTOM-6 and displayed the edited name.
 
 Repackaging uses the confirmed MSB/LSB/PC mapping above. Extract/merge copy complete records,

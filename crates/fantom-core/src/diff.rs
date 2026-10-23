@@ -127,7 +127,7 @@ pub fn compare(left: &Raw, right: &Raw) -> Result<Vec<Finding>> {
         let tag = area.tag_str();
         let left_bytes = left_svd.area_bytes(left, area)?;
 
-        // Not every area is a record table — `DIFa` is a bare checksum blob, `USDa` a waveform
+        // Not every area is a record table — `DIFa` may be all zero, `USDa` a waveform
         // directory. One area we cannot parse must not abort the whole comparison, so fall back to
         // comparing its bytes.
         let Ok(left_table) = RecordTable::parse(area, left_bytes) else {

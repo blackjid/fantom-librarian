@@ -6,6 +6,7 @@ use std::process::ExitCode;
 
 use clap::Parser;
 use fantom_core::container::Raw;
+use fantom_core::origin::Origin;
 use fantom_core::params;
 use fantom_core::requirements::{ExpansionInventory, Holding};
 
@@ -789,6 +790,21 @@ fn run_verify(file: &PathBuf) -> fantom_core::Result<String> {
     );
     if report.areas_with_checksums == 0 {
         let _ = writeln!(out, "(this container stores no per-record checksums)");
+    }
+    match &report.origin {
+        Some(Origin::Stamped(stamp)) => {
+            let serial = stamp.serial_str();
+            let _ = writeln!(
+                out,
+                "written by: {} serial {}",
+                stamp.product_str(),
+                if serial.is_empty() { "(none)" } else { &serial }
+            );
+        }
+        Some(Origin::Blank) => {
+            let _ = writeln!(out, "written by: (blank stamp)");
+        }
+        None => {}
     }
     for problem in &report.problems {
         let _ = writeln!(out, "  problem: {problem}");
