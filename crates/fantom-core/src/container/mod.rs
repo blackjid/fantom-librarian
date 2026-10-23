@@ -59,7 +59,7 @@ pub fn remap_sample_slots_of(
 /// rather than its content: a backup of an instrument holding no user audio still writes all three.
 pub const SAMPLE_BANK_AREAS: [&[u8; 4]; 3] = [b"SMPa", b"MLSa", b"USDa"];
 
-/// Areas every `SVD5` carries whatever its scope — system settings and the difference table.
+/// Areas every `SVD5` carries whatever its scope — system settings and the origin stamp.
 ///
 /// Because a one-scene export has them just as a full backup does, they say nothing about what a
 /// file is for, and repackaging copies them through untouched.
