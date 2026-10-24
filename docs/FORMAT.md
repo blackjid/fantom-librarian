@@ -911,8 +911,10 @@ directory including its carried per-section word. Pinned by
 
 > The preamble stamp is **not** a constant. This file reads `KY019%` where every other fixture reads
 > `KY019$` (`0x25` vs `0x24`). The EX firmware's SVZ writer appends `SYSa[0xfb]` to the model code,
-> which it picks from the keybed variant. Whether import checks it is not
-> traced; files carrying `$` import and play.
+> which it picks from the keybed variant. Import never reads it: the SVZ reader
+> checks only the `SVZa` magic, each area by the first three letters of its
+> tag plus its `ZCOR` stamp, and each area's record size against the size it expects. So an SVZ from
+> any FANTOM-6/7/8 is format-compatible with the others.
 
 > **This export also exposed a reader bug.** `PatArea` started its records at a fixed 16 bytes, so it
 > misread every SVZ `PATa` — whose records begin at `16 + 4 × count`. It went unnoticed because the
