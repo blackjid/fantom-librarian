@@ -3,7 +3,7 @@
 //! One 32-byte record. Byte 0 is a key (1–5, or 0 for a blank stamp), byte 1 is zero, and bytes
 //! 2–31 are fifteen little-endian u16 words whose bits are shuffled by one of five permutations,
 //! chosen by `(key - 1) % 5`. Unshuffled they read: product code (7 bytes), serial number (7),
-//! token (16). It covers none of the file's content, so the instrument cannot check it against
+//! registration ID (16). It covers none of the file's content, so the instrument cannot check it against
 //! anything — which is why a stale or zeroed stamp loads.
 //!
 //! Decoding round-trips every
@@ -45,7 +45,7 @@ pub struct Stamp {
     pub product: [u8; 7],
     /// The instrument's serial number; spaces from ZENOLOGY.
     pub serial: [u8; 7],
-    /// Zero from ZENOLOGY; undecoded on the instrument.
+    /// The instrument's registration ID. Zero from ZENOLOGY.
     pub token: [u8; 16],
 }
 
@@ -103,7 +103,7 @@ pub fn read(raw: &Raw) -> Result<Option<Origin>> {
 /// `bytes` of a `DIFa` area with its stamp zeroed, and the record checksum refreshed when the area
 /// carries one. Anything that is not a one-stamp record table comes back unchanged.
 ///
-/// What leaves the tool should not carry the source instrument's serial number. Zero is what the
+/// What leaves the tool should not carry the source instrument's serial number or registration ID. Zero is what the
 /// instrument writes in every SVZ export.
 pub fn blank(area: &Area, bytes: &[u8]) -> Vec<u8> {
     let mut out = bytes.to_vec();
