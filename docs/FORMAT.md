@@ -1351,5 +1351,7 @@ instrument that has the same engine/model/expansion installed.
   split into `SVDFile` / `SVDType` / `SVDTone` / `SVDLiveSet` / `SVDRegistration`.
 - [sagamusix/JDTools](https://github.com/sagamusix/JDTools) — C++20; reads **and writes** JD-08 SVD
   banks (round-trip reference).
+- The EX upgrade's `Manual/` holds the MIDI Implementation, Parameter Guide and Reference Manual
+  as PDFs (private corpus).
 - [Smirnov75/svd5tool](https://github.com/Smirnov75/svd5tool) — Pascal; unpack/repack SVD5 backups.
   Confirms the container structure and that repacking without touching `DIFa` is accepted.
