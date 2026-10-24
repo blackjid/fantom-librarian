@@ -1213,14 +1213,14 @@ instrument cannot check it; a stale or zeroed stamp loads.
 | 0x01 | 1 | zero | |
 | 0x02 | 7 | product code | `420031` on FANTOM-6; `423521A` from ZENOLOGY |
 | 0x09 | 7 | serial number | the instrument's; spaces from ZENOLOGY |
-| 0x10 | 16 | token | zero from ZENOLOGY; undecoded on the instrument |
+| 0x10 | 16 | registration ID | set when the instrument is registered; zero from ZENOLOGY |
 
 Bytes `0x02`–`0x1f` are stored as fifteen LE u16 words with their bits permuted: plain bit `i`
 moves to bit `P[(key-1) % 5][i]`. The five rows are in `crates/fantom-core/src/origin.rs`.
 
 Recovered from the ZENOLOGY plugin's SVZ writer. Decoding round-trips every FANTOM-6 backup in the
 corpus. Every SVZ the instrument writes, and the PRISMA/TOP80 backups, carry a blank stamp.
-The tool blanks it on every rebuild, so an output never carries the source's serial. `fantom verify`
+The tool blanks it on every rebuild, so an output never carries the source's serial or registration ID. `fantom verify`
 prints it.
 
 Smirnov75/svd5tool repacks backups without touching `DIFa`. Its `[xxxx]` filename tag is
