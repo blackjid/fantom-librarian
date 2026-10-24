@@ -45,7 +45,8 @@ A backup folder also holds these; the librarian ignores them today (`import.rs` 
   its SQS to the new path; extracting or merging scenes without it loses their patterns.
   Roland's own scene packs (`SCENE_FANTOM_EX.zip`) are this export layout.
 - SQS: big-endian, `CSQS`, u32 file size, u32 version `1`, …, `480` (ticks per quarter), `16`
-  (tracks); 128 pattern headers × 0x30 from `0xE24` (16 tracks × 8), name first (`INIT PTN`).
+  (tracks). An empty set is 0x2624 bytes ending in 128 × 0x30 pattern headers (16 tracks × 8, name
+  first, `INIT PTN`) from `0xE24`; with recorded patterns the layout shifts — not decoded.
 - Chain XML: `<CHAIN_SET_NAME ChainSetName>`, `<CHAINn SceneIdx>` (0-based scene index — the
   the instrument stores it raw, as for SQS paths; inferred), `<MARKERn ChainIdx NameIndex>` (62 marker
   labels 0–9, A–Z, a–z). Reordering scenes must remap `SceneIdx`.
