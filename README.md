@@ -313,6 +313,7 @@ cargo run -p fantom-cli -- scenes rename  path/to/FANTOM.SVD 44 "My Scene"   -o 
 cargo run -p fantom-cli -- scenes comment path/to/FANTOM.SVD 44 "split at B4" -o out.svd
 
 # Build a smaller bank from scenes 44 and 3, in that order, with their referenced user tones.
+# Their sequencer patterns (SEQ/ beside the input) land in SEQ/ beside the output.
 cargo run -p fantom-cli -- scenes extract path/to/FANTOM.SVD 44 3 -o extracted/FANTOM.SVD
 
 # The same, plus a companion sample file, with the bank repointed at slots 101+.
