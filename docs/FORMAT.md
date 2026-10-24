@@ -805,7 +805,7 @@ dependencies. Verified against `EXPORT_Z-Core.svz` (10 ZEN-Core tones), `Z-Core_
 | 0x00 | 4 | magic | `SVZa` — no u16 length prefix, unlike SVD5 |
 | 0x04 | 1 | area count | 2, 3, 4 across the three fixtures, matching their area tables |
 | 0x05 | 1 | revision | the area count, less one when the file holds both tones and audio |
-| 0x06 | 6 | stamp | `KY019$` |
+| 0x06 | 6 | stamp | model code `KY019` (FANTOM-6; `KY020` 7, `KY021` 8) + `SYSa[0xfb]` |
 | 0x0c | 4 | reserved | zeros |
 
 The revision byte tracks the file's shape, not a version anyone chose. Six instrument-written
@@ -908,9 +908,10 @@ area order and offsets, every `info_length`, every record CRC-32, the `USPa` rec
 directory including its carried per-section word. Pinned by
 `rebuilding_an_instrument_written_sampled_export_is_byte_identical`.
 
-> The preamble stamp is **not** the constant this document claimed. This file reads `KY019%` where
-> every other fixture reads `KY019$` (`0x25` vs `0x24`), same revision 3. Meaning unknown; the
-> preamble is copied verbatim, so nothing depends on it.
+> The preamble stamp is **not** a constant. This file reads `KY019%` where every other fixture reads
+> `KY019$` (`0x25` vs `0x24`). The EX instrument's SVZ writer appends `SYSa[0xfb]` to the model code,
+> which it picks from the keybed variant. Whether import checks it is not
+> traced; files carrying `$` import and play.
 
 > **This export also exposed a reader bug.** `PatArea` started its records at a fixed 16 bytes, so it
 > misread every SVZ `PATa` — whose records begin at `16 + 4 × count`. It went unnoticed because the
