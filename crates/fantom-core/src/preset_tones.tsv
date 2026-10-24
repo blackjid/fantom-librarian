@@ -765,7 +765,7 @@ tone_id	bank	number	name	category
 17968	PR-D	177	Fair Pad	36:Synth Pad/Str
 17969	PR-D	178	Revalation	36:Synth Pad/Str
 17970	PR-D	179	Trance Pad	36:Synth Pad/Str
-17971	PR-D	180	Alan’s Pad	36:Synth Pad/Str
+17971	PR-D	180	Alan's Pad	36:Synth Pad/Str
 17972	PR-D	181	Dreamwarp	36:Synth Pad/Str
 17973	PR-D	182	Emote String	36:Synth Pad/Str
 17974	PR-D	183	PortamentPad	36:Synth Pad/Str
@@ -1052,7 +1052,7 @@ tone_id	bank	number	name	category
 18511	PR-D	464	Androdrops	38:Synth PolyKey
 18512	PR-D	465	Vntg Stack	38:Synth PolyKey
 18513	PR-D	466	ANORMANALOG	38:Synth PolyKey
-18514	PR-D	467	Don’t you	38:Synth PolyKey
+18514	PR-D	467	Don't you	38:Synth PolyKey
 18515	PR-D	468	Nailbiter	38:Synth PolyKey
 18516	PR-D	469	EinsZweiDry	38:Synth PolyKey
 18517	PR-D	470	Analog Key 1	38:Synth PolyKey
@@ -1675,10 +1675,10 @@ tone_id	bank	number	name	category
 19774	PR-D	1087	FM EP 6	4:E.Piano1
 19775	PR-D	1088	FM EPhaser	4:E.Piano1
 19776	PR-D	1089	EP Belle	4:E.Piano1
-19777	PR-D	1090	80’s EP	4:E.Piano1
+19777	PR-D	1090	80's EP	4:E.Piano1
 19778	PR-D	1091	Spirit Tine	4:E.Piano1
-19779	PR-D	1092	70’s E.Org 1	6:E.Organ
-19780	PR-D	1093	70’s E.Org 2	6:E.Organ
+19779	PR-D	1092	70's E.Org 1	6:E.Organ
+19780	PR-D	1093	70's E.Org 2	6:E.Organ
 19781	PR-D	1094	Theater 1	6:E.Organ
 19782	PR-D	1095	Theater 2	6:E.Organ
 19783	PR-D	1096	Theater 3	6:E.Organ
@@ -1751,7 +1751,7 @@ tone_id	bank	number	name	category
 20021	PR-E	54	Rocker Spin	6:E.Organ
 20022	PR-E	55	Tone Wh.Solo	6:E.Organ
 20023	PR-E	56	Purple Spin	6:E.Organ
-20024	PR-E	57	60’s LeadORG	6:E.Organ
+20024	PR-E	57	60's LeadORG	6:E.Organ
 20025	PR-E	58	Assalt Organ	6:E.Organ
 20026	PR-E	59	D-50 Organ	6:E.Organ
 20027	PR-E	60	Cathedral	7:Pipe Organ
@@ -1850,7 +1850,7 @@ tone_id	bank	number	name	category
 20248	PR-E	153	Mondo Bass	21:Synth Bass
 20249	PR-E	154	Clk AnalogBs	21:Synth Bass
 20250	PR-E	155	Bass In Face	21:Synth Bass
-20251	PR-E	156	101Bass	21:Synth Bass
+20251	PR-E	156	101  Bass	21:Synth Bass
 20252	PR-E	157	Noiz Bass	21:Synth Bass
 20253	PR-E	158	Super Jup Bs	21:Synth Bass
 20254	PR-E	159	Occitan Bass	21:Synth Bass
@@ -2082,7 +2082,7 @@ tone_id	bank	number	name	category
 20736	PR-E	385	Echo Piano	1:Ac.Piano
 20737	PR-E	386	Upright Pno	1:Ac.Piano
 20738	PR-E	387	RD-1000	2:Pop Piano
-20739	PR-E	388	Player’s EP	4:E.Piano1
+20739	PR-E	388	Player's EP	4:E.Piano1
 20740	PR-E	389	D-50 EP	5:E.Piano2
 20741	PR-E	390	Innocent EP	5:E.Piano2
 20742	PR-E	391	Echo EP	5:E.Piano2
@@ -2091,7 +2091,7 @@ tone_id	bank	number	name	category
 20745	PR-E	394	Ring E.Piano	5:E.Piano2
 20746	PR-E	395	Soap Opera	6:E.Organ
 20747	PR-E	396	Dirty Organ	6:E.Organ
-20748	PR-E	397	Surf’s Up!	6:E.Organ
+20748	PR-E	397	Surf's Up!	6:E.Organ
 20749	PR-E	398	Organesque	6:E.Organ
 20750	PR-E	399	pp Harmonium	7:Pipe Organ
 20751	PR-E	400	PieceOfCheez	10:Clav
@@ -2154,7 +2154,7 @@ tone_id	bank	number	name	category
 20808	PR-E	457	Cyber Swing	40:Synth Seq/Pop
 20809	PR-E	458	Keep :-)	38:Synth PolyKey
 20810	PR-E	459	Resojuice	34:Synth Lead
-20811	PR-E	460	B’on d’moov!	38:Synth PolyKey
+20811	PR-E	460	B'on d'moov!	38:Synth PolyKey
 20812	PR-E	461	Dist TB-303	34:Synth Lead
 20813	PR-E	462	Temple of JV	42:Pulsating
 20814	PR-E	463	Planet Asia	42:Pulsating
@@ -2183,7 +2183,7 @@ tone_id	bank	number	name	category
 20837	PR-E	486	Soundtraque	36:Synth Pad/Str
 20838	PR-E	487	Translucence	36:Synth Pad/Str
 20839	PR-E	488	Darkshine	36:Synth Pad/Str
-20840	PR-E	489	D’light	37:Synth Bellpad
+20840	PR-E	489	D'light	37:Synth Bellpad
 20841	PR-E	490	December Sky	36:Synth Pad/Str
 20842	PR-E	491	Octapad	36:Synth Pad/Str
 20843	PR-E	492	JUNO Power!	36:Synth Pad/Str
@@ -2197,7 +2197,7 @@ tone_id	bank	number	name	category
 20851	PR-E	500	Blue Notes	30:Sax
 20852	PR-E	501	RiversOfTime	39:Synth FX
 20853	PR-E	502	Phobos	39:Synth FX
-20854	PR-E	503	2080	39:Synth FX
+20854	PR-E	503	2  0  8  0	39:Synth FX
 20855	PR-E	504	Unearthly	39:Synth FX
 20856	PR-E	505	Glistening	39:Synth FX
 20857	PR-E	506	Sci-Fi Str	39:Synth FX
@@ -2277,7 +2277,7 @@ tone_id	bank	number	name	category
 21059	PR-E	580	VP330 OctEko	32:Vox/Choir
 21060	PR-E	581	XV Strings	
 21061	PR-E	582	Fat Strings	
-21062	PR-E	583	Dolce p/m/f	
+21062	PR-E	583	Dolce  p/m/f	
 21063	PR-E	584	Sad Strings	
 21064	PR-E	585	Lush Strings	
 21065	PR-E	586	Strings4Film	
@@ -2307,7 +2307,7 @@ tone_id	bank	number	name	category
 21089	PR-E	610	NewR&RBrass	27:Ensemble Brass
 21090	PR-E	611	Tower Trumps	27:Ensemble Brass
 21091	PR-E	612	BigBrassBand	27:Ensemble Brass
-21092	PR-E	613	Lil’BigHornz	27:Ensemble Brass
+21092	PR-E	613	Lil'BigHornz	27:Ensemble Brass
 21093	PR-E	614	VoyagerBrass	27:Ensemble Brass
 21094	PR-E	615	Symph Horns	27:Ensemble Brass
 21095	PR-E	616	Trombone Atm	26:Solo Brass
@@ -2337,10 +2337,10 @@ tone_id	bank	number	name	category
 21119	PR-E	640	Powerwiggle	38:Synth PolyKey
 21248	PR-E	641	80s Retrosyn	38:Synth PolyKey
 21249	PR-E	642	Power Stack	38:Synth PolyKey
-21250	PR-E	643	Don’t Jump	38:Synth PolyKey
+21250	PR-E	643	Don't Jump	38:Synth PolyKey
 21251	PR-E	644	Big Bubbles	38:Synth PolyKey
 21252	PR-E	645	X-mod Sweep	38:Synth PolyKey
-21253	PR-E	646	Bag O’ Bones	38:Synth PolyKey
+21253	PR-E	646	Bag O' Bones	38:Synth PolyKey
 21254	PR-E	647	AirSoThin	38:Synth PolyKey
 21255	PR-E	648	Analogical	38:Synth PolyKey
 21256	PR-E	649	Waspy Pulse	38:Synth PolyKey
@@ -2355,7 +2355,7 @@ tone_id	bank	number	name	category
 21265	PR-E	658	DistortaSync	34:Synth Lead
 21266	PR-E	659	Blistering	34:Synth Lead
 21267	PR-E	660	Guttural	34:Synth Lead
-21268	PR-E	661	Flyin’ High	34:Synth Lead
+21268	PR-E	661	Flyin' High	34:Synth Lead
 21269	PR-E	662	Soft Tooth	34:Synth Lead
 21270	PR-E	663	Soaring Sqr	34:Synth Lead
 21271	PR-E	664	Soaring Sync	34:Synth Lead
@@ -2369,11 +2369,11 @@ tone_id	bank	number	name	category
 21279	PR-E	672	Hybrid Nylon	16:Ac.Guitar
 21280	PR-E	673	XV SteelGt 1	16:Ac.Guitar
 21281	PR-E	674	XV SteelGt 2	16:Ac.Guitar
-21282	PR-E	675	Comp’Steel	16:Ac.Guitar
+21282	PR-E	675	Comp'Steel	16:Ac.Guitar
 21283	PR-E	676	Double Steel	16:Ac.Guitar
 21284	PR-E	677	Folk Guitar	16:Ac.Guitar
 21285	PR-E	678	SpanishNight	16:Ac.Guitar
-21286	PR-E	679	Plug n’ Play	17:E.Guitar
+21286	PR-E	679	Plug n' Play	17:E.Guitar
 21287	PR-E	680	Fab 4 Guitar	17:E.Guitar
 21288	PR-E	681	Searing Lead	18:Dist.Guitar
 21289	PR-E	682	Punker	18:Dist.Guitar
@@ -2382,8 +2382,8 @@ tone_id	bank	number	name	category
 21292	PR-E	685	XV Ac.Bass	19:Ac.Bass
 21293	PR-E	686	LookMaNoFret	20:E.Bass
 21294	PR-E	687	XV Fretless	20:E.Bass
-21295	PR-E	688	Basic F’less	20:E.Bass
-21296	PR-E	689	8-str F’less	20:E.Bass
+21295	PR-E	688	Basic F'less	20:E.Bass
+21296	PR-E	689	8-str F'less	20:E.Bass
 21297	PR-E	690	Tap Bass	20:E.Bass
 21298	PR-E	691	Pop Bass	20:E.Bass
 21299	PR-E	692	P.Bs Chorus	20:E.Bass
@@ -2399,7 +2399,7 @@ tone_id	bank	number	name	category
 21309	PR-E	702	700 Bassboy	21:Synth Bass
 21310	PR-E	703	8VCO MonoSyn	21:Synth Bass
 21311	PR-E	704	ResoMoist Bs	21:Synth Bass
-21312	PR-E	705	Kickin’ Bass	21:Synth Bass
+21312	PR-E	705	Kickin' Bass	21:Synth Bass
 21313	PR-E	706	Sub Zero	21:Synth Bass
 21314	PR-E	707	Liquid Bass	21:Synth Bass
 21315	PR-E	708	Hefty Bass	21:Synth Bass
@@ -2473,7 +2473,7 @@ tone_id	bank	number	name	category
 21511	PR-E	776	Dirty Wurlie	4:E.Piano1
 21512	PR-E	777	Musicbox XV	14:Bell
 21513	PR-E	778	Klubb Organ	6:E.Organ
-21514	PR-E	779	Drew’s Bee	6:E.Organ
+21514	PR-E	779	Drew's Bee	6:E.Organ
 21515	PR-E	780	Velvet Organ	6:E.Organ
 21516	PR-E	781	Distorted B	6:E.Organ
 21517	PR-E	782	Radikal B	6:E.Organ
@@ -2486,7 +2486,7 @@ tone_id	bank	number	name	category
 21524	PR-E	789	Vox Chopper	42:Pulsating
 21525	PR-E	790	SlicingSyVox	42:Pulsating
 21526	PR-E	791	PressureDome	42:Pulsating
-21527	PR-E	792	Quasar/Aft	42:Pulsating
+21527	PR-E	792	Quasar  /Aft	42:Pulsating
 21528	PR-E	793	Ionizer	42:Pulsating
 21529	PR-E	794	MilleniumStr	42:Pulsating
 21530	PR-E	795	Bounce Baby!	42:Pulsating
@@ -2520,7 +2520,7 @@ tone_id	bank	number	name	category
 21558	PR-E	823	Brassy Symph	25:Orchestral
 21559	PR-E	824	Biggie Brass	27:Ensemble Brass
 21560	PR-E	825	BiggieBrass2	27:Ensemble Brass
-21561	PR-E	826	LA Sax’s	30:Sax
+21561	PR-E	826	LA Sax's	30:Sax
 21562	PR-E	827	Wind Wood	28:Wind
 21563	PR-E	828	Lonely Oboe	28:Wind
 21564	PR-E	829	Harmonica XV	13:Harmonica
@@ -2567,9 +2567,9 @@ tone_id	bank	number	name	category
 21605	PR-E	870	Pretty Ugly	38:Synth PolyKey
 21606	PR-E	871	Con Sequence	40:Synth Seq/Pop
 21607	PR-E	872	BermudaShort	40:Synth Seq/Pop
-21608	PR-E	873	Saw n’ 202	38:Synth PolyKey
+21608	PR-E	873	Saw n' 202	38:Synth PolyKey
 21609	PR-E	874	Technoheadz	38:Synth PolyKey
-21610	PR-E	875	Boss’d Synth	34:Synth Lead
+21610	PR-E	875	Boss'd Synth	34:Synth Lead
 21611	PR-E	876	Cross Fire	34:Synth Lead
 21612	PR-E	877	Techno Cave	34:Synth Lead
 21613	PR-E	878	Generator	34:Synth Lead
@@ -3011,8 +3011,8 @@ tone_id	bank	number	name	category
 22561	CMN	418	Syn Brass	35:Synth Brass
 22562	CMN	419	Syn Brass w	35:Synth Brass
 22563	CMN	420	JP8 Brass 2	35:Synth Brass
-22564	CMN	421	80’s Brass 1	35:Synth Brass
-22565	CMN	422	80’s Brass 2	35:Synth Brass
+22564	CMN	421	80's Brass 1	35:Synth Brass
+22565	CMN	422	80's Brass 2	35:Synth Brass
 22566	CMN	423	Synth Brass 2	35:Synth Brass
 22567	CMN	424	Synth Brass 4	35:Synth Brass
 22568	CMN	425	Analog Brass 2	35:Synth Brass
@@ -3032,8 +3032,8 @@ tone_id	bank	number	name	category
 22582	CMN	439	Brite Syn Brass	35:Synth Brass
 22583	CMN	440	JP8 Brass 3	35:Synth Brass
 22584	CMN	441	Synth Brass 5	35:Synth Brass
-22585	CMN	442	80’s Brass 3	35:Synth Brass
-22586	CMN	443	80’s Brass 4	35:Synth Brass
+22585	CMN	442	80's Brass 3	35:Synth Brass
+22586	CMN	443	80's Brass 4	35:Synth Brass
 22587	CMN	444	Soprano Sax	30:Sax
 22588	CMN	445	Soprano Sax Amp	30:Sax
 22589	CMN	446	Alto Sax	30:Sax
@@ -3073,7 +3073,7 @@ tone_id	bank	number	name	category
 22623	CMN	480	Dist Flt TB 2	34:Synth Lead
 22624	CMN	481	Dist Flt TB 1	34:Synth Lead
 22625	CMN	482	DistFlt TB 1 Dly	34:Synth Lead
-22626	CMN	483	80’s Tech Lead	34:Synth Lead
+22626	CMN	483	80's Tech Lead	34:Synth Lead
 22627	CMN	484	Sqr Buzz Lead	34:Synth Lead
 22628	CMN	485	Ana Vox Lead	34:Synth Lead
 22629	CMN	486	CS Lead	34:Synth Lead
@@ -3247,7 +3247,7 @@ tone_id	bank	number	name	category
 23053	CMN	654	Soundtrack	36:Synth Pad/Str
 23054	CMN	655	Soundtrack Dly	36:Synth Pad/Str
 23055	CMN	656	Random Str	36:Synth Pad/Str
-23056	CMN	657	Fairy’s Song	36:Synth Pad/Str
+23056	CMN	657	Fairy's Song	36:Synth Pad/Str
 23057	CMN	658	Crystal	40:Synth Seq/Pop
 23058	CMN	659	Crystal w	40:Synth Seq/Pop
 23059	CMN	660	Synth Mallet	40:Synth Seq/Pop
@@ -3486,7 +3486,7 @@ tone_id	bank	number	name	category
 23607	PR-A	56	XMod2 Sweep	36:Synth Pad/Str
 23608	PR-A	57	Linear Synth Pad	37:Synth Bellpad
 23609	PR-A	58	Fantasia 2019	37:Synth Bellpad
-23610	PR-A	59	King’s Choir	32:Vox/Choir
+23610	PR-A	59	King's Choir	32:Vox/Choir
 23611	PR-A	60	Lo-Fi Vox	32:Vox/Choir
 23612	PR-A	61	JX Cream	35:Synth Brass
 23613	PR-A	62	FUTURE BRASS	35:Synth Brass
@@ -3518,7 +3518,7 @@ tone_id	bank	number	name	category
 23639	PR-A	88	Sync XFM	34:Synth Lead
 23640	PR-A	89	XMod Square	34:Synth Lead
 23641	PR-A	90	XMod JP	34:Synth Lead
-23642	PR-A	91	Cage’s Ring Lead	34:Synth Lead
+23642	PR-A	91	Cage's Ring Lead	34:Synth Lead
 23643	PR-A	92	Sync Nativity	34:Synth Lead
 23644	PR-A	93	Ode to...	34:Synth Lead
 23645	PR-A	94	Bellbottom	34:Synth Lead
