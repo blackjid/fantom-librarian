@@ -54,7 +54,8 @@ A backup folder also holds these; the librarian ignores them today (`import.rs` 
   then interleaved 16-bit PCM. `PADCONF.BIN` (`RFPD`) holds per-pad file size, start/end, level.
 - The EX update's `_DATA/FACTORY/` holds the factory `FANTOM.SVD`, its `SEQ/` (82 SQS),
   `PAD_SMPL/` and a WAV `LIBRARY/` (the `*_95_Am` / `*_80_Am` construction kits), with
-  `check.md5` per folder. Samples imported from it carry the `SMPd` Lock bit.
+  `check.md5` per folder. `TESTv1`'s `*_95_Am` samples, from this library, carry the `SMPd` Lock bit —
+  but so do 4 user samples, so Lock isn't simply "factory".
 
 ## Data model
 
