@@ -9,13 +9,13 @@ file and byte offsets that prove them; mark guesses clearly.
   hardware everything in this doc was reverse-engineered and panel-verified against.**
 - **FANTOM-06 / FANTOM-07 / FANTOM-08** (2022, "Fantom-0 series", *with* a leading zero) — a
   separate, cheaper product line. **Not tested.** The format may or may not match.
-- **FANTOM-6 EX / 7 EX / 8 EX** — a newer expanded-memory revision of the flagship line. **Not
-  tested**, though as a revision of the same tested line it's the more likely of the two to share
-  this layout.
+- **FANTOM-6 EX / 7 EX / 8 EX** — the same flagship line on the EX system; existing units take it
+  as a paid upgrade. **The tested instrument is a FANTOM-6 upgraded to EX**, before this project
+  began. EX adds one area, `ACBa` (1024 USER slots in a backup); pre-EX system (v3.02) writes the
+  same layout without it.
 
 Earlier revisions of this doc (and the code) mistakenly called the tested hardware "Fantom-0" —
-that name refers to the *other*, untested product line. Everything here has only been confirmed on
-a plain FANTOM-6.
+that name refers to the *other*, untested product line.
 
 ## File types
 
@@ -69,7 +69,7 @@ USDa`; a scene export carries only the subset its scenes need, plus `SYSa`.
 | `SMPa` | User sample slots (8000) |
 | `MLSa` | User multisamples (128) |
 | `USDa` | User sample waveform data (`SMPd` sections) |
-| `ACBa` | ACB user tones (scene exports; absent from the backups seen) |
+| `ACBa` | ACB user tones — EX only; 1024 slots in a backup |
 | `SYSa` | System settings — one 904-byte record, the instrument's in-RAM settings struct copied verbatim; undecoded |
 | `DIFa` | Origin stamp: product code and serial of the writing device — see below |
 

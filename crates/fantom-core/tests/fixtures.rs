@@ -145,6 +145,31 @@ fn a_backup_names_the_user_tones_its_scenes_reference() {
     );
 }
 
+/// A FANTOM EX backup adds a 1024-slot `ACBa`, which no pre-EX backup has. The factory bank from the
+/// EX upgrade's system update (`_DATA/FACTORY/FANTOM.SVD`) is one, written by Roland's own tooling.
+#[test]
+fn an_ex_backup_decodes_and_names_its_user_tones() {
+    let Some(backup) = private("factory_ex/FANTOM.SVD") else {
+        return;
+    };
+    let svd = fantom_core::container::Svd::parse(&backup).unwrap();
+    let acb = svd.area(b"ACBa").expect("an EX backup carries ACBa");
+    let table =
+        fantom_core::container::RecordTable::parse(acb, svd.area_bytes(&backup, acb).unwrap())
+            .unwrap();
+    assert_eq!((table.declared_count, table.record_size), (1024, 9984));
+
+    let scenes = fantom_core::codec::read_scenes(&backup).unwrap();
+    assert_eq!(scenes.len(), 512);
+    let user: Vec<_> = scenes
+        .iter()
+        .flat_map(|scene| &scene.zones)
+        .filter(|zone| zone.tone.address.lsb < 64)
+        .collect();
+    assert!(user.len() > 100);
+    assert!(user.iter().all(|zone| zone.tone.name().is_some()));
+}
+
 /// Extracting a scene from a full backup must produce the same bank as extracting it from the
 /// scene export the instrument itself wrote.
 ///
