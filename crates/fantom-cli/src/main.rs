@@ -1,7 +1,7 @@
 //! `fantom` — command-line librarian for Roland Fantom data files.
 
 use std::fmt::Write as _;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use clap::Parser;
@@ -933,6 +933,111 @@ fn carry_scene_samples(
     Ok((rebased, out))
 }
 
+/// Each output scene's pattern file, read before anything is written: the output may overwrite
+/// the folder the patterns come from, so copying in place could clobber a file still to be read.
+/// `None` means the scene has no patterns, and whatever sits at its new slot is stale.
+struct Patterns {
+    out_dir: PathBuf,
+    slots: Vec<(PathBuf, Option<Vec<u8>>)>,
+}
+
+/// `sources[j]` is output scene `j`: the folder its bank came from and its 0-based slot there.
+fn read_patterns(sources: &[(&Path, usize)], output: &Path) -> fantom_core::Result<Patterns> {
+    let out_dir = output
+        .parent()
+        .filter(|dir| !dir.as_os_str().is_empty())
+        .unwrap_or(Path::new("."))
+        .to_path_buf();
+    let slot = |index: usize| {
+        fantom_core::sequence::slot_path(index).ok_or_else(|| {
+            fantom_core::Error::Unrecognized(format!(
+                "scene {} is past the last of {} slots",
+                index + 1,
+                fantom_core::sequence::SLOTS
+            ))
+        })
+    };
+    let mut slots = Vec::with_capacity(sources.len());
+    for (to, &(dir, from)) in sources.iter().enumerate() {
+        let path = dir.join(slot(from)?);
+        let bytes = match std::fs::read(&path) {
+            Ok(bytes) => Some(bytes),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+            Err(source) => {
+                return Err(fantom_core::Error::File {
+                    action: "read",
+                    path: path.display().to_string(),
+                    source,
+                })
+            }
+        };
+        slots.push((slot(to)?, bytes));
+    }
+    Ok(Patterns { out_dir, slots })
+}
+
+/// Put each scene's patterns at its new slot and clear the slots whose scene has none.
+fn write_patterns(patterns: &Patterns, should_write: bool) -> fantom_core::Result<String> {
+    let file_error = |action, path: &Path| {
+        let path = path.display().to_string();
+        move |source| fantom_core::Error::File {
+            action,
+            path,
+            source,
+        }
+    };
+    let (mut carried, mut cleared) = (0, 0);
+    for (relative, bytes) in &patterns.slots {
+        let path = patterns.out_dir.join(relative);
+        match bytes {
+            Some(bytes) => {
+                carried += 1;
+                if should_write {
+                    if let Some(dir) = path.parent() {
+                        std::fs::create_dir_all(dir).map_err(file_error("create", dir))?;
+                    }
+                    std::fs::write(&path, bytes).map_err(file_error("write", &path))?;
+                }
+            }
+            None if path.exists() => {
+                cleared += 1;
+                if should_write {
+                    std::fs::remove_file(&path).map_err(file_error("remove", &path))?;
+                }
+            }
+            None => {}
+        }
+    }
+    let mut out = String::new();
+    let plural = |n: usize| if n == 1 { "" } else { "s" };
+    let verb = |done: &'static str, would: &'static str| if should_write { done } else { would };
+    if carried > 0 {
+        let _ = writeln!(
+            out,
+            "{} {carried} scene{}' sequencer patterns into {}",
+            verb("copied", "would copy"),
+            plural(carried),
+            patterns.out_dir.join("SEQ").display()
+        );
+    }
+    if cleared > 0 {
+        let _ = writeln!(
+            out,
+            "{} {cleared} stale pattern file{} at slots whose new scene has none",
+            verb("removed", "would remove"),
+            plural(cleared)
+        );
+    }
+    Ok(out)
+}
+
+/// The folder a bank file sits in, where its `SEQ/` lives.
+fn bank_dir(file: &Path) -> &Path {
+    file.parent()
+        .filter(|dir| !dir.as_os_str().is_empty())
+        .unwrap_or(Path::new("."))
+}
+
 fn run_extract(
     file: &PathBuf,
     scenes: &[usize],
@@ -987,9 +1092,21 @@ fn run_extract(
         note
     };
 
+    let patterns = match &write.output {
+        Some(output) => {
+            let dir = bank_dir(file);
+            let sources: Vec<_> = scenes.iter().map(|n| (dir, n - 1)).collect();
+            Some(read_patterns(&sources, output)?)
+        }
+        None => None,
+    };
     if write.should_write() {
         final_bank.save(write.output())?;
     }
+    let note = match &patterns {
+        Some(patterns) => note + &write_patterns(patterns, write.should_write())?,
+        None => note,
+    };
     Ok(format!(
         "{note}extracted {} scene{}{}\n",
         scenes.len(),
@@ -1009,11 +1126,19 @@ fn write_destination(write: &WriteOptions) -> String {
 fn run_canary(file: &PathBuf, scene: usize, write: &WriteOptions) -> fantom_core::Result<String> {
     let raw = Raw::open(file)?;
     let canary = fantom_core::repackage::canary_scene(&raw, scene)?;
+    let patterns = match &write.output {
+        Some(output) => Some(read_patterns(&[(bank_dir(file), scene - 1)], output)?),
+        None => None,
+    };
     if write.should_write() {
         canary.save(write.output())?;
     }
+    let carried = match &patterns {
+        Some(patterns) => write_patterns(patterns, write.should_write())?,
+        None => String::new(),
+    };
     Ok(format!(
-        "{}{} scene {scene} canary with marked dependencies{}\n",
+        "{}{carried}{} scene {scene} canary with marked dependencies{}\n",
         requirements_note(&canary, &raw),
         if write.should_write() {
             "wrote"
@@ -1046,13 +1171,30 @@ fn run_merge(
             write_destination(write),
         ));
     }
+    let target_count = fantom_core::codec::read_scenes(&target_raw)?.len();
     let source_count = fantom_core::codec::read_scenes(&source_raw)?.len();
     let merged = fantom_core::repackage::merge_scenes(&target_raw, &source_raw)?;
+    // The merged bank is the target's scenes, then the source's, so its slots follow suit.
+    let patterns = match &write.output {
+        Some(output) => {
+            let (target_dir, source_dir) = (bank_dir(target), bank_dir(source));
+            let sources: Vec<_> = (0..target_count)
+                .map(|i| (target_dir, i))
+                .chain((0..source_count).map(|i| (source_dir, i)))
+                .collect();
+            Some(read_patterns(&sources, output)?)
+        }
+        None => None,
+    };
     if write.should_write() {
         merged.save(write.output())?;
     }
+    let carried = match &patterns {
+        Some(patterns) => write_patterns(patterns, write.should_write())?,
+        None => String::new(),
+    };
     Ok(format!(
-        "{}appended {source_count} scene{} from {}{}\n",
+        "{}{carried}appended {source_count} scene{} from {}{}\n",
         requirements_note(&merged, &source_raw),
         if source_count == 1 { "" } else { "s" },
         source.display(),
@@ -1288,5 +1430,72 @@ mod tests {
         // With room to spare, context still widens the window as intended.
         let rendered = render_run("DCWa[0]", &run_at(11, 0x100), &raw, &raw, 4);
         assert!(rendered.starts_with("DCWa[0]+0x0007"), "{rendered}");
+    }
+
+    /// A fresh folder per test, under the system temp dir; no extra dev-dependency for it.
+    fn scratch(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("fantom-cli-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    fn put_pattern(dir: &Path, slot: usize, body: &[u8]) {
+        let path = dir.join(fantom_core::sequence::slot_path(slot).unwrap());
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, body).unwrap();
+    }
+
+    fn pattern(dir: &Path, slot: usize) -> Option<Vec<u8>> {
+        std::fs::read(dir.join(fantom_core::sequence::slot_path(slot).unwrap())).ok()
+    }
+
+    #[test]
+    fn patterns_follow_their_scenes_to_the_new_slots() {
+        let (src, out) = (scratch("seq-src"), scratch("seq-out"));
+        put_pattern(&src, 0, b"first");
+        put_pattern(&src, 2, b"third");
+        put_pattern(&out, 1, b"stale");
+
+        // Scenes 3, 2, 1 in that order: the second has no patterns.
+        let sources = [(src.as_path(), 2), (src.as_path(), 1), (src.as_path(), 0)];
+        let patterns = read_patterns(&sources, &out.join("FANTOM.SVD")).unwrap();
+
+        let note = write_patterns(&patterns, false).unwrap();
+        assert!(note.contains("would copy 2"), "{note}");
+        assert!(note.contains("would remove 1"), "{note}");
+        assert_eq!(
+            pattern(&out, 1).as_deref(),
+            Some(&b"stale"[..]),
+            "dry run wrote"
+        );
+
+        write_patterns(&patterns, true).unwrap();
+        assert_eq!(pattern(&out, 0).as_deref(), Some(&b"third"[..]));
+        assert_eq!(pattern(&out, 1), None);
+        assert_eq!(pattern(&out, 2).as_deref(), Some(&b"first"[..]));
+    }
+
+    /// Writing over the folder the patterns come from must not read a slot it already overwrote.
+    #[test]
+    fn reordering_in_place_reads_every_pattern_first() {
+        let dir = scratch("seq-inplace");
+        put_pattern(&dir, 0, b"a");
+        put_pattern(&dir, 1, b"b");
+
+        let sources = [(dir.as_path(), 1), (dir.as_path(), 0)];
+        let patterns = read_patterns(&sources, &dir.join("FANTOM.SVD")).unwrap();
+        write_patterns(&patterns, true).unwrap();
+
+        assert_eq!(pattern(&dir, 0).as_deref(), Some(&b"b"[..]));
+        assert_eq!(pattern(&dir, 1).as_deref(), Some(&b"a"[..]));
+    }
+
+    #[test]
+    fn a_bank_without_patterns_carries_nothing() {
+        let (src, out) = (scratch("seq-none-src"), scratch("seq-none-out"));
+        let patterns = read_patterns(&[(src.as_path(), 0)], &out.join("FANTOM.SVD")).unwrap();
+        assert_eq!(write_patterns(&patterns, true).unwrap(), "");
+        assert!(!out.join("SEQ").exists());
     }
 }

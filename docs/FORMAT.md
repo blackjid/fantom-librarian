@@ -29,7 +29,8 @@ Scenes exported from a FANTOM-6 land in a `SOUND/` folder on the USB drive.
 
 ## Files beside `FANTOM.SVD`
 
-A backup folder also holds these; the librarian ignores them today (`import.rs` skips `.sqs`, `.smp`, `.xml`).
+A backup folder also holds these. `scenes extract`/`canary`/`merge` carry the SQS files; the rest,
+and library import (`import.rs` skips `.sqs`, `.smp`, `.xml`), still ignore them.
 
 | Path | Holds | Keyed by |
 |------|-------|----------|
@@ -42,7 +43,8 @@ A backup folder also holds these; the librarian ignores them today (`import.rs` 
 - **SQS travels with its scene.** A slot without a file has empty patterns. The file doesn't
   embed its slot: PRISMA export `A/001` is byte-identical to backup `C/100`. EXPORT SCENE writes
   `FANTOM.SVD` plus `SEQ/` renumbered from `A/001` in export order. So moving a scene = copying
-  its SQS to the new path; extracting or merging scenes without it loses their patterns.
+  its SQS to the new path — verified: extracting PRISMA's scenes from the backup reproduces the
+  instrument's export `SEQ/` byte for byte.
   Roland's own scene packs (`SCENE_FANTOM_EX.zip`) are this export layout.
 - SQS: big-endian, `CSQS`, u32 file size, u32 version `1`, …, `480` (ticks per quarter), `16`
   (tracks). An empty set is 0x2624 bytes ending in 128 × 0x30 pattern headers (16 tracks × 8, name
