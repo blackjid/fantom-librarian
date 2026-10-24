@@ -27,6 +27,35 @@ that name refers to the *other*, untested product line.
 
 Scenes exported from a FANTOM-6 land in a `SOUND/` folder on the USB drive.
 
+## Files beside `FANTOM.SVD`
+
+A backup folder also holds these; the librarian ignores them today (`import.rs` skips `.sqs`, `.smp`, `.xml`).
+
+| Path | Holds | Keyed by |
+|------|-------|----------|
+| `SEQ/SEQ_SET/<A–D>/<NNN>/SeqSet.SQS` | one scene's sequencer patterns | scene index *i*: `A + i/128`, `i%128 + 1` |
+| `SCENE_CHAIN/ChainSet<n>.xml` | a scene chain (setlist) | scene index |
+| `TONE_RATING/ToneRatingList.xml` | tone star ratings | MSB/LSB/PC |
+| `PAD_SMPL/SMPL_SET001/BANK<b>-<pp>.SMP`, `PADCONF.BIN` | pad sampler audio, pad settings | bank 1–4, pad 01–16 |
+| `DESIGN_SETTING/WALLPAPER/` | wallpaper | — |
+
+- **SQS travels with its scene.** A slot without a file has empty patterns. The file doesn't
+  embed its slot: PRISMA export `A/001` is byte-identical to backup `C/100`. EXPORT SCENE writes
+  `FANTOM.SVD` plus `SEQ/` renumbered from `A/001` in export order. So moving a scene = copying
+  its SQS to the new path; extracting or merging scenes without it loses their patterns.
+- SQS: big-endian, `CSQS`, u32 file size, u32 version `1`, …, `480` (ticks per quarter), `16`
+  (tracks); 128 pattern headers × 0x30 from `0xE24` (16 tracks × 8), name first (`INIT PTN`).
+- Chain XML: `<CHAIN_SET_NAME ChainSetName>`, `<CHAINn SceneIdx>` (0-based scene index — the
+  firmware stores it raw, as for SQS paths; inferred), `<MARKERn ChainIdx NameIndex>` (62 marker
+  labels 0–9, A–Z, a–z). Reordering scenes must remap `SceneIdx`.
+- Ratings: `<tone msb lsb pc rating>`; follow a user tone when it moves.
+- `.SMP` (`RFWV`): 0x200-byte big-endian header — u32 file size − 8, rate (`48000` only), channels
+  1–2, bits `16`; `+0x20` MD5 of bytes `4..0x14` (the firmware checks it); random filler to 0x200;
+  then interleaved 16-bit PCM. `PADCONF.BIN` (`RFPD`) holds per-pad file size, start/end, level.
+- The EX update's `_DATA/FACTORY/` holds the factory `FANTOM.SVD`, its `SEQ/` (82 SQS),
+  `PAD_SMPL/` and a WAV `LIBRARY/` (the `*_95_Am` / `*_80_Am` construction kits), with
+  `check.md5` per folder. Samples imported from it carry the `SMPd` Lock bit.
+
 ## Data model
 
 ZEN-Core hierarchy: **Tones → Zones → Scenes**. A Scene has up to 16 Zones; each Zone references a
