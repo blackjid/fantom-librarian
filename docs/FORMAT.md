@@ -37,12 +37,13 @@ A backup folder also holds these; the librarian ignores them today (`import.rs` 
 | `SCENE_CHAIN/ChainSet<n>.xml` | a scene chain (setlist) | scene index |
 | `TONE_RATING/ToneRatingList.xml` | tone star ratings | MSB/LSB/PC |
 | `PAD_SMPL/SMPL_SET001/BANK<b>-<pp>.SMP`, `PADCONF.BIN` | pad sampler audio, pad settings | bank 1–4, pad 01–16 |
-| `DESIGN_SETTING/WALLPAPER/` | wallpaper | — |
+| `DESIGN_SETTING/WALLPAPER/wallpaper.xml` | `<SETTING Bank Preset User Alpha R G B>` | — |
 
 - **SQS travels with its scene.** A slot without a file has empty patterns. The file doesn't
   embed its slot: PRISMA export `A/001` is byte-identical to backup `C/100`. EXPORT SCENE writes
   `FANTOM.SVD` plus `SEQ/` renumbered from `A/001` in export order. So moving a scene = copying
   its SQS to the new path; extracting or merging scenes without it loses their patterns.
+  Roland's own scene packs (`SCENE_FANTOM_EX.zip`) are this export layout.
 - SQS: big-endian, `CSQS`, u32 file size, u32 version `1`, …, `480` (ticks per quarter), `16`
   (tracks); 128 pattern headers × 0x30 from `0xE24` (16 tracks × 8), name first (`INIT PTN`).
 - Chain XML: `<CHAIN_SET_NAME ChainSetName>`, `<CHAINn SceneIdx>` (0-based scene index — the
