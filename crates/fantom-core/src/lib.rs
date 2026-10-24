@@ -19,6 +19,7 @@
 //! - [`tonebank`] — repackaging SVZ tone banks, which carry their samples.
 //! - [`convert`] — SVD to SVZ: lifting a user tone out of a backup with the audio it plays.
 //! - [`samplebank`] — building a sample-only SVZ, the one container that moves user audio.
+//! - [`sequence`] — where a scene's sequencer patterns sit beside its bank.
 //! - [`checksum`] / [`verify`] — the CRC-32 Roland stores per record, and checking a file against it.
 //!
 //! The layout was reverse-engineered from a Roland FANTOM-6 and validated against panel ground
@@ -42,6 +43,7 @@ pub mod repackage;
 pub mod requirements;
 pub mod role;
 pub mod samplebank;
+pub mod sequence;
 pub mod tonebank;
 pub mod verify;
 
