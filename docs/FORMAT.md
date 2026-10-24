@@ -255,7 +255,7 @@ Present in full backups only; a backup whose user never sampled has an 8-byte `U
 | `0x00` | 16 | name | ASCII, space-padded |
 | `0x40` | 1 | in-use | 1 when the slot holds a sample |
 | `0x41` | 1 | level | `0x7f` typical |
-| `0x44` | 1 | loop mode | 0/1/2 seen; meanings unconfirmed |
+| `0x44` | 1 | loop mode | 0 FWD, 1 ONE-SHOT, 2 REV, 3 REV-ONE (the instrument's enumeration; 0–2 seen) |
 | `0x45` | 1 | original key | MIDI note, 60 = C4 default |
 | `0x48` | 4 | start | frames, LE |
 | `0x4c` | 4 | loop point | frames, LE |
@@ -270,18 +270,20 @@ length), each offset pointing at an `SMPd` section relative to the `USDa` body:
 | Off | Size | Field |
 |-----|------|-------|
 | `0x00` | 4 | `SMPd` magic |
-| `0x04` | 4 | flags — `0x02010020`, or `0x42010020` on 4 of 50 |
-| `0x08` | 4 | total audio size, both channels including padding |
+| `0x04` | 2 | `0x0020`, constant |
+| `0x06` | 1 | `1`, constant |
+| `0x07` | 1 | bits 0–1 channel count (1 mono, 2 stereo); bit 6 a sample flag, set on 4 of 50 |
+| `0x08` | 4 | total audio size, every channel including padding |
 | `0x0c` | 4 | bytes of real PCM **per channel** |
 | `0x10` | 16 | name as imported |
-| `0x20` | 4 | sample rate (48000 in every section seen) |
-| `0x24` | 4 | per-sample word, carried into an SVZ's `USDa` directory |
+| `0x20` | 4 | sample rate (48000 in every section seen; the writer substitutes 44100 outside 32000–96000) |
+| `0x24` | 4 | per-sample word, copied from the sample's in-memory descriptor; carried into an SVZ's `USDa` directory |
 | `0x80` | … | 16-bit PCM, **left channel block then right**, each padded |
 
 **The audio is not interleaved.** Each channel is a contiguous block of 16-bit mono, padded up to a
 multiple of 512 — with another 512 added when that would leave under 128 bytes of slack — and the
-two blocks sit back to back. So `size == 2 × pad512(channel_bytes)`, which holds for **all 50**
-samples of `2023.4.8+topandprisma`, and `channel_bytes == SMPa.end × 2` for 48 of them (the two
+blocks sit back to back. So `size == channels × pad512(channel_bytes)`: all 160 sections of `TESTv1`,
+43 of them mono, and **all 50** samples of `2023.4.8+topandprisma`, and `channel_bytes == SMPa.end × 2` for 48 of them (the two
 exceptions are the trimmed samples). The padding at the end of the left block is zero-filled.
 
 > An earlier revision read `+0x0c` as "count of 16-bit words, two per frame", which gives the right
@@ -428,7 +430,7 @@ the FANTOM-6's tone editor and the wave group field read off directly:
 | `0` | — | an internal ROM wave | in the instrument |
 | `1` | `EXP` | a wave in an installed expansion; the **group id** names the product | must be installed |
 | `2` | `SAMP` | a 1-based **user sample** slot | via a companion `.svz` |
-| `3` | `MSAMP` | a 1-based **user multisample** slot | **not yet — `MLSa` is undecoded** |
+| `3` | `MSAMP` | a 1-based **user multisample** slot | its samples, via a companion `.svz`; the definition only in a tone export (`MSPa`) |
 
 Evidence, all from one session: `Sledge + Hammer` partials 1 and 2 read `SAMP` waves `0030` and
 `0031`, matching the bytes' slots 30 and 31 — an independent confirmation of the sample decode
@@ -576,8 +578,6 @@ built from a **full backup** — a scene export has no audio to copy.
 > byte-level reference above, or an import onto an instrument with different sample content,
 > distinguishes "the samples travelled" from "they were already there".
 
-**Still unknown:** the `MLSa` multisample entry fields, and whether a multisample is referenced by
-the same group/number scheme (no fixture has a populated multisample).
 
 ### `INSa` is `RHYa`'s payload, not a separate bank
 
@@ -593,7 +593,7 @@ INSa[0] +0x000 'TR-808 Rimshot P'
 So `INSa[i]` holds the 88 key instruments of drum kit `RHYa[i]`. A scene's MSB-86 reference selects
 the pair, which is why the two areas must always be copied and renumbered together.
 
-#### An instrument's four wave blocks — CONFIRMED shape, group field UNCONFIRMED
+#### An instrument's four wave blocks — CONFIRMED
 
 Each 216-byte instrument carries **four wave blocks at stride 28 (`0x1c`), starting at `+0x1c`** —
 the same `WMT` structure a `PATa` partial uses:
@@ -601,7 +601,7 @@ the same `WMT` structure a `PATa` partial uses:
 | Block offset | Size | Field | Notes |
 |--------------|------|-------|-------|
 | `+0x00` | 1 | wave switch | **only ever 0 or 1** across 45056 blocks in four files |
-| `+0x01` | 1 | wave **group type** | `0` in every block of every fixture — see below |
+| `+0x01` | 1 | wave **group type** | same values as a tone's; `2` = user sample — see below |
 | `+0x02` | 2 | wave group id | 8 overwhelmingly; also 16, 2, 10, 11 |
 | `+0x04` | 2 | wave number L | 1..963, matching the ROM wave range |
 | `+0x06` | 2 | wave number R | 0..906; a stereo wave stores a consecutive pair here |
@@ -643,13 +643,6 @@ to be guessed at rather than read:
 Note also that the wave *group id* is not the marker, tempting as it looks: `PATa`'s 93 group-2
 partials in `Black NARFSOUNDS` carry 1010, 8, 1001 and 1007 there, and plenty of group-0 partials
 carry 8 too. Only the group type byte separates them.
-
-**The capture that would settle it:** on the instrument, take one drum kit, point a single key's
-instrument at a user sample, and export the kit as `.svz` twice — once before the change, once
-after. `fantom diff before.svz after.svz --area INSa --context 4` then names the differing bytes
-directly, exactly as the `TONEMAP*` pairs did for the opaque engines. Until then, `crate::tonebank`
-treats a drum kit's samples as unselectable and carries all of them — the safe behaviour either way,
-since selecting on an unobserved value would silently drop audio if the guess were wrong.
 
 #### Where the `WMT` layout came from
 
@@ -922,7 +915,7 @@ on every field**:
 | `+0x10` | `+0x10` | name (same offset in both) |
 | `+0x60` | `+0x80` | **audio — byte-identical, all 50** |
 | `USDa` directory `word` | `+0x24` | see below |
-| `+0x08` (`0x1002`/`0x11002`) | `+0x04` (`0x02010020`) | flags, undecoded |
+| `+0x08` (`0x1002`/`0x11002`) | `+0x04` (`0x02010020`) | flags: channel count (SVZ bits 0–1, backup 24–25) and one carried bit (`0x10000` ↔ `0x40000000`) |
 
 **The `USDa` directory's fourth word is not a checksum — it is carried.** Earlier revisions recorded
 it as "not a CRC-32 of its section — still unknown". It is the backup `SMPd`'s own `+0x24` word,
@@ -931,8 +924,9 @@ and ruled out for the record: CRC-32 over the section, the audio alone, the head
 variants, adler32, and a byte sum.)
 
 So converting a backup's sample into SVZ form is a **header rewrite around an unchanged audio
-payload**, not a re-encode. The remaining unknown is the flags word, which takes two values across
-the pack (`0x1002` and `0x11002`) and one in the backup.
+payload**, not a re-encode. Every instrument-written SVZ sample is stereo; a mono backup sample is
+written with channel count 1 by analogy (unconfirmed on hardware). What the carried bit means is
+still unknown.
 
 ### A tool-built sample file imports — HARDWARE-CONFIRMED
 
