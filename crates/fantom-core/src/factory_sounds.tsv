@@ -39,12 +39,12 @@ msb	lsb	pc	number	name	category
 86	65	21	0021	Pop Kit	Drums
 86	65	22	0022	Pop Kit w	Drums
 86	65	23	0023	Pop Kit Lim	Drums
-86	65	24	0024	90’s Kit	Drums
-86	65	25	0025	90’s Kit comp	Drums
-86	65	26	0026	90’s Kit w comp	Drums
-86	65	27	0027	80’s Kit	Drums
-86	65	28	0028	80’s Kit comp	Drums
-86	65	29	0029	80’s Kit w comp	Drums
+86	65	24	0024	90's Kit	Drums
+86	65	25	0025	90's Kit comp	Drums
+86	65	26	0026	90's Kit w comp	Drums
+86	65	27	0027	80's Kit	Drums
+86	65	28	0028	80's Kit comp	Drums
+86	65	29	0029	80's Kit w comp	Drums
 86	65	30	0030	EDM Kit	Drums
 86	65	31	0031	EDM Kit w	Drums
 86	65	32	0032	EDM Kit Lim	Drums
