@@ -85,7 +85,7 @@ USDa`; a scene export carries only the subset its scenes need, plus `SYSa`.
 | `SNAa` | 156 | 256 |
 | `ZAPa` / `ZEPa` | 1696 | 128 |
 | `MDLa` | 2048 | 1024 |
-| `ACBa` | 9984 | — |
+| `ACBa` | 9984 | 1024 (EX only) |
 | `SYSa` | 904 | 1 |
 | `DIFa` | 32 | 1 |
 
@@ -102,7 +102,8 @@ The `PRFa` area opens with a 16-byte header, then an array of fixed-stride scene
 |-----|------|---------------|---------------|-------------------------------------------|
 | +0  | 4    | `count`       | `32 00 00 00` | Number of scenes (NARF = 50; PRISMA = 16) |
 | +4  | 4    | `record_size` | `f4 0d 00 00` | Stride per record (3572 bytes)            |
-| +8  | 8    | (unknown)     |               | TBD                                        |
+| +8  | 4    | `info_length` | `10 00 00 00` | Bytes before the first record (see SVZ below) |
+| +12 | 4    | reserved      | zeros         |                                           |
 
 **Each scene record (`record_size` bytes)** is Roland's Scene parameter blocks packed end to end,
 by the file/wire rule below. Zone order is 1:1 with the panel (zone 0 = Zone 1).
