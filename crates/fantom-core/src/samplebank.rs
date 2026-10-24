@@ -51,13 +51,18 @@ pub(crate) mod smpd {
         pub const RATE: usize = 0x0c;
         pub const NAME: usize = 0x10;
         pub const AUDIO: usize = 0x60;
-        /// The flags word is this, plus one bit carried from the backup's own flags.
-        pub const FLAGS_BASE: u32 = 0x0000_1002;
+        /// The flags word is this, plus the channel count and one bit carried from the backup.
+        pub const FLAGS_BASE: u32 = 0x0000_1000;
         /// Backup `0x4000_0000` becomes SVZ `0x0001_0000`. The pack's 50 samples split 46/4 on
         /// exactly this bit, matching their backup sections one for one; what it *means* is not
         /// decoded, which is why it is carried rather than derived from anything.
         pub const CARRIED_BIT_FROM: u32 = 0x4000_0000;
         pub const CARRIED_BIT_TO: u32 = 0x0001_0000;
+        /// Backup flags bits 24–25 hold the channel count (1 mono, 2 stereo) — the instrument sets
+        /// them, and `size == channels × pad512(words)` holds for every section in the corpus. An
+        /// SVZ stores it in bits 0–1: every instrument-written SVZ is stereo and reads `2` there.
+        pub const CHANNELS_FROM_SHIFT: u32 = 24;
+        pub const CHANNELS_MASK: u32 = 0x3;
     }
 }
 
@@ -232,8 +237,11 @@ fn section_id(section: &[u8]) -> Result<u32> {
 fn svz_section(section: &[u8]) -> Result<Vec<u8>> {
     let words = read_u32(section, smpd::backup::WORDS)?;
     let rate = read_u32(section, smpd::backup::RATE)?;
-    let carried = read_u32(section, smpd::backup::FLAGS)? & smpd::svz::CARRIED_BIT_FROM;
+    let backup_flags = read_u32(section, smpd::backup::FLAGS)?;
+    let carried = backup_flags & smpd::svz::CARRIED_BIT_FROM;
+    let channels = (backup_flags >> smpd::svz::CHANNELS_FROM_SHIFT) & smpd::svz::CHANNELS_MASK;
     let flags = smpd::svz::FLAGS_BASE
+        | channels
         | if carried != 0 {
             smpd::svz::CARRIED_BIT_TO
         } else {
@@ -263,4 +271,39 @@ fn read_u32(bytes: &[u8], at: usize) -> Result<u32> {
 
 fn write_u32(bytes: &mut [u8], at: usize, value: u32) {
     bytes[at..at + 4].copy_from_slice(&value.to_le_bytes());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn backup_section(flags: u32) -> Vec<u8> {
+        let mut section = vec![0u8; smpd::backup::AUDIO + 512];
+        section[..4].copy_from_slice(b"SMPd");
+        write_u32(&mut section, smpd::backup::FLAGS, flags);
+        write_u32(&mut section, smpd::backup::WORDS, 200);
+        write_u32(&mut section, smpd::backup::RATE, 48000);
+        section
+    }
+
+    fn svz_flags(backup_flags: u32) -> u32 {
+        read_u32(
+            &svz_section(&backup_section(backup_flags)).unwrap(),
+            smpd::svz::FLAGS,
+        )
+        .unwrap()
+    }
+
+    /// The two values instrument-written SVZ files carry.
+    #[test]
+    fn a_stereo_sample_keeps_the_instruments_flags() {
+        assert_eq!(svz_flags(0x0201_0020), 0x0000_1002);
+        assert_eq!(svz_flags(0x4201_0020), 0x0001_1002);
+    }
+
+    #[test]
+    fn a_mono_sample_says_so() {
+        assert_eq!(svz_flags(0x0101_0020), 0x0000_1001);
+        assert_eq!(svz_flags(0x4101_0020), 0x0001_1001);
+    }
 }
