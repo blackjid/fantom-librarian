@@ -294,12 +294,12 @@ length), each offset pointing at an `SMPd` section relative to the `USDa` body:
 | `0x00` | 4 | `SMPd` magic |
 | `0x04` | 2 | `0x0020`, constant |
 | `0x06` | 1 | `1`, constant |
-| `0x07` | 1 | bits 0–1 channel count (1 mono, 2 stereo); bit 6 a sample flag, set on 4 of 50 |
+| `0x07` | 1 | bits 0–1 channel count (1 mono, 2 stereo); bit 6 "Lock" in the instrument's contents report, set on 4 of 50; panel meaning unknown |
 | `0x08` | 4 | total audio size, every channel including padding |
 | `0x0c` | 4 | bytes of real PCM **per channel** |
 | `0x10` | 16 | name as imported |
 | `0x20` | 4 | sample rate (48000 in every section seen; the writer substitutes 44100 outside 32000–96000) |
-| `0x24` | 4 | per-sample word, copied from the sample's in-memory descriptor; carried into an SVZ's `USDa` directory |
+| `0x24` | 4 | Hash-Tag: the sample's identity, kept across backups (`1 Beat It - C2` = `0x67216591` in both); carried into an SVZ's `USDa` directory |
 | `0x80` | … | 16-bit PCM, **left channel block then right**, each padded |
 
 **The audio is not interleaved.** Each channel is a contiguous block of 16-bit mono, padded up to a
