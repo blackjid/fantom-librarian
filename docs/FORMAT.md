@@ -1218,8 +1218,9 @@ instrument cannot check it; a stale or zeroed stamp loads.
 Bytes `0x02`–`0x1f` are stored as fifteen LE u16 words with their bits permuted: plain bit `i`
 moves to bit `P[(key-1) % 5][i]`. The five rows are in `crates/fantom-core/src/origin.rs`.
 
-Recovered from the ZENOLOGY plugin's SVZ writer. Decoding round-trips every FANTOM-6 backup in the
-corpus. Every SVZ the instrument writes, and the PRISMA/TOP80 backups, carry a blank stamp.
+The instrument copies its `DIFa` from a file written when it is registered, and leaves it zero
+without one. No import path reads the tag. Every SVZ the instrument writes, and the PRISMA/TOP80
+backups, carry a blank stamp. Layout first recovered from ZENOLOGY.
 The tool blanks it on every rebuild, so an output never carries the source's serial or registration ID. `fantom verify`
 prints it.
 

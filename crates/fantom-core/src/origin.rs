@@ -6,8 +6,9 @@
 //! registration ID (16). It covers none of the file's content, so the instrument cannot check it against
 //! anything — which is why a stale or zeroed stamp loads.
 //!
-//! Layout and permutations recovered from Roland's ZENOLOGY plugin; decoding round-trips every
-//! FANTOM-6 backup in the corpus. See `docs/FORMAT.md`.
+//! The instrument copies it from a file written when it is registered,
+//! and no import path reads it. Layout and permutations recovered from ZENOLOGY and the EX firmware;
+//! decoding round-trips every backup in the corpus. See `docs/FORMAT.md`.
 
 use crate::checksum::crc32;
 use crate::container::{Area, Raw, RecordTable, Svd};
