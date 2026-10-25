@@ -30,6 +30,11 @@ pub(crate) enum Command {
         #[command(subcommand)]
         command: SamplesCommand,
     },
+    /// List and export the pad sampler audio of a backup folder.
+    Pads {
+        #[command(subcommand)]
+        command: PadsCommand,
+    },
     /// Inspect memory areas in an SVD container.
     Areas {
         #[command(subcommand)]
@@ -219,6 +224,39 @@ pub(crate) enum TonesCommand {
 #[derive(Subcommand)]
 pub(crate) enum SamplesCommand {
     List { file: PathBuf },
+}
+
+#[derive(Subcommand)]
+pub(crate) enum PadsCommand {
+    /// List the 64 pads: name, length, channels, level, loop.
+    List {
+        /// Folder holding `FANTOM.SVD`, or that file.
+        backup: PathBuf,
+    },
+    /// Write one pad's audio as a WAV file.
+    Wav {
+        /// Folder holding `FANTOM.SVD`, or that file.
+        backup: PathBuf,
+        /// Bank, 1-4.
+        bank: u8,
+        /// Pad, 1-16.
+        pad: u8,
+        /// WAV file to write.
+        out: PathBuf,
+        /// Only the audio between the pad's start and end, not the whole file.
+        #[arg(long)]
+        trim: bool,
+    },
+    /// Write every pad's audio into a folder as `BANKb-pp_name.wav`.
+    Wavs {
+        /// Folder holding `FANTOM.SVD`, or that file.
+        backup: PathBuf,
+        /// Folder to write into; created if missing.
+        dir: PathBuf,
+        /// Only the audio between each pad's start and end, not the whole file.
+        #[arg(long)]
+        trim: bool,
+    },
 }
 
 #[derive(Subcommand)]

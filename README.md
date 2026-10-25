@@ -277,6 +277,11 @@ cargo run -p fantom-cli -- scenes list path/to/FANTOM.SVD
 # Use --include-disabled for off zones. Lists its sequencer patterns when SEQ/ sits beside the file.
 cargo run -p fantom-cli -- scenes show path/to/FANTOM.SVD 385
 
+# List the pad sampler pads of a backup, and export one (or all) as WAV (--trim: start..end only).
+cargo run -p fantom-cli -- pads list path/to/backup
+cargo run -p fantom-cli -- pads wav path/to/backup 1 3 pad.wav
+cargo run -p fantom-cli -- pads wavs path/to/backup wavs/
+
 # List the tones bundled in a file, with the model of each MODEL and ACB tone.
 cargo run -p fantom-cli -- tones list path/to/FANTOM.SVD
 
