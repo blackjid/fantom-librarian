@@ -280,6 +280,10 @@ cargo run -p fantom-cli -- scenes show path/to/FANTOM.SVD 385
 # List the tones bundled in a file, with the model of each MODEL and ACB tone.
 cargo run -p fantom-cli -- tones list path/to/FANTOM.SVD
 
+# Show an ACB tone's parameters by name (--all for zero and reserved ones), and edit them.
+cargo run -p fantom-cli -- tones show path/to/FANTOM.SVD 0
+cargo run -p fantom-cli -- tones set path/to/FANTOM.SVD 0 LFO_rate=142 FLT_lpf=144 -o edited.SVD
+
 # List the user samples and multisamples a file carries.
 cargo run -p fantom-cli -- samples list path/to/FANTOM.SVD
 

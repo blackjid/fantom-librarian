@@ -7,6 +7,7 @@
 //! - [`container`] — SVD/SVZ *framing* (size prefix, memory-area table, zone/tone tables).
 //!   Knows about the file envelope, not the musical meaning of its contents.
 //! - [`model`] — the domain: [`model::Scene`], [`model::Zone`], [`model::ToneRef`], metadata.
+//! - [`acb`] — reading and editing ACB tone parameters by name.
 //! - [`address`] — the one table saying which area a tone address indexes, and at which record.
 //! - [`codec`] — maps container bytes onto [`model`] types (read now, write later).
 //! - [`params`] — Roland's parameter map, file bytes against SysEx addresses, for tones and scenes.
@@ -27,6 +28,7 @@
 //! [`container::Raw`] plus the CLI `inspect` command are the microscope used to learn the parts
 //! still unknown.
 
+pub mod acb;
 pub mod address;
 pub mod checksum;
 pub mod codec;
