@@ -13,7 +13,10 @@ use fantom_core::sequence::SeqSet;
 
 mod cli;
 mod render;
-use cli::{AreasCommand, Cli, Command, SamplesCommand, ScenesCommand, TonesCommand, WriteOptions};
+use cli::{
+    AreasCommand, Cli, Command, PadsCommand, SamplesCommand, ScenesCommand, TonesCommand,
+    WriteOptions,
+};
 use render::{Align, Table};
 
 fn main() -> ExitCode {
@@ -60,6 +63,17 @@ fn main() -> ExitCode {
                 area,
                 write,
             } => run_tone_extract(&file, &tones, &area, &write),
+        },
+        Command::Pads { command } => match command {
+            PadsCommand::List { backup } => run_pads(&backup),
+            PadsCommand::Wav {
+                backup,
+                bank,
+                pad,
+                out,
+                trim,
+            } => run_pad_wav(&backup, bank, pad, &out, trim),
+            PadsCommand::Wavs { backup, dir, trim } => run_pad_wavs(&backup, &dir, trim),
         },
         Command::Samples { command } => match command {
             SamplesCommand::List { file } => run_samples(&file),
@@ -496,6 +510,124 @@ fn run_scenes(file: &PathBuf) -> fantom_core::Result<String> {
     }
     out.push_str(&table.render());
     Ok(out)
+}
+
+/// The folder holding the backup's files, given that folder or its `FANTOM.SVD`.
+fn backup_dir(backup: &Path) -> &Path {
+    if backup.is_dir() {
+        backup
+    } else {
+        backup.parent().unwrap_or(Path::new("."))
+    }
+}
+
+fn pad_set(backup: &Path) -> fantom_core::Result<fantom_core::pad::PadSet> {
+    fantom_core::pad::read_set(backup_dir(backup))?.ok_or_else(|| {
+        fantom_core::Error::Unrecognized(format!(
+            "no {} in {}",
+            fantom_core::pad::DIR,
+            backup.display()
+        ))
+    })
+}
+
+fn write_file(path: &Path, bytes: &[u8]) -> fantom_core::Result<()> {
+    std::fs::write(path, bytes).map_err(|source| fantom_core::Error::File {
+        action: "write",
+        path: path.display().to_string(),
+        source,
+    })
+}
+
+fn run_pads(backup: &Path) -> fantom_core::Result<String> {
+    let set = pad_set(backup)?;
+    let mut table = Table::new(vec![
+        ("PAD", Align::Left),
+        ("NAME", Align::Left),
+        ("SEC", Align::Right),
+        ("CH", Align::Left),
+        ("LEVEL", Align::Right),
+        ("LOOP", Align::Left),
+        ("TRIM", Align::Left),
+    ]);
+    for p in &set.pads {
+        let (sec, ch) = match &p.audio {
+            Some(a) => (
+                format!("{:.2}", a.seconds()),
+                if a.channels == 1 { "mono" } else { "stereo" }.to_string(),
+            ),
+            None => ("-".into(), "missing".into()),
+        };
+        table.row(vec![
+            format!("{}-{:02}", p.bank, p.pad),
+            p.name.clone(),
+            sec,
+            ch,
+            p.level.to_string(),
+            if p.looped { "loop" } else { "" }.into(),
+            if p.trimmed() { "trim" } else { "" }.into(),
+        ]);
+    }
+    let mut out = match set.sampler_level {
+        Some(l) => format!("sampler level {l}\n"),
+        None => String::new(),
+    };
+    out.push_str(&table.render());
+    Ok(out)
+}
+
+fn run_pad_wav(
+    backup: &Path,
+    bank: u8,
+    pad: u8,
+    out: &Path,
+    trim: bool,
+) -> fantom_core::Result<String> {
+    let set = pad_set(backup)?;
+    let p = set
+        .pad(bank, pad)
+        .filter(|p| p.audio.is_some())
+        .ok_or_else(|| {
+            fantom_core::Error::Unrecognized(format!("no pad {bank}-{pad:02} with audio"))
+        })?;
+    let wav = fantom_core::pad::read_wav(backup_dir(backup), p, trim)?;
+    write_file(out, &wav)?;
+    Ok(format!("{} -> {}\n", p.file_name(), out.display()))
+}
+
+fn run_pad_wavs(backup: &Path, dir: &Path, trim: bool) -> fantom_core::Result<String> {
+    let set = pad_set(backup)?;
+    std::fs::create_dir_all(dir).map_err(|source| fantom_core::Error::File {
+        action: "create",
+        path: dir.display().to_string(),
+        source,
+    })?;
+    let mut n = 0;
+    for p in set.pads.iter().filter(|p| p.audio.is_some()) {
+        let name: String = p
+            .name
+            .chars()
+            .map(|c| {
+                if c.is_ascii_alphanumeric() || "-_ .".contains(c) {
+                    c
+                } else {
+                    '_'
+                }
+            })
+            .collect();
+        let file = format!(
+            "BANK{}-{:02}_{}.wav",
+            p.bank,
+            p.pad,
+            if name.is_empty() { "pad" } else { &name }
+        );
+        write_file(
+            &dir.join(file),
+            &fantom_core::pad::read_wav(backup_dir(backup), p, trim)?,
+        )?;
+        n += 1;
+    }
+    Ok(format!("{n} wavs -> {}\n", dir.display()))
 }
 
 fn run_chains(backup: &Path, all: bool) -> fantom_core::Result<String> {

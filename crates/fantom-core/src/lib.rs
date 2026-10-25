@@ -23,6 +23,7 @@
 //! - [`samplebank`] — building a sample-only SVZ, the one container that moves user audio.
 //! - [`sequence`] — where a scene's sequencer patterns sit beside its bank.
 //! - [`chain`] — scene chains (setlists) beside the bank, read-only.
+//! - [`pad`] — pad sampler audio (`.SMP`) and settings (`PADCONF.BIN`) beside the bank, read-only.
 //! - [`checksum`] / [`verify`] — the CRC-32 Roland stores per record, and checking a file against it.
 //!
 //! The layout was reverse-engineered from a Roland FANTOM-6 and validated against panel ground
@@ -43,6 +44,7 @@ pub mod factory;
 pub mod mdl;
 pub mod model;
 pub mod origin;
+pub mod pad;
 pub mod params;
 pub mod presets;
 pub mod repackage;
