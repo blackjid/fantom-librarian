@@ -93,6 +93,10 @@ pub enum MdlMirror {
 /// `x` carries one extra entry: the instrument reads it for the top knot's segment.
 #[derive(Debug)]
 pub struct MdlCurve {
+    /// The instrument's interpolation mode: 3 and 4 are the same cubic; 2 has a scaled abscissa.
+    pub mode: u8,
+    /// The abscissa scale of mode 2; 0 otherwise.
+    pub scale: f32,
     /// Negative inputs are mirrored: the curve of `-p`, negated.
     pub signed: bool,
     pub lo: i16,
@@ -104,7 +108,7 @@ pub struct MdlCurve {
     pub c: &'static [f32],
 }
 
-/// A ZEN-Core tone field the JP-8 setters write, named by the instrument's block and parameter id.
+/// A ZEN-Core tone field the analog setters write, named by the instrument's block and parameter id.
 #[derive(Debug)]
 pub struct MdlTarget {
     pub block: u8,
