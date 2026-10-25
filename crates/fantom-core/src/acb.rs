@@ -60,8 +60,8 @@ pub fn read_acb_params(raw: &Raw, index: usize) -> Result<Vec<AcbField>> {
 /// Set parameter `name` of ACB record `index` from text, checked against its range.
 ///
 /// Integer parameters take a number, text words up to four printable characters. Float mirrors
-/// cannot be set directly: setting their source moves them. A record checksum, when the area
-/// carries one, is refreshed.
+/// cannot be set directly: setting their source moves them. The per-record CRC-32 an `.svz` area
+/// carries is refreshed; an SVD area has none.
 pub fn set_acb_param(raw: &mut Raw, index: usize, name: &str, value: &str) -> Result<()> {
     let param = find(name)?;
     let new = encode(param, value)?;
