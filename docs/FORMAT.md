@@ -40,6 +40,8 @@ and library import (`import.rs` skips `.sqs`, `.smp`, `.xml`), still ignore them
 | `PAD_SMPL/SMPL_SET001/BANK<b>-<pp>.SMP`, `PADCONF.BIN` | pad sampler audio, pad settings | bank 1–4, pad 01–16 |
 | `DESIGN_SETTING/WALLPAPER/wallpaper.xml` | `<SETTING Bank Preset User Alpha R G B>` | — |
 
+- **Scene chains** are read by `fantom_core::chain` and `scenes chains` (read-only): `<CHAINn SceneIdx>`
+  steps, `<MARKERn ChainIdx NameIndex>` labels (0–61 = `0-9A-Za-z`), plus `ChainSetEmpty`/`ChainSetTmp`.
 - **SQS travels with its scene.** A slot without a file has empty patterns. The file doesn't
   embed its slot: PRISMA export `A/001` is byte-identical to backup `C/100`. EXPORT SCENE writes
   `FANTOM.SVD` plus `SEQ/` renumbered from `A/001` in export order. So moving a scene = copying

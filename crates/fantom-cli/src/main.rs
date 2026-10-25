@@ -65,6 +65,7 @@ fn main() -> ExitCode {
         },
         Command::Scenes { command } => match command {
             ScenesCommand::List { file } => run_scenes(&file),
+            ScenesCommand::Chains { backup, all } => run_chains(&backup, all),
             ScenesCommand::Show {
                 file,
                 scene,
@@ -485,6 +486,51 @@ fn run_scenes(file: &PathBuf) -> fantom_core::Result<String> {
         table.row(vec![(i + 1).to_string(), scene.name.clone(), summary]);
     }
     out.push_str(&table.render());
+    Ok(out)
+}
+
+fn run_chains(backup: &Path, all: bool) -> fantom_core::Result<String> {
+    let (dir, svd) = if backup.is_dir() {
+        (backup.to_path_buf(), backup.join("FANTOM.SVD"))
+    } else {
+        let dir = backup.parent().unwrap_or(Path::new("."));
+        (dir.to_path_buf(), backup.to_path_buf())
+    };
+    let scenes = fantom_core::codec::read_scenes(&Raw::open(&svd)?)?;
+    let chains: Vec<_> = fantom_core::chain::read_dir(&dir)?
+        .into_iter()
+        .filter(|c| all || c.number().is_some())
+        .collect();
+    let mut out = format!("{} chains:\n", chains.len());
+    for chain in &chains {
+        let title = match chain.number() {
+            Some(n) => n.to_string(),
+            None => chain.file.clone(),
+        };
+        let _ = writeln!(
+            out,
+            "\nChain {title} \"{}\" ({} steps)",
+            chain.name,
+            chain.scenes.len()
+        );
+        for (step, &index) in chain.scenes.iter().enumerate() {
+            let name = scenes
+                .get(index)
+                .map_or("(no such scene)", |s| s.name.as_str());
+            let marks: Vec<String> = chain
+                .markers
+                .iter()
+                .filter(|m| m.step == step)
+                .map(|m| m.label().map_or("?".into(), |c| c.to_string()))
+                .collect();
+            let marker = if marks.is_empty() {
+                String::new()
+            } else {
+                format!("  [marker {}]", marks.join(","))
+            };
+            let _ = writeln!(out, "  {:>2}. {:>3} {name}{marker}", step + 1, index + 1);
+        }
+    }
     Ok(out)
 }
 
