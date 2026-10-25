@@ -3,7 +3,7 @@
 //! Offsets, sizes and ranges from the instrument's parameter descriptors; offsets are
 //! record-relative.
 
-use super::{MdlCurve, MdlMirror, MdlParam};
+use super::{MdlCurve, MdlMirror, MdlParam, MdlTarget};
 
 /// On-disk length of one `MDLa` record.
 pub const RECORD_LEN: usize = 2048;
@@ -13,28 +13,28 @@ pub const ENGINE_BASE: usize = 0x670;
 #[rustfmt::skip]
 pub static ANALOG: &[MdlParam] = &[
     MdlParam { id: "Model", offset: 1648, size: 1, min: 0, max: 4, labels: &["---", "JP8", "JX8P", "JUNO106", "SH101"], mirror: MdlMirror::Locked },
-    MdlParam { id: "LFO WAVE FORM", offset: 1649, size: 1, min: 0, max: 10, labels: &["SIN", "TRI", "SAW-UP", "SAW-DW", "SQR", "RND", "TRP", "S&H", "CHS", "VSIN", "STEP"], mirror: MdlMirror::Unproven },
-    MdlParam { id: "LFO RATE", offset: 1650, size: 2, min: 0, max: 1023, labels: &[], mirror: MdlMirror::Unproven },
-    MdlParam { id: "LFO DELAY TIME", offset: 1652, size: 2, min: 0, max: 1023, labels: &[], mirror: MdlMirror::Unproven },
+    MdlParam { id: "LFO WAVE FORM", offset: 1649, size: 1, min: 0, max: 10, labels: &["SIN", "TRI", "SAW-UP", "SAW-DW", "SQR", "RND", "TRP", "S&H", "CHS", "VSIN", "STEP"], mirror: MdlMirror::Mirrored },
+    MdlParam { id: "LFO RATE", offset: 1650, size: 2, min: 0, max: 1023, labels: &[], mirror: MdlMirror::Mirrored },
+    MdlParam { id: "LFO DELAY TIME", offset: 1652, size: 2, min: 0, max: 1023, labels: &[], mirror: MdlMirror::Mirrored },
     MdlParam { id: "OSC1 MOD", offset: 1654, size: 1, min: -100, max: 100, labels: &[], mirror: MdlMirror::Unproven },
     MdlParam { id: "OSC1 PITCH ENV DEPTH", offset: 1655, size: 1, min: -100, max: 100, labels: &[], mirror: MdlMirror::Unproven },
-    MdlParam { id: "OSC1 DEST SELECT", offset: 1656, size: 1, min: 0, max: 2, labels: &["OSC1", "BOTH", "OSC2"], mirror: MdlMirror::Unproven },
+    MdlParam { id: "OSC1 DEST SELECT", offset: 1656, size: 1, min: 0, max: 2, labels: &["OSC1", "BOTH", "OSC2"], mirror: MdlMirror::Mirrored },
     MdlParam { id: "OSC1 ENVT SELECT", offset: 1657, size: 1, min: 0, max: 1, labels: &["1", "2"], mirror: MdlMirror::Free },
-    MdlParam { id: "OSC1 WAVE FORM", offset: 1658, size: 2, min: 0, max: 27, labels: &["PW", "SAW", "SUB1OCT1", "SUB2OCT1", "SUB2OCT2", "NOISE", "PW", "SAW", "SUB1OCT1", "NOISE", "SIN", "TRI", "SAW", "PW", "SQR", "NOISE", "SAW", "PULSE", "SQR", "NOISE", "TRI", "SAW+TRI", "SAW", "SQR", "SQR2", "SQR3", "WHITE NOISE", "PINK NOISE"], mirror: MdlMirror::Unproven },
-    MdlParam { id: "OSC1 FEET", offset: 1660, size: 1, min: 0, max: 4, labels: &["32'", "16'", "8'", "4'", "2'"], mirror: MdlMirror::Unproven },
+    MdlParam { id: "OSC1 WAVE FORM", offset: 1658, size: 2, min: 0, max: 27, labels: &["PW", "SAW", "SUB1OCT1", "SUB2OCT1", "SUB2OCT2", "NOISE", "PW", "SAW", "SUB1OCT1", "NOISE", "SIN", "TRI", "SAW", "PW", "SQR", "NOISE", "SAW", "PULSE", "SQR", "NOISE", "TRI", "SAW+TRI", "SAW", "SQR", "SQR2", "SQR3", "WHITE NOISE", "PINK NOISE"], mirror: MdlMirror::Mirrored },
+    MdlParam { id: "OSC1 FEET", offset: 1660, size: 1, min: 0, max: 4, labels: &["32'", "16'", "8'", "4'", "2'"], mirror: MdlMirror::Mirrored },
     MdlParam { id: "OSC1 COARSE TUNE", offset: 1661, size: 1, min: -48, max: 48, labels: &[], mirror: MdlMirror::Free },
     MdlParam { id: "OSC1 FINE TUNE", offset: 1662, size: 1, min: -50, max: 50, labels: &[], mirror: MdlMirror::Free },
     MdlParam { id: "OSC1 LOW FREQ PITCH", offset: 1663, size: 1, min: 0, max: 127, labels: &[], mirror: MdlMirror::Free },
     MdlParam { id: "OSC1 MODE", offset: 1664, size: 1, min: 0, max: 1, labels: &["NORMAL", "LOW FREQ"], mirror: MdlMirror::Free },
     MdlParam { id: "OSC1 PWM DEPTH", offset: 1665, size: 1, min: -63, max: 63, labels: &[], mirror: MdlMirror::Free },
     MdlParam { id: "OSC1 PULSE WIDTH", offset: 1666, size: 1, min: 0, max: 127, labels: &[], mirror: MdlMirror::Unproven },
-    MdlParam { id: "OSC1 PULSE WIDTH MODE", offset: 1667, size: 1, min: 0, max: 2, labels: &["LFO", "MANUAL", "ENV"], mirror: MdlMirror::Unproven },
+    MdlParam { id: "OSC1 PULSE WIDTH MODE", offset: 1667, size: 1, min: 0, max: 2, labels: &["LFO", "MANUAL", "ENV"], mirror: MdlMirror::Mirrored },
     MdlParam { id: "OSC2 MOD", offset: 1668, size: 1, min: -100, max: 100, labels: &[], mirror: MdlMirror::Free },
     MdlParam { id: "OSC2 PITCH ENV DEPTH", offset: 1669, size: 1, min: -100, max: 100, labels: &[], mirror: MdlMirror::Free },
-    MdlParam { id: "OSC2 WAVE FORM", offset: 1670, size: 2, min: 0, max: 27, labels: &["PW", "SAW", "SUB1OCT1", "SUB2OCT1", "SUB2OCT2", "NOISE", "PW", "SAW", "SUB1OCT1", "NOISE", "SIN", "TRI", "SAW", "PW", "SQR", "NOISE", "SAW", "PULSE", "SQR", "NOISE", "TRI", "SAW+TRI", "SAW", "SQR", "SQR2", "SQR3", "WHITE NOISE", "PINK NOISE"], mirror: MdlMirror::Unproven },
+    MdlParam { id: "OSC2 WAVE FORM", offset: 1670, size: 2, min: 0, max: 27, labels: &["PW", "SAW", "SUB1OCT1", "SUB2OCT1", "SUB2OCT2", "NOISE", "PW", "SAW", "SUB1OCT1", "NOISE", "SIN", "TRI", "SAW", "PW", "SQR", "NOISE", "SAW", "PULSE", "SQR", "NOISE", "TRI", "SAW+TRI", "SAW", "SQR", "SQR2", "SQR3", "WHITE NOISE", "PINK NOISE"], mirror: MdlMirror::Mirrored },
     MdlParam { id: "OSC2 FEET", offset: 1672, size: 1, min: 0, max: 4, labels: &["32'", "16'", "8'", "4'", "2'"], mirror: MdlMirror::Free },
-    MdlParam { id: "OSC2 COARSE TUNE", offset: 1673, size: 1, min: -48, max: 48, labels: &[], mirror: MdlMirror::Unproven },
-    MdlParam { id: "OSC2 FINE TUNE", offset: 1674, size: 1, min: -50, max: 50, labels: &[], mirror: MdlMirror::Unproven },
+    MdlParam { id: "OSC2 COARSE TUNE", offset: 1673, size: 1, min: -48, max: 48, labels: &[], mirror: MdlMirror::Mirrored },
+    MdlParam { id: "OSC2 FINE TUNE", offset: 1674, size: 1, min: -50, max: 50, labels: &[], mirror: MdlMirror::Mirrored },
     MdlParam { id: "OSC2 LOW FREQ PITCH", offset: 1675, size: 1, min: 0, max: 127, labels: &[], mirror: MdlMirror::Unproven },
     MdlParam { id: "OSC2 MODE", offset: 1676, size: 1, min: 0, max: 1, labels: &["NORMAL", "LO FREQ"], mirror: MdlMirror::Unproven },
     MdlParam { id: "OSC2 PULSE WIDTH", offset: 1677, size: 1, min: 0, max: 127, labels: &[], mirror: MdlMirror::Free },
@@ -47,10 +47,10 @@ pub static ANALOG: &[MdlParam] = &[
     MdlParam { id: "OSC3 LOW FREQ PITCH", offset: 1685, size: 1, min: 0, max: 127, labels: &[], mirror: MdlMirror::Free },
     MdlParam { id: "OSC3 MODE", offset: 1686, size: 1, min: 0, max: 1, labels: &["NORMAL", "LO FREQ"], mirror: MdlMirror::Free },
     MdlParam { id: "NOISE", offset: 1687, size: 1, min: 0, max: 1, labels: &["WHITE", "PINK"], mirror: MdlMirror::Free },
-    MdlParam { id: "MOD DEPTH", offset: 1688, size: 2, min: 0, max: 10800, labels: &[], mirror: MdlMirror::ModDepth },
+    MdlParam { id: "MOD DEPTH", offset: 1688, size: 2, min: 0, max: 10800, labels: &[], mirror: MdlMirror::Mirrored },
     MdlParam { id: "MOD MODE", offset: 1690, size: 1, min: 0, max: 3, labels: &["OFF", "SYNC", "RING", "X-MOD"], mirror: MdlMirror::Unproven },
-    MdlParam { id: "OSC1 LEVEL", offset: 1691, size: 1, min: 0, max: 255, labels: &[], mirror: MdlMirror::Unproven },
-    MdlParam { id: "OSC2 LEVEL", offset: 1692, size: 1, min: 0, max: 255, labels: &[], mirror: MdlMirror::Unproven },
+    MdlParam { id: "OSC1 LEVEL", offset: 1691, size: 1, min: 0, max: 255, labels: &[], mirror: MdlMirror::Mirrored },
+    MdlParam { id: "OSC2 LEVEL", offset: 1692, size: 1, min: 0, max: 255, labels: &[], mirror: MdlMirror::Mirrored },
     MdlParam { id: "OSC3 LEVEL", offset: 1693, size: 1, min: 0, max: 255, labels: &[], mirror: MdlMirror::Free },
     MdlParam { id: "NOISE LEVEL", offset: 1694, size: 1, min: 0, max: 255, labels: &[], mirror: MdlMirror::Free },
     MdlParam { id: "MIXER ENV DEPTH", offset: 1695, size: 1, min: -63, max: 63, labels: &[], mirror: MdlMirror::Free },
@@ -58,44 +58,44 @@ pub static ANALOG: &[MdlParam] = &[
     MdlParam { id: "MIXER DYNAMICS", offset: 1697, size: 1, min: 0, max: 3, labels: &[], mirror: MdlMirror::Free },
     MdlParam { id: "FILTER TYPE", offset: 1698, size: 1, min: 0, max: 3, labels: &[], mirror: MdlMirror::Unproven },
     MdlParam { id: "FILTER HPF STEP", offset: 1699, size: 1, min: 0, max: 3, labels: &[], mirror: MdlMirror::Free },
-    MdlParam { id: "FILTER HPF", offset: 1700, size: 2, min: 0, max: 1023, labels: &[], mirror: MdlMirror::Unproven },
-    MdlParam { id: "FILTER FREQ", offset: 1702, size: 2, min: 0, max: 1023, labels: &[], mirror: MdlMirror::FilterFreq },
-    MdlParam { id: "FILTER RESO", offset: 1704, size: 2, min: 0, max: 1023, labels: &[], mirror: MdlMirror::FilterReso },
-    MdlParam { id: "FILTER ENV DEPTH", offset: 1706, size: 2, min: -1023, max: 1023, labels: &[], mirror: MdlMirror::Unproven },
+    MdlParam { id: "FILTER HPF", offset: 1700, size: 2, min: 0, max: 1023, labels: &[], mirror: MdlMirror::Mirrored },
+    MdlParam { id: "FILTER FREQ", offset: 1702, size: 2, min: 0, max: 1023, labels: &[], mirror: MdlMirror::Mirrored },
+    MdlParam { id: "FILTER RESO", offset: 1704, size: 2, min: 0, max: 1023, labels: &[], mirror: MdlMirror::Mirrored },
+    MdlParam { id: "FILTER ENV DEPTH", offset: 1706, size: 2, min: -1023, max: 1023, labels: &[], mirror: MdlMirror::Mirrored },
     MdlParam { id: "FILTER ENV SELECT", offset: 1708, size: 1, min: 0, max: 1, labels: &["1", "2"], mirror: MdlMirror::Unproven },
-    MdlParam { id: "FILTER SLOPE", offset: 1709, size: 1, min: 0, max: 2, labels: &["-12dB", "-18db", "-24dB"], mirror: MdlMirror::Unproven },
+    MdlParam { id: "FILTER SLOPE", offset: 1709, size: 1, min: 0, max: 2, labels: &["-12dB", "-18db", "-24dB"], mirror: MdlMirror::Mirrored },
     MdlParam { id: "FILTER KEY FOLLOW", offset: 1710, size: 2, min: -200, max: 200, labels: &[], mirror: MdlMirror::Unproven },
     MdlParam { id: "FILTER MOD", offset: 1712, size: 1, min: -100, max: 100, labels: &[], mirror: MdlMirror::Unproven },
-    MdlParam { id: "AMP LEVEL", offset: 1714, size: 1, min: 0, max: 127, labels: &[], mirror: MdlMirror::Unproven },
+    MdlParam { id: "AMP LEVEL", offset: 1714, size: 1, min: 0, max: 127, labels: &[], mirror: MdlMirror::Mirrored },
     MdlParam { id: "AMP MOD", offset: 1715, size: 1, min: -100, max: 100, labels: &[], mirror: MdlMirror::Free },
     MdlParam { id: "AMP MOD STEP", offset: 1716, size: 1, min: 0, max: 3, labels: &[], mirror: MdlMirror::Unproven },
     MdlParam { id: "AMP ENV SELECT", offset: 1717, size: 1, min: 0, max: 3, labels: &["ENV F&A", "ENV2", "G-AMP", "G-ENV2"], mirror: MdlMirror::Unproven },
     MdlParam { id: "ENV1 ATTACK", offset: 1718, size: 2, min: 0, max: 1023, labels: &[], mirror: MdlMirror::Unproven },
-    MdlParam { id: "ENV1 DECAY", offset: 1720, size: 2, min: 0, max: 1023, labels: &[], mirror: MdlMirror::Unproven },
-    MdlParam { id: "ENV1 SUSTAIN", offset: 1722, size: 2, min: 0, max: 1023, labels: &[], mirror: MdlMirror::Unproven },
-    MdlParam { id: "ENV1 RELEASE", offset: 1724, size: 2, min: 0, max: 1023, labels: &[], mirror: MdlMirror::Unproven },
+    MdlParam { id: "ENV1 DECAY", offset: 1720, size: 2, min: 0, max: 1023, labels: &[], mirror: MdlMirror::Mirrored },
+    MdlParam { id: "ENV1 SUSTAIN", offset: 1722, size: 2, min: 0, max: 1023, labels: &[], mirror: MdlMirror::Mirrored },
+    MdlParam { id: "ENV1 RELEASE", offset: 1724, size: 2, min: 0, max: 1023, labels: &[], mirror: MdlMirror::Mirrored },
     MdlParam { id: "ENV1 KEY FOLLOW", offset: 1726, size: 1, min: -100, max: 100, labels: &[], mirror: MdlMirror::Free },
     MdlParam { id: "ENV1 KEY FOLLOW STEP", offset: 1727, size: 1, min: 0, max: 3, labels: &[], mirror: MdlMirror::Unproven },
-    MdlParam { id: "ENV2 ATTACK", offset: 1728, size: 2, min: 0, max: 1023, labels: &[], mirror: MdlMirror::Env2Attack },
-    MdlParam { id: "ENV2 DECAY", offset: 1730, size: 2, min: 0, max: 1023, labels: &[], mirror: MdlMirror::Unproven },
-    MdlParam { id: "ENV2 SUSTAIN", offset: 1732, size: 2, min: 0, max: 1023, labels: &[], mirror: MdlMirror::Unproven },
-    MdlParam { id: "ENV2 RELEASE", offset: 1734, size: 2, min: 0, max: 1023, labels: &[], mirror: MdlMirror::Env2Release },
+    MdlParam { id: "ENV2 ATTACK", offset: 1728, size: 2, min: 0, max: 1023, labels: &[], mirror: MdlMirror::Mirrored },
+    MdlParam { id: "ENV2 DECAY", offset: 1730, size: 2, min: 0, max: 1023, labels: &[], mirror: MdlMirror::Mirrored },
+    MdlParam { id: "ENV2 SUSTAIN", offset: 1732, size: 2, min: 0, max: 1023, labels: &[], mirror: MdlMirror::Mirrored },
+    MdlParam { id: "ENV2 RELEASE", offset: 1734, size: 2, min: 0, max: 1023, labels: &[], mirror: MdlMirror::Mirrored },
     MdlParam { id: "ENV2 MODE", offset: 1736, size: 1, min: 0, max: 2, labels: &["GATE+TRIG", "GATE", "LFO"], mirror: MdlMirror::Free },
     MdlParam { id: "ENV2 KEY FOLLOW", offset: 1737, size: 1, min: -100, max: 100, labels: &[], mirror: MdlMirror::Free },
     MdlParam { id: "ENV2 KEY FOLLOW STEP", offset: 1738, size: 1, min: 0, max: 3, labels: &[], mirror: MdlMirror::Unproven },
     MdlParam { id: "DYNAMICS PITCH", offset: 1739, size: 1, min: 0, max: 3, labels: &[], mirror: MdlMirror::Free },
     MdlParam { id: "DYNAMICS FILTER", offset: 1740, size: 1, min: 0, max: 3, labels: &[], mirror: MdlMirror::Free },
     MdlParam { id: "DYNAMICS AMP", offset: 1741, size: 1, min: 0, max: 3, labels: &[], mirror: MdlMirror::Free },
-    MdlParam { id: "PITCH DRIFT", offset: 1742, size: 1, min: 0, max: 255, labels: &[], mirror: MdlMirror::Unproven },
+    MdlParam { id: "PITCH DRIFT", offset: 1742, size: 1, min: 0, max: 255, labels: &[], mirror: MdlMirror::Mirrored },
     MdlParam { id: "BENDER PITCH DEPTH STEP", offset: 1743, size: 1, min: 0, max: 3, labels: &["2", "3", "4", "7"], mirror: MdlMirror::Free },
-    MdlParam { id: "BENDER FILTER DEPTH", offset: 1744, size: 1, min: -63, max: 63, labels: &[], mirror: MdlMirror::Unproven },
-    MdlParam { id: "MODULATION LFO DEPTH", offset: 1745, size: 1, min: -63, max: 63, labels: &[], mirror: MdlMirror::Unproven },
+    MdlParam { id: "BENDER FILTER DEPTH", offset: 1744, size: 1, min: -63, max: 63, labels: &[], mirror: MdlMirror::Mirrored },
+    MdlParam { id: "MODULATION LFO DEPTH", offset: 1745, size: 1, min: -63, max: 63, labels: &[], mirror: MdlMirror::Mirrored },
     MdlParam { id: "BENDER PITCH DEPTH", offset: 1746, size: 2, min: 0, max: 4800, labels: &[], mirror: MdlMirror::Unproven },
-    MdlParam { id: "PORTAMENT TIME", offset: 1748, size: 2, min: 0, max: 1023, labels: &[], mirror: MdlMirror::Unproven },
+    MdlParam { id: "PORTAMENT TIME", offset: 1748, size: 2, min: 0, max: 1023, labels: &[], mirror: MdlMirror::Mirrored },
     MdlParam { id: "PORTAMENT MODE", offset: 1750, size: 1, min: 0, max: 2, labels: &["OFF", "ON", "AUTO"], mirror: MdlMirror::Unproven },
     MdlParam { id: "KEY MODE", offset: 1751, size: 1, min: 0, max: 3, labels: &["POLY", "SOLO", "UNISON", "SL-UNISON"], mirror: MdlMirror::Unproven },
     MdlParam { id: "PARAMETER EXPANSION SWITCH", offset: 1752, size: 1, min: 0, max: 1, labels: &["OFF", "ON"], mirror: MdlMirror::Unproven },
-    MdlParam { id: "CONDITION", offset: 1753, size: 1, min: 0, max: 100, labels: &[], mirror: MdlMirror::Unproven },
+    MdlParam { id: "CONDITION", offset: 1753, size: 1, min: 0, max: 100, labels: &[], mirror: MdlMirror::Mirrored },
     MdlParam { id: "PORTAMENT CURVE TYPE", offset: 1754, size: 1, min: 0, max: 3, labels: &["ORIGINAL", "LINER", "EXP1", "EXP2"], mirror: MdlMirror::Unproven },
     MdlParam { id: "AFTER TOUCH SENS LFO", offset: 1755, size: 1, min: -63, max: 63, labels: &[], mirror: MdlMirror::Unproven },
     MdlParam { id: "AFTER TOUCH SENS FREQ", offset: 1756, size: 1, min: -63, max: 63, labels: &[], mirror: MdlMirror::Unproven },
@@ -764,46 +764,502 @@ pub static WT: &[MdlParam] = &[
     MdlParam { id: "CTRL Ctrl 29", offset: 2022, size: 2, min: -20000, max: 20000, labels: &[], mirror: MdlMirror::Unproven },
 ];
 
-/// A conversion curve.
+/// Analog fields that hold one value in every recorded JP-8 tone, as (field index, value): a
+/// mirror that reads one is proven only at that value.
+#[rustfmt::skip]
+pub static JP8_PINNED: &[(usize, i32)] = &[(4, 0), (5, 0), (15, 0), (24, 0), (36, 3), (44, 1), (50, 0), (57, 0), (82, 0)];
+
+/// Curve used by LFO_RATE, LFO_RATE_EXP.
+#[allow(clippy::excessive_precision)]
+#[rustfmt::skip]
+pub static LFO_RATE_CURVE: MdlCurve = MdlCurve {
+    signed: false,
+    lo: 0,
+    hi: 1023,
+    x: &[0, 170, 341, 511, 682, 852, 1023, 0],
+    y: &[154, 236, 390, 550, 697, 841, 913],
+    a: &[0.172629997, -0.00313000008, -0.068847999, 0.0172780007, -0.00162600004, 0.200183004, 0.0],
+    b: &[0.0358729996, 0.0402299985, 0.0754700005, -0.0365790017, -0.00894100033, -0.613995016, 0.0],
+    c: &[0.273849994, 0.863484979, 0.934554994, 0.87895, 0.857626975, 0.834864974, 0.207423002],
+};
+
+/// Curve used by LFO_DELAY.
+#[allow(clippy::excessive_precision)]
+#[rustfmt::skip]
+pub static LFO_DELAY_CURVE: MdlCurve = MdlCurve {
+    signed: false,
+    lo: 0,
+    hi: 1023,
+    x: &[0, 170, 341, 511, 682, 852, 1023, 0],
+    y: &[0, 7, 14, 70, 236, 507, 621],
+    a: &[0.000119999997, 0.000349000009, -0.0854649991, -0.183607996, -0.740661979, 0.0902229995, 0.0],
+    b: &[-0.000239999994, -0.000589000003, 0.373833001, 0.622053027, 1.109182, -0.645532012, 0.0],
+    c: &[0.0412969999, 0.0411759987, 0.0410440005, 0.532315016, 1.22559798, 1.22197497, 0.201581001],
+};
+
+/// Curve used by LFO_FADE.
+#[allow(clippy::excessive_precision)]
+#[rustfmt::skip]
+pub static LFO_FADE_CURVE: MdlCurve = MdlCurve {
+    signed: false,
+    lo: 0,
+    hi: 1023,
+    x: &[0, 170, 341, 511, 682, 852, 1023, 0],
+    y: &[0, 30, 78, 149, 419, 615, 735],
+    a: &[-0.00699099991, -0.0479810014, 0.156835005, -1.18560505, -0.0995879993, 0.00614400022, 0.0],
+    b: &[0.0589540005, 0.107240997, -0.0311689992, 2.06440401, -0.0196119994, -0.238543004, 0.0],
+    c: &[0.124508001, 0.221441999, 0.291981012, 0.700149, 1.27214098, 0.934153974, 0.475499004],
+};
+
+/// Curve used by OSC1_MOD.
+#[allow(clippy::excessive_precision)]
+#[rustfmt::skip]
+pub static OSC1_MOD_CURVE: MdlCurve = MdlCurve {
+    signed: false,
+    lo: 0,
+    hi: 100,
+    x: &[0, 16, 33, 50, 66, 83, 100, 0],
+    y: &[0, 11, 21, 28, 35, 45, 51],
+    a: &[0.0130939996, -0.0759079978, 0.0502119996, 0.00300600007, -0.227751002, 0.0257699993, 0.0],
+    b: &[-0.0612219982, 0.011678, -0.0865439996, 0.00884999987, 0.36362499, -0.169187993, 0.0],
+    c: &[0.735628009, 0.652464986, 0.448096991, 0.42564401, 0.452360988, 0.496358991, 0.235293999],
+};
+
+/// Curve used by OSC1_PENV.
+#[allow(clippy::excessive_precision)]
+#[rustfmt::skip]
+pub static OSC1_PENV_CURVE: MdlCurve = MdlCurve {
+    signed: true,
+    lo: 0,
+    hi: 100,
+    x: &[0, 16, 33, 50, 66, 83, 100, 0],
+    y: &[0, 25, 43, 56, 64, 72, 76],
+    a: &[-0.0701609999, -0.003486, -0.139319003, 0.00849299971, -0.0123030003, 0.0915030017, 0.0],
+    b: &[-0.174045995, -0.185822994, 0.0379960015, -0.0325569995, -0.00153799995, -0.300653994, 0.0],
+    c: &[1.80670702, 1.24813294, 0.866029024, 0.524064004, 0.484429002, 0.444444001, 0.117647],
+};
+
+/// Curve used by PW_C.
+#[allow(clippy::excessive_precision)]
+#[rustfmt::skip]
+pub static PW_C_CURVE: MdlCurve = MdlCurve {
+    signed: false,
+    lo: 0,
+    hi: 127,
+    x: &[0, 21, 42, 63, 84, 105, 127, 0],
+    y: &[65, 67, 71, 78, 85, 91, 94],
+    a: &[-0.00952399988, 0.0857139975, 0.0, 0.0, 0.0121379998, 0.0374570005, 0.0],
+    b: &[0.057142999, -0.0285710003, -0.0, -0.0, -0.0597570017, -0.151326999, 0.0],
+    c: &[0.0476190001, 0.133332998, 0.333332986, 0.333332986, 0.333332986, 0.250232995, 0.0599509999],
+};
+
+/// Curve used by PW_D.
+#[allow(clippy::excessive_precision)]
+#[rustfmt::skip]
+pub static PW_D_CURVE: MdlCurve = MdlCurve {
+    signed: false,
+    lo: 0,
+    hi: 127,
+    x: &[0, 21, 42, 63, 84, 105, 127, 0],
+    y: &[0, -1, -6, -13, -20, -27, -30],
+    a: &[-0.0317460001, -0.0317460001, -0.0, -0.0, -0.0, -0.0961939991, 0.0],
+    b: &[-0.0634920001, -0.0317460001, 0.0, 0.0, 0.0, 0.293164015, 0.0],
+    c: &[0.0476190001, -0.174603, -0.333332986, -0.333332986, -0.333332986, -0.333332986, -0.035588],
+};
+
+/// Curve used by PW_A.
+#[allow(clippy::excessive_precision)]
+#[rustfmt::skip]
+pub static PW_A_CURVE: MdlCurve = MdlCurve {
+    signed: false,
+    lo: 0,
+    hi: 127,
+    x: &[0, 21, 42, 63, 84, 105, 127, 0],
+    y: &[65, 69, 78, 90, 104, 115, 122],
+    a: &[0.0297619998, 0.012755, 0.00680299988, -0.092840001, 0.0144819999, 0.0172700007, 0.0],
+    b: &[0.0892859995, 0.0765310004, 0.0340140015, 0.140459001, -0.112118997, -0.139743999, 0.0],
+    c: &[0.0714289993, 0.339286, 0.530611992, 0.619047999, 0.621446013, 0.440656006, 0.212977007],
+};
+
+/// Curve used by PW_B.
+#[allow(clippy::excessive_precision)]
+#[rustfmt::skip]
+pub static PW_B_CURVE: MdlCurve = MdlCurve {
+    signed: false,
+    lo: 0,
+    hi: 127,
+    x: &[0, 21, 42, 63, 84, 105, 127, 0],
+    y: &[0, 4, 9, 14, 19, 24, 28],
+    a: &[0.0238099992, 0.0, 0.119047999, 0.119047999, 0.0, 0.0274839997, 0.0],
+    b: &[0.0, 0.0, -0.119047999, -0.238095, 0.0, -0.0837609991, 0.0],
+    c: &[0.166666999, 0.238095, 0.238095, 0.357143015, 0.238095, 0.238095, 0.153025001],
+};
+
+/// Curve used by HPF.
+#[allow(clippy::excessive_precision)]
+#[rustfmt::skip]
+pub static HPF_CURVE: MdlCurve = MdlCurve {
+    signed: false,
+    lo: 0,
+    hi: 1023,
+    x: &[0, 170, 341, 511, 682, 852, 1023, 0],
+    y: &[50, 465, 591, 636, 667, 701, 756],
+    a: &[-0.484099001, -0.0795380026, -0.0582079999, 0.0107930005, 0.00507699978, -0.0444630012, 0.0],
+    b: &[-0.365568995, -0.29102999, 0.0361780003, -0.0139739998, 0.00602399977, 0.149922997, 0.0],
+    c: &[3.29084396, 1.10740995, 0.286736012, 0.184467003, 0.188898996, 0.216177002, 0.382634997],
+};
+
+/// Curve used by FREQ.
 #[allow(clippy::excessive_precision)]
 #[rustfmt::skip]
 pub static FREQ_CURVE: MdlCurve = MdlCurve {
-    x: [0, 170, 341, 511, 682, 852, 1023, 0],
-    y: [10, 192, 367, 533, 700, 887, 959],
-    a: [-0.000102999998, -0.0232209992, 0.000174000001, -7.50000036e-05, -0.227523997, 0.234320998, 0.0],
-    b: [-0.0234249998, -0.000342999992, -0.000311000011, 0.000174000001, 0.350890994, -0.809110999, 0.0],
-    c: [1.09411705, 1.04695594, 0.976607025, 0.976508975, 0.976633012, 0.995842993, 0.0805829987],
+    signed: false,
+    lo: 0,
+    hi: 1023,
+    x: &[0, 170, 341, 511, 682, 852, 1023, 0],
+    y: &[10, 192, 367, 533, 700, 887, 959],
+    a: &[-0.000102999998, -0.0232209992, 0.000174000001, -7.50000036e-05, -0.227523997, 0.234320998, 0.0],
+    b: &[-0.0234249998, -0.000342999992, -0.000311000011, 0.000174000001, 0.350890994, -0.809110999, 0.0],
+    c: &[1.09411705, 1.04695594, 0.976607025, 0.976508975, 0.976633012, 0.995842993, 0.0805829987],
 };
 
-/// A conversion curve.
+/// Curve used by RESO.
 #[allow(clippy::excessive_precision)]
 #[rustfmt::skip]
 pub static RESO_CURVE: MdlCurve = MdlCurve {
-    x: [0, 170, 341, 511, 682, 852, 1023, 0],
-    y: [0, 150, 307, 522, 654, 788, 829],
-    a: [-0.0144969998, -0.00897900015, -0.793753028, 0.0298590008, -0.0243790001, 0.257640004, 0.0],
-    b: [0.0323319994, 0.0414160006, 1.116871, -0.0520009995, 0.0329679996, -0.790319026, 0.0],
-    c: [0.864517987, 0.885692, 0.941586971, 0.794071972, 0.779645979, 0.772445023, -0.035273999],
+    signed: false,
+    lo: 0,
+    hi: 1023,
+    x: &[0, 170, 341, 511, 682, 852, 1023, 0],
+    y: &[0, 150, 307, 522, 654, 788, 829],
+    a: &[-0.0144969998, -0.00897900015, -0.793753028, 0.0298590008, -0.0243790001, 0.257640004, 0.0],
+    b: &[0.0323319994, 0.0414160006, 1.116871, -0.0520009995, 0.0329679996, -0.790319026, 0.0],
+    c: &[0.864517987, 0.885692, 0.941586971, 0.794071972, 0.779645979, 0.772445023, -0.035273999],
 };
 
-/// A conversion curve.
+/// Curve used by FENV_DEPTH.
+#[allow(clippy::excessive_precision)]
+#[rustfmt::skip]
+pub static FENV_DEPTH_CURVE: MdlCurve = MdlCurve {
+    signed: true,
+    lo: 0,
+    hi: 1023,
+    x: &[0, 170, 341, 511, 682, 852, 1023, 0],
+    y: &[0, 378, 756, 1323, 1764, 2268, 2394],
+    a: &[0.00633500004, 0.0318650007, -1.66894901, 0.290926009, -2.51585197, 0.0, 0.0],
+    b: &[-0.012817, -0.0447200015, 2.77470589, -0.484082013, 2.80383992, -0.0, 0.0],
+    c: &[2.23001194, 2.22338104, 2.22953606, 2.77210307, 2.676718, 0.736841977, 0.736841977],
+};
+
+/// Curve used by FILTER_MOD.
+#[allow(clippy::excessive_precision)]
+#[rustfmt::skip]
+pub static FILTER_MOD_CURVE: MdlCurve = MdlCurve {
+    signed: false,
+    lo: 0,
+    hi: 100,
+    x: &[0, 16, 33, 50, 66, 83, 100, 0],
+    y: &[0, 8, 20, 25, 30, 35, 40],
+    a: &[-0.0325950012, -0.516668975, 0.0513480008, -0.0191680007, 0.0, 0.147058994, 0.0],
+    b: &[0.132416993, 0.655324996, -0.0850989968, 0.0199529994, -0.0, -0.147058994, 0.0],
+    c: &[0.400177985, 0.567227006, 0.327868998, 0.311713994, 0.294117987, 0.294117987, 0.441175997],
+};
+
+/// Curve used by KEY_FOLLOW.
+#[allow(clippy::excessive_precision)]
+#[rustfmt::skip]
+pub static KEY_FOLLOW_CURVE: MdlCurve = MdlCurve {
+    signed: false,
+    lo: 0,
+    hi: 200,
+    x: &[0, 33, 66, 100, 133, 166, 200, 0],
+    y: &[0, 16, 32, 48, 64, 80, 100],
+    a: &[0.242423996, 0.0, 0.0285209995, 0.0, 0.0, -0.0509210005, 0.0],
+    b: &[-0.484847993, 0.0, -0.0427809991, 0.0, 0.0, 0.154308006, 0.0],
+    c: &[0.727272987, 0.484847993, 0.484847993, 0.484847993, 0.484847993, 0.484847993, 0.640700996],
+};
+
+/// Curve used by AMP_LEVEL.
+#[allow(clippy::excessive_precision)]
+#[rustfmt::skip]
+pub static AMP_LEVEL_CURVE: MdlCurve = MdlCurve {
+    signed: false,
+    lo: 0,
+    hi: 127,
+    x: &[0, 21, 42, 63, 84, 105, 127, 0],
+    y: &[26, 52, 78, 100, 112, 124, 127],
+    a: &[0.619047999, 0.0, -0.285714, 0.0, 0.0, 0.212475002, 0.0],
+    b: &[-1.23809505, 0.0, 0.0952380002, 0.0, 0.0, -0.647539973, 0.0],
+    c: &[1.85714304, 1.23809505, 1.23809505, 0.571429014, 0.571429014, 0.571429014, -0.0862260014],
+};
+
+/// Curve used by ENV1_ATTACK.
+#[allow(clippy::excessive_precision)]
+#[rustfmt::skip]
+pub static ENV1_ATTACK_CURVE: MdlCurve = MdlCurve {
+    signed: false,
+    lo: 0,
+    hi: 1023,
+    x: &[0, 170, 341, 511, 682, 852, 1023, 0],
+    y: &[0, 2, 20, 139, 412, 598, 730],
+    a: &[-0.0339419991, -0.0246590003, -0.0525849983, -0.78006798, -0.0632570013, -0.0354500003, 0.0],
+    b: &[0.080554001, 0.105488002, 0.591153026, 1.19057596, -0.0695570037, -0.0906649977, 0.0],
+    c: &[-0.0348469988, 0.0244340003, 0.161431998, 1.18598199, 1.22693205, 0.898046017, 0.61036402],
+};
+
+/// Curve used by ENV1_DECAY.
+#[allow(clippy::excessive_precision)]
+#[rustfmt::skip]
+pub static ENV1_DECAY_CURVE: MdlCurve = MdlCurve {
+    signed: false,
+    lo: 0,
+    hi: 1023,
+    x: &[0, 170, 341, 511, 682, 852, 1023, 0],
+    y: &[1, 50, 159, 572, 781, 915, 1023],
+    a: &[-0.117275998, 0.109668002, -2.361763, -0.148778006, -0.0651680008, -0.0369179994, 0.0],
+    b: &[0.291359991, 0.182715997, 3.75169492, -0.0865819976, 0.015319, -0.0047220001, 0.0],
+    c: &[0.114151999, 0.345043004, 1.03947902, 1.457582, 0.838084996, 0.673218012, 0.553022027],
+};
+
+/// Curve used by ENV1_SUSTAIN_F.
+#[allow(clippy::excessive_precision)]
+#[rustfmt::skip]
+pub static ENV1_SUSTAIN_F_CURVE: MdlCurve = MdlCurve {
+    signed: false,
+    lo: 0,
+    hi: 1023,
+    x: &[0, 170, 341, 511, 682, 852, 1023, 0],
+    y: &[0, 200, 417, 609, 810, 950, 1023],
+    a: &[-0.00930900034, -0.148937002, 0.0594419986, -0.0695459992, 0.129141003, 0.011554, 0.0],
+    b: &[0.0554409996, 0.20465, -0.105811, 0.102499999, -0.444458991, -0.222005993, 0.0],
+    c: &[1.13033903, 1.21329296, 1.17578101, 1.14248395, 1.13884795, 0.63735199, 0.228002995],
+};
+
+/// Curve used by ENV1_RELEASE.
+#[allow(clippy::excessive_precision)]
+#[rustfmt::skip]
+pub static ENV1_RELEASE_CURVE: MdlCurve = MdlCurve {
+    signed: false,
+    lo: 0,
+    hi: 1023,
+    x: &[0, 170, 341, 511, 682, 852, 1023, 0],
+    y: &[0, 200, 410, 582, 846, 950, 1023],
+    a: &[-0.0158089995, -0.0608070008, 0.297405988, -1.12363195, 0.0861430019, -0.0620319992, 0.0],
+    b: &[0.0415330008, 0.102490999, -0.494589001, 1.55550504, -0.326478004, 0.0313609987, 0.0],
+    c: &[1.15074694, 1.18638504, 1.20894802, 1.11198699, 0.852101028, 0.457572013, 0.334197015],
+};
+
+/// Curve used by ATTACK.
 #[allow(clippy::excessive_precision)]
 #[rustfmt::skip]
 pub static ATTACK_CURVE: MdlCurve = MdlCurve {
-    x: [0, 170, 341, 511, 682, 852, 1023, 0],
-    y: [0, 10, 27, 192, 461, 669, 730],
-    a: [-0.0184339993, 0.0161979999, -0.386209011, -0.315880001, -0.0423640013, 0.183541998, 0.0],
-    b: [0.0386710018, 0.0225920007, 1.20239496, 0.48841399, -0.163859993, -0.801757991, 0.0],
-    c: [0.0385870002, 0.0606260002, 0.154402003, 1.40056503, 1.42975402, 0.974941015, -0.0779479966],
+    signed: false,
+    lo: 0,
+    hi: 1023,
+    x: &[0, 170, 341, 511, 682, 852, 1023, 0],
+    y: &[0, 10, 27, 192, 461, 669, 730],
+    a: &[-0.0184339993, 0.0161979999, -0.386209011, -0.315880001, -0.0423640013, 0.183541998, 0.0],
+    b: &[0.0386710018, 0.0225920007, 1.20239496, 0.48841399, -0.163859993, -0.801757991, 0.0],
+    c: &[0.0385870002, 0.0606260002, 0.154402003, 1.40056503, 1.42975402, 0.974941015, -0.0779479966],
 };
 
-/// A conversion curve.
+/// Curve used by ENV2_DECAY.
+#[allow(clippy::excessive_precision)]
+#[rustfmt::skip]
+pub static ENV2_DECAY_CURVE: MdlCurve = MdlCurve {
+    signed: false,
+    lo: 0,
+    hi: 1023,
+    x: &[0, 170, 341, 511, 682, 852, 1023, 0],
+    y: &[1, 15, 137, 634, 786, 920, 1023],
+    a: &[0.0, -0.107873999, -3.63286901, -0.00359999994, -0.056747999, 0.0275010001, 0.0],
+    b: &[0.0, 0.738972008, 5.31972504, -0.0850270018, 0.0483210012, -0.148223996, 0.0],
+    c: &[0.0823530033, 0.0823530033, 1.236673, 0.977515996, 0.796661973, 0.723061025, 0.509118974],
+};
+
+/// Curve used by ENV2_SUSTAIN.
+#[allow(clippy::excessive_precision)]
+#[rustfmt::skip]
+pub static ENV2_SUSTAIN_CURVE: MdlCurve = MdlCurve {
+    signed: false,
+    lo: 0,
+    hi: 1023,
+    x: &[0, 170, 341, 511, 682, 852, 1023, 0],
+    y: &[0, 72, 292, 517, 722, 914, 1023],
+    a: &[0.397215009, -0.00324900006, -0.0480090007, 0.0673220009, -0.00529799983, 0.184590995, 0.0],
+    b: &[0.0330299996, 0.0388099998, 0.0526780002, -0.148680001, -0.0500839986, -0.615897, 0.0],
+    c: &[-0.00671500014, 1.25098896, 1.31886101, 1.28018904, 1.184793, 1.06873298, 0.390713006],
+};
+
+/// Curve used by RELEASE.
 #[allow(clippy::excessive_precision)]
 #[rustfmt::skip]
 pub static RELEASE_CURVE: MdlCurve = MdlCurve {
-    x: [0, 170, 341, 511, 682, 852, 1023, 0],
-    y: [0, 50, 101, 497, 715, 900, 1023],
-    a: [-0.00205000001, 0.00380000006, -2.98906708, -0.0495139994, -0.0753230006, 0.0602370016, 0.0],
-    b: [0.00410699984, 0.000319000013, 5.01231289, -0.0392230004, 0.0269559994, -0.30548501, 0.0],
-    c: [0.292059988, 0.294126004, 0.30616501, 1.36359096, 1.13660204, 0.964545012, 0.534289002],
+    signed: false,
+    lo: 0,
+    hi: 1023,
+    x: &[0, 170, 341, 511, 682, 852, 1023, 0],
+    y: &[0, 50, 101, 497, 715, 900, 1023],
+    a: &[-0.00205000001, 0.00380000006, -2.98906708, -0.0495139994, -0.0753230006, 0.0602370016, 0.0],
+    b: &[0.00410699984, 0.000319000013, 5.01231289, -0.0392230004, 0.0269559994, -0.30548501, 0.0],
+    c: &[0.292059988, 0.294126004, 0.30616501, 1.36359096, 1.13660204, 0.964545012, 0.534289002],
 };
+
+/// Curve used by BENDER_FILTER.
+#[allow(clippy::excessive_precision)]
+#[rustfmt::skip]
+pub static BENDER_FILTER_CURVE: MdlCurve = MdlCurve {
+    signed: true,
+    lo: 0,
+    hi: 63,
+    x: &[0, 10, 21, 31, 42, 52, 63, 0],
+    y: &[0, 3, 6, 9, 12, 15, 18],
+    a: &[-0.000316999998, 0.0276050009, -0.0272729993, 0.0272729993, -0.0269559994, -0.000333000004, 0.0],
+    b: &[-0.0126700001, -0.0415740013, 0.0409089997, -0.0409089997, 0.0405919999, -0.0136209996, 0.0],
+    c: &[0.312987, 0.286695987, 0.286363989, 0.286363989, 0.286363989, 0.286680996, 0.258441001],
+};
+
+/// Curve used by MOD_LFO.
+#[allow(clippy::excessive_precision)]
+#[rustfmt::skip]
+pub static MOD_LFO_CURVE: MdlCurve = MdlCurve {
+    signed: true,
+    lo: 0,
+    hi: 63,
+    x: &[0, 10, 21, 31, 42, 52, 63, 0],
+    y: &[0, 8, 21, 33, 42, 46, 47],
+    a: &[0.181817994, -0.00909100007, -0.0250000004, 0.134809002, 0.012879, -0.0270150006, 0.0],
+    b: &[0.0, 0.0272729993, 0.0340909995, -0.500717998, -0.199959993, -0.107873999, 0.0],
+    c: &[0.618182003, 1.16363597, 1.19090903, 1.18409097, 0.587081015, 0.225797996, -0.070995003],
+};
+
+/// Curve used by PORTA_TIME.
+#[allow(clippy::excessive_precision)]
+#[rustfmt::skip]
+pub static PORTA_TIME_CURVE: MdlCurve = MdlCurve {
+    signed: false,
+    lo: 0,
+    hi: 1023,
+    x: &[0, 102, 204, 306, 409, 511, 613, 716, 818, 920, 1023, 0],
+    y: &[0, 1, 11, 87, 205, 338, 440, 513, 565, 586, 601],
+    a: &[-0.0335289985, 0.0391639993, -0.208439007, 0.0112749999, -0.175303996, 0.0208720006, 0.0178740006, -0.131687999, 0.0204080008, -0.0202619992, 0.0],
+    b: &[0.0776470006, 0.0384830013, 0.738686979, 0.0674490035, 0.243595004, -0.217781007, -0.133100003, 0.0301050004, -0.0910589993, 0.0102530001, 0.0],
+    c: &[-0.0343139991, 0.0203920007, 0.214849994, 1.06690705, 1.23563099, 1.19690895, 0.823964, 0.611387014, 0.276533008, 0.155640006, 0.115360998],
+};
+
+/// Curve used by ENV1_SUSTAIN_P.
+#[allow(clippy::excessive_precision)]
+#[rustfmt::skip]
+pub static ENV1_SUSTAIN_P_CURVE: MdlCurve = MdlCurve {
+    signed: false,
+    lo: 0,
+    hi: 1023,
+    x: &[0, 170, 341, 511, 682, 852, 1023, 0],
+    y: &[0, 85, 170, 255, 340, 425, 511],
+    a: &[-1.99999999e-06, 0.00292599993, -0.00292399991, 0.00292399991, -1.99999999e-06, 1.99999999e-06, 0.0],
+    b: &[-0.00145600003, -0.0043899999, 0.00438599987, -0.00438599987, 0.00146399997, 0.00146199996, 0.0],
+    c: &[0.501457989, 0.498540014, 0.498537987, 0.498537987, 0.498537987, 0.501460016, 0.504390001],
+};
+
+/// Curve used by OSC1_LEVEL, OSC2_LEVEL.
+#[allow(clippy::excessive_precision)]
+#[rustfmt::skip]
+pub static OSC1_LEVEL_CURVE: MdlCurve = MdlCurve {
+    signed: false,
+    lo: 0,
+    hi: 255,
+    x: &[0, 25, 51, 76, 102, 127, 153, 178, 204, 229, 255, 0],
+    y: &[0, 44, 84, 119, 151, 178, 202, 221, 237, 248, 255],
+    a: &[-0.0266929995, 0.00774999987, -0.0210510008, 0.00998700038, -0.00284500001, -0.00332799996, 0.00853199977, -0.00548300007, 0.00926900003, -0.00198299997, 0.0],
+    b: &[-0.0819040015, -0.093998, -0.0389130004, -0.0982030034, -0.0696950033, -0.0782100037, -0.0867419988, -0.0694539994, -0.104234003, -0.0830919966, 0.0],
+    c: &[1.86859703, 1.62470901, 1.45996404, 1.31898499, 1.15253997, 1.00461495, 0.838209987, 0.690321982, 0.534964025, 0.354304999, 0.182173997],
+};
+
+/// The ZEN-Core tone fields the JP-8 setters write, by the instrument's (block, parameter) pair.
+/// `offset` is within the block instance; 0xFFFF where the layout does not name it.
+#[rustfmt::skip]
+pub static TONE_TARGETS: &[MdlTarget] = &[
+    MdlTarget { block: 22, param: 0x705, offset: 20, size: 1 }, // PCMT_CMN LEVEL
+    MdlTarget { block: 22, param: 0x70c, offset: 29, size: 1 }, // PCMT_CMN ANALOG_FEEL
+    MdlTarget { block: 22, param: 0x70d, offset: 30, size: 1 }, // PCMT_CMN MONO_POLY
+    MdlTarget { block: 22, param: 0x710, offset: 33, size: 1 }, // PCMT_CMN PORTA_SW
+    MdlTarget { block: 22, param: 0x711, offset: 34, size: 1 }, // PCMT_CMN PORTA_MODE
+    MdlTarget { block: 22, param: 0x714, offset: 38, size: 2 }, // PCMT_CMN PORTA_TIME
+    MdlTarget { block: 22, param: 0x715, offset: 40, size: 1 }, // PCMT_CMN BEND_RANGE_UP
+    MdlTarget { block: 22, param: 0x716, offset: 41, size: 1 }, // PCMT_CMN BEND_RANGE_DW
+    MdlTarget { block: 22, param: 0x71d, offset: 48, size: 1 }, // PCMT_CMN PORTA_CRV
+    MdlTarget { block: 25, param: 0x746, offset: 2, size: 1 }, // PCMT_PTL PIT_CRS
+    MdlTarget { block: 25, param: 0x747, offset: 3, size: 1 }, // PCMT_PTL PIT_FINE
+    MdlTarget { block: 25, param: 0x751, offset: 14, size: 2 }, // PCMT_PTL DLY_TIME
+    MdlTarget { block: 25, param: 0x761, offset: 34, size: 2 }, // PCMT_PTL PIT_KF
+    MdlTarget { block: 25, param: 0x764, offset: 40, size: 2 }, // PCMT_PTL CUTOFF
+    MdlTarget { block: 25, param: 0x765, offset: 42, size: 2 }, // PCMT_PTL CUTOFF_KF
+    MdlTarget { block: 25, param: 0x768, offset: 46, size: 2 }, // PCMT_PTL RESO
+    MdlTarget { block: 25, param: 0x770, offset: 55, size: 1 }, // PCMT_PTL FENV_TKF
+    MdlTarget { block: 25, param: 0x771, offset: 56, size: 1 }, // PCMT_PTL AENV_TKF
+    MdlTarget { block: 25, param: 0x77b, offset: 66, size: 1 }, // PCMT_PTL ?54
+    MdlTarget { block: 25, param: 0x780, offset: 74, size: 1 }, // PCMT_PTL ?59
+    MdlTarget { block: 25, param: 0x789, offset: 65535, size: 0 }, // PCMT_PTL ?68
+    MdlTarget { block: 25, param: 0x792, offset: 65535, size: 0 }, // PCMT_PTL ?77
+    MdlTarget { block: 25, param: 0x794, offset: 65535, size: 0 }, // PCMT_PTL ?79
+    MdlTarget { block: 25, param: 0x796, offset: 65535, size: 0 }, // PCMT_PTL ?81
+    MdlTarget { block: 26, param: 0x6ce, offset: 0, size: 1 }, // PTL_PENV DEPTH
+    MdlTarget { block: 26, param: 0x6d2, offset: 4, size: 2 }, // PTL_PENV T1
+    MdlTarget { block: 26, param: 0x6d4, offset: 8, size: 2 }, // PTL_PENV T3
+    MdlTarget { block: 26, param: 0x6d5, offset: 10, size: 2 }, // PTL_PENV T4
+    MdlTarget { block: 26, param: 0x6d9, offset: 18, size: 2 }, // PTL_PENV L3
+    MdlTarget { block: 27, param: 0x6dc, offset: 0, size: 1 }, // PTL_FENV DEPTH
+    MdlTarget { block: 27, param: 0x6e1, offset: 6, size: 2 }, // PTL_FENV T1
+    MdlTarget { block: 27, param: 0x6e3, offset: 10, size: 2 }, // PTL_FENV T3
+    MdlTarget { block: 27, param: 0x6e4, offset: 12, size: 2 }, // PTL_FENV T4
+    MdlTarget { block: 27, param: 0x6e8, offset: 20, size: 2 }, // PTL_FENV L3
+    MdlTarget { block: 28, param: 0x6ec, offset: 2, size: 2 }, // PTL_AENV T1
+    MdlTarget { block: 28, param: 0x6ee, offset: 6, size: 2 }, // PTL_AENV T3
+    MdlTarget { block: 28, param: 0x6ef, offset: 8, size: 2 }, // PTL_AENV T4
+    MdlTarget { block: 28, param: 0x6f2, offset: 14, size: 2 }, // PTL_AENV L3
+    MdlTarget { block: 29, param: 0x66c, offset: 0, size: 1 }, // PTL_LFO LFO_1_FORM
+    MdlTarget { block: 29, param: 0x670, offset: 4, size: 2 }, // PTL_LFO LFO_1_RATE
+    MdlTarget { block: 29, param: 0x673, offset: 8, size: 2 }, // PTL_LFO LFO_1_DELAY
+    MdlTarget { block: 29, param: 0x676, offset: 12, size: 2 }, // PTL_LFO LFO_1_FADE
+    MdlTarget { block: 29, param: 0x678, offset: 15, size: 1 }, // PTL_LFO LFO_1_PIT_DEPTH
+    MdlTarget { block: 29, param: 0x679, offset: 16, size: 1 }, // PTL_LFO LFO_1_TVF_DEPTH
+    MdlTarget { block: 29, param: 0x67a, offset: 17, size: 1 }, // PTL_LFO LFO_1_TVA_DEPTH
+    MdlTarget { block: 29, param: 0x69d, offset: 52, size: 1 }, // PTL_LFO LFO_2_FORM
+    MdlTarget { block: 29, param: 0x6a1, offset: 56, size: 2 }, // PTL_LFO LFO_2_RATE
+    MdlTarget { block: 31, param: 0x841, offset: 0, size: 1 }, // PCMS_CMN UNISON_SW
+    MdlTarget { block: 31, param: 0x843, offset: 2, size: 1 }, // PCMS_CMN UNISON_DETN
+    MdlTarget { block: 31, param: 0x844, offset: 4, size: 1 }, // PCMS_CMN BEND_RANGE_FINE_UP
+    MdlTarget { block: 31, param: 0x845, offset: 5, size: 1 }, // PCMS_CMN BEND_RANGE_FINE_DW
+    MdlTarget { block: 31, param: 0x846, offset: 6, size: 1 }, // PCMS_CMN RND_PIT_VAL
+    MdlTarget { block: 31, param: 0x848, offset: 8, size: 1 }, // PCMS_CMN CONDITION
+    MdlTarget { block: 32, param: 0x849, offset: 0, size: 1 }, // PCMS_PMT STRUCT12
+    MdlTarget { block: 32, param: 0x84b, offset: 4, size: 1 }, // PCMS_PMT RING12_LEVEL
+    MdlTarget { block: 32, param: 0x851, offset: 12, size: 2 }, // PCMS_PMT XMOD12_DEPTH
+    MdlTarget { block: 32, param: 0x853, offset: 16, size: 1 }, // PCMS_PMT XMOD_OSC1_LEVEL
+    MdlTarget { block: 32, param: 0x854, offset: 17, size: 1 }, // PCMS_PMT XMOD_OSC2_LEVEL
+    MdlTarget { block: 33, param: 0x85a, offset: 0, size: 1 }, // PCMS_PTL OSC_TYPE
+    MdlTarget { block: 33, param: 0x85b, offset: 1, size: 1 }, // PCMS_PTL VA_FORM
+    MdlTarget { block: 33, param: 0x85c, offset: 2, size: 2 }, // PCMS_PTL SYNC_WAV_NUM
+    MdlTarget { block: 33, param: 0x85d, offset: 4, size: 1 }, // PCMS_PTL PW
+    MdlTarget { block: 33, param: 0x85e, offset: 5, size: 1 }, // PCMS_PTL PWM_DEPTH
+    MdlTarget { block: 33, param: 0x861, offset: 8, size: 2 }, // PCMS_PTL HPF_CUTOFF
+    MdlTarget { block: 33, param: 0x863, offset: 11, size: 1 }, // PCMS_PTL FILTER_SLOPE
+    MdlTarget { block: 33, param: 0x866, offset: 14, size: 1 }, // PCMS_PTL VCF_TYPE
+    MdlTarget { block: 33, param: 0x867, offset: 15, size: 1 }, // PCMS_PTL OSC_ATT
+    MdlTarget { block: 33, param: 0x86a, offset: 18, size: 1 }, // PCMS_PTL FENV_FINE_DEPTH
+    MdlTarget { block: 33, param: 0x86e, offset: 22, size: 1 }, // PCMS_PTL PITCH_DOWN_DEPTH
+];
+
+/// Start of each instance of a block in the tone (tone-relative, add 0x10 for the record).
+#[rustfmt::skip]
+pub static TONE_BLOCKS: &[(u8, &[u16])] = &[
+    (22, &[0x0]), // PCMT_CMN
+    (25, &[0xc8, 0x144, 0x1c0, 0x23c]), // PCMT_PTL
+    (26, &[0x2b8, 0x2d0, 0x2e8, 0x300]), // PTL_PENV
+    (27, &[0x318, 0x330, 0x348, 0x360]), // PTL_FENV
+    (28, &[0x378, 0x388, 0x398, 0x3a8]), // PTL_AENV
+    (29, &[0x3b8, 0x420, 0x488, 0x4f0]), // PTL_LFO
+    (31, &[0x598]), // PCMS_CMN
+    (32, &[0x5ac]), // PCMS_PMT
+    (33, &[0x5d0, 0x5f4, 0x618, 0x63c]), // PCMS_PTL
+];
