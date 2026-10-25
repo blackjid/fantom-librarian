@@ -87,6 +87,14 @@ pub(crate) enum Command {
 pub(crate) enum ScenesCommand {
     /// List the scene names in an SVD backup.
     List { file: PathBuf },
+    /// List the scene chains (setlists) of a backup folder.
+    Chains {
+        /// Folder holding `FANTOM.SVD`, or that file.
+        backup: PathBuf,
+        /// Include the Empty and Tmp working chains.
+        #[arg(long)]
+        all: bool,
+    },
     /// Show one scene: tempo, level, memo, and its zones.
     Show {
         file: PathBuf,
