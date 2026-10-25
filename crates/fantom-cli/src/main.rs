@@ -14,8 +14,8 @@ use fantom_core::sequence::SeqSet;
 mod cli;
 mod render;
 use cli::{
-    AreasCommand, Cli, Command, PadsCommand, SamplesCommand, ScenesCommand, TonesCommand,
-    WriteOptions,
+    AreasCommand, Cli, Command, PadsCommand, SamplesCommand, ScenesCommand, SystemCommand,
+    TonesCommand, WriteOptions,
 };
 use render::{Align, Table};
 
@@ -74,6 +74,10 @@ fn main() -> ExitCode {
                 trim,
             } => run_pad_wav(&backup, bank, pad, &out, trim),
             PadsCommand::Wavs { backup, dir, trim } => run_pad_wavs(&backup, &dir, trim),
+        },
+        Command::System { command } => match command {
+            SystemCommand::Show { file, all } => run_system_show(&file, all),
+            SystemCommand::Diff { left, right, all } => run_system_diff(&left, &right, all),
         },
         Command::Samples { command } => match command {
             SamplesCommand::List { file } => run_samples(&file),
@@ -628,6 +632,37 @@ fn run_pad_wavs(backup: &Path, dir: &Path, trim: bool) -> fantom_core::Result<St
         n += 1;
     }
     Ok(format!("{n} wavs -> {}\n", dir.display()))
+}
+
+fn run_system_show(file: &Path, all: bool) -> fantom_core::Result<String> {
+    let sysa = fantom_core::sysa::read_sysa(&Raw::open(file)?)?;
+    let mut out = String::new();
+    for f in sysa.fields() {
+        if all || !(f.param.reserved || sysa.at_init(&f)) {
+            let _ = writeln!(
+                out,
+                "{:#05x} {:<34} {}",
+                f.param.offset,
+                f.param.id,
+                sysa.describe(&f)
+            );
+        }
+    }
+    Ok(out)
+}
+
+fn run_system_diff(left: &Path, right: &Path, all: bool) -> fantom_core::Result<String> {
+    let a = fantom_core::sysa::read_sysa(&Raw::open(left)?)?;
+    let b = fantom_core::sysa::read_sysa(&Raw::open(right)?)?;
+    let mut out = String::new();
+    for c in a.diff(&b).iter().filter(|c| all || !c.reserved) {
+        let _ = writeln!(
+            out,
+            "{:#05x} {:<34} {} -> {}",
+            c.offset, c.name, c.left, c.right
+        );
+    }
+    Ok(out)
 }
 
 fn run_chains(backup: &Path, all: bool) -> fantom_core::Result<String> {

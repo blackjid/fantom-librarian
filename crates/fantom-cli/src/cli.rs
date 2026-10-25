@@ -35,6 +35,11 @@ pub(crate) enum Command {
         #[command(subcommand)]
         command: PadsCommand,
     },
+    /// Show and compare the system settings (`SYSa`) of a file.
+    System {
+        #[command(subcommand)]
+        command: SystemCommand,
+    },
     /// Inspect memory areas in an SVD container.
     Areas {
         #[command(subcommand)]
@@ -256,6 +261,25 @@ pub(crate) enum PadsCommand {
         /// Only the audio between each pad's start and end, not the whole file.
         #[arg(long)]
         trim: bool,
+    },
+}
+
+#[derive(Subcommand)]
+pub(crate) enum SystemCommand {
+    /// Print the settings: offset, name, value. Reserved and still-at-init ones are hidden.
+    Show {
+        file: PathBuf,
+        /// Include reserved and at-init settings.
+        #[arg(short, long)]
+        all: bool,
+    },
+    /// Print only the settings that differ between two files.
+    Diff {
+        left: PathBuf,
+        right: PathBuf,
+        /// Include reserved settings.
+        #[arg(short, long)]
+        all: bool,
     },
 }
 
