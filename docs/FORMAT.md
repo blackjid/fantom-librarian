@@ -137,28 +137,7 @@ USDa`; a scene export carries only the subset its scenes need, plus `SYSa`.
 | `MLSa` | User multisamples (128) |
 | `USDa` | User sample waveform data (`SMPd` sections) |
 | `ACBa` | ACB user tones — EX firmware only; 1024 slots in a backup |
-| `SYSa` | System settings — one 904-byte record, the instrument's in-RAM settings struct copied verbatim; undecoded |
-| `DIFa` | Origin stamp: product code and serial of the writing device — see below |
-
-**Record sizes and USER slots, from the EX firmware's writers:**
-
-| Area | Record | Backup slots |
-|------|--------|--------------|
-| `PRFa` | 3572 | 512 |
-| `PATa` | 1632 | 2048 |
-| `RHYa` / `INSa` | 3328 / 19008 | 128 |
-| `DCWa` | 684 | 128 |
-| `VTWa` | 300 | 128 |
-| `SNAa` | 156 | 256 |
-| `ZAPa` / `ZEPa` | 1696 | 128 |
-| `MDLa` | 2048 | 1024 |
-| `ACBa` | 9984 | 1024 (EX only) |
-| `SYSa` | 904 | 1 |
-| `DIFa` | 32 | 1 |
-
-**What import checks** (backup restore and scene import): the `SVD5` magic, then
-each area looked up by tag *and* `KY19` stamp, its size non-negative, records starting at the
-declared `info_length`. A restore also requires `PRFa` ≥ 512, `PATa` ≥ 2048, `RHYa`/`INSa` ≥ 128
+| `SYSa` | System settings — one 904-byte record, the in-RAM settings struct; decoded, see A restore also requires `PRFa` ≥ 512, `PATa` ≥ 2048, `RHYa`/`INSa` ≥ 128
 records and a `SYSa`; a missing optional area only marks it partial. No checksum, and no `DIFa`.
 
 ### PRFa area = Scenes: 16-byte header, then fixed-stride records
@@ -860,6 +839,21 @@ TONE` slots read 7.
 | `ACBa` | 4102 | JUPITER-8 (`JP8`) | Its records are copies of `Soft & Subtle`, JUPITER-8 tone 1 in the Sound List (107/64) |
 | `MDLa` | 9 | unknown | — |
 
+### `SYSa` — system settings (CONFIRMED)
+
+Of 904 bytes: 739
+named (622 fields), 144 reserved, 21 block padding. SC/SL/SCMP/SYS_EQ/IN_EQ come from the firmware's
+parameter descriptors; Input Reverb, TFX and Input MFX are packed from the MIDI Implementation
+like scene blocks (signed where the map biases).
+
+- All 245 firmware fields with a nonzero init match factory EX exactly; only SYS_CTRL_SRC0–3 differ
+  (1, 96, 2, 4).
+- Factory EX vs v3.02: clock and DEVELOP_VER (`0xfb`, 37 vs 36) only.
+- `SC:CLOCK_*` is the last clock the user set (or the factory value), not the backup date.
+- User backups differ in plausible settings: USB driver, LED brightness, encoder speed, zone
+  INT/EXT, pad mode, remote keyboard.
+- Unverified: Input Reverb parameter meanings, control-source sensitivity encoding.
+
 ## SVZ tone export — CONFIRMED
 
 An `.svz` is the tone-level counterpart to a scene bank: no `PRFa`, just one engine area plus its
@@ -873,7 +867,7 @@ dependencies. Verified against `EXPORT_Z-Core.svz` (10 ZEN-Core tones), `Z-Core_
 | 0x00 | 4 | magic | `SVZa` — no u16 length prefix, unlike SVD5 |
 | 0x04 | 1 | area count | 2, 3, 4 across the three fixtures, matching their area tables |
 | 0x05 | 1 | revision | the area count, less one when the file holds both tones and audio |
-| 0x06 | 6 | stamp | model code `KY019` (FANTOM-6; `KY020` 7, `KY021` 8) + `SYSa[0xfb]` |
+| 0x06 | 6 | stamp | model code `KY019` (FANTOM-6; `KY020` 7, `KY021` 8) + `SYSa[0xfb]` = DEVELOP_VER (`$` 36 = v3.02, `%` 37 = EX) |
 | 0x0c | 4 | reserved | zeros |
 
 The revision byte tracks the file's shape, not a version anyone chose. Six instrument-written
@@ -977,7 +971,7 @@ directory including its carried per-section word. Pinned by
 `rebuilding_an_instrument_written_sampled_export_is_byte_identical`.
 
 > The preamble stamp is **not** a constant. This file reads `KY019%` where every other fixture reads
-> `KY019$` (`0x25` vs `0x24`). The EX firmware's SVZ writer appends `SYSa[0xfb]` to the model code,
+> `KY019$` (`0x25` vs `0x24`). The EX firmware's SVZ writer appends `SYSa[0xfb]` — `SC:DEVELOP_VER`, 36 on v3.02, 37 on EX — to the model code,
 > which it picks from the keybed variant. Import never reads it: the SVZ reader
 > checks only the `SVZa` magic, each area by the first three letters of its
 > tag plus its `ZCOR` stamp, and each area's record size against the size it expects. So an SVZ from
