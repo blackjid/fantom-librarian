@@ -896,7 +896,7 @@ Offsets record-relative.
 | 2 | 9 | JUNO-106 | data (`JUNO Heartbeat`), firmware |
 | 2 | 10 | SH-101 | firmware |
 | 5 | 15 | JD-800 | firmware: engine size, init tone |
-| 6 | 16 | WT | firmware, by elimination |
+| 6 | 16 | WT (n/zyme) | firmware, by elimination |
 
 - Analog: `0x670` byte = model (1 JP8, 2 JX8P, 3 JUNO106, 4 SH101; type = model + 6); the block is
   the map's `[MDLSYN0]`, offsets and ranges from the firmware's parameter
@@ -905,9 +905,9 @@ Offsets record-relative.
 - Proven by every controlled TONEMAP MOD diff (21 pairs, 5 parameters, 0 unexplained bytes); the
   factory INITIAL TONE equals the firmware JP8 init tone. Editing a parameter must also move its PCM
   mirror (cutoff/reso in partials 1–2, AENV T1/T4, XMOD depth).
-- JD-800: 4 partials × 80 B, FxB at `+320`, COM at `+352`, from descriptors and the firmware init
-  tone. WT: block sizes known, placement inside its 376 B a guess. No JD-800/WT/JX-8P/SH-101 record
-  exists in the corpus.
+- JD-800: 4 partials × 80 B, FxB at `+320`, COM at `+352`. WT: OSC `+0`, MOD `+108`, PTL `+228`,
+  EQ `+316`, CTRL `+332` (44 B stored; names unknown). Both from the firmware (base +
+  tone × 396); the JD-800 init tone decodes fully in range. No JD-800/WT/JX-8P/SH-101 record exists in the corpus.
 
 ### `SYSa` — system settings (CONFIRMED)
 
