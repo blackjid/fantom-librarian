@@ -7,7 +7,7 @@ use std::process::ExitCode;
 use clap::Parser;
 use fantom_core::container::Raw;
 use fantom_core::origin::Origin;
-use fantom_core::params;
+use fantom_core::params::{self, AcbKind};
 use fantom_core::requirements::{ExpansionInventory, Holding};
 
 mod cli;
@@ -40,6 +40,19 @@ fn main() -> ExitCode {
         } => run_check(&file, against.as_ref(), &installed, &owned),
         Command::Tones { command } => match command {
             TonesCommand::List { file } => run_tones(&file),
+            TonesCommand::Show {
+                file,
+                index,
+                area,
+                all,
+            } => run_tone_show(&file, index, &area, all),
+            TonesCommand::Set {
+                file,
+                index,
+                assignments,
+                area,
+                write,
+            } => run_tone_set(&file, index, &assignments, &area, &write),
             TonesCommand::Extract {
                 file,
                 tones,
@@ -618,6 +631,85 @@ fn run_tones(file: &PathBuf) -> fantom_core::Result<String> {
     }
     out.push_str(&table.render());
     Ok(out)
+}
+
+/// Fail unless `area` is one whose tone parameters can be read and edited by name.
+fn named_tone_area(area: &str) -> fantom_core::Result<()> {
+    match area_tag(area)?.as_slice() {
+        b"ACBa" => Ok(()),
+        _ => Err(fantom_core::Error::Unrecognized(format!(
+            "named parameters are not supported yet for {area} (only ACBa)"
+        ))),
+    }
+}
+
+/// Print a tone's parameters by name.
+fn run_tone_show(
+    file: &PathBuf,
+    index: usize,
+    area: &str,
+    all: bool,
+) -> fantom_core::Result<String> {
+    named_tone_area(area)?;
+    let raw = Raw::open(file)?;
+    let mut table = Table::new(vec![
+        ("NAME", Align::Left),
+        ("VALUE", Align::Right),
+        ("MIN", Align::Right),
+        ("MAX", Align::Right),
+    ]);
+    let fields = fantom_core::acb::read_acb_params(&raw, index)?;
+    let total = fields.len();
+    let mut shown = 0;
+    for field in fields {
+        if !all && (field.word == 0 || field.param.reserved) {
+            continue;
+        }
+        shown += 1;
+        let p = field.param;
+        let range = |v: i64| match p.kind {
+            AcbKind::Id | AcbKind::Text => String::new(),
+            _ => v.to_string(),
+        };
+        table.row(vec![
+            p.id.to_string(),
+            field.value.to_string(),
+            range(p.min),
+            range(p.max),
+        ]);
+    }
+    let mut out = format!("{area}[{index}]: {shown} of {total} parameters\n");
+    out.push_str(&table.render());
+    Ok(out)
+}
+
+/// Apply `NAME=VALUE` assignments to a tone.
+fn run_tone_set(
+    file: &PathBuf,
+    index: usize,
+    assignments: &[String],
+    area: &str,
+    write: &WriteOptions,
+) -> fantom_core::Result<String> {
+    named_tone_area(area)?;
+    let pairs = assignments
+        .iter()
+        .map(|a| {
+            a.split_once('=')
+                .ok_or_else(|| fantom_core::Error::Unrecognized(format!("{a:?} is not NAME=VALUE")))
+        })
+        .collect::<fantom_core::Result<Vec<_>>>()?;
+    run_edit(
+        file,
+        write,
+        &format!("set {} on {area}[{index}]", assignments.join(" ")),
+        |raw| {
+            for (name, value) in pairs {
+                fantom_core::acb::set_acb_param(raw, index, name, value)?;
+            }
+            Ok(())
+        },
+    )
 }
 
 /// Lift tones out of a file into an `.svz`, the one envelope that carries user audio.
