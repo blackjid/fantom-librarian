@@ -12,6 +12,7 @@ use std::fmt::Write as _;
 
 use fantom_core::model::{ToneRef, ToneType, Zone};
 use fantom_core::requirements::{Requirements, SlotRequirement};
+use fantom_core::sequence::{Kind, Lane, Pattern, SeqSet};
 
 /// Which way a column's cells sit against its width.
 #[derive(Clone, Copy, PartialEq)]
@@ -500,4 +501,130 @@ mod tests {
         t.row(vec!["x".into()]);
         assert_eq!(t.render(), "a  b\nx\n");
     }
+}
+
+/// The used pattern groups and the song steps of a `SeqSet.SQS`; empty when it has neither.
+/// Variations are 1-based, as in `T07-2` and `scenes pattern`.
+pub fn groups_and_song(set: &SeqSet) -> String {
+    let mut out = String::new();
+    let used: Vec<_> = set
+        .groups
+        .iter()
+        .enumerate()
+        .filter(|(_, g)| g.used)
+        .collect();
+    if !used.is_empty() {
+        out.push_str("groups:\n");
+    }
+    for (n, g) in used {
+        // Only tracks whose chosen variation holds events.
+        let tracks: Vec<String> = g
+            .variations
+            .iter()
+            .enumerate()
+            .filter_map(|(t, v)| {
+                let v = usize::from((*v)?) + 1;
+                set.pattern(t + 1, v)
+                    .filter(|(p, _)| p.has_data())
+                    .map(|_| format!("T{:02}-{v}", t + 1))
+            })
+            .collect();
+        let _ = writeln!(
+            out,
+            "  {:>2} {:<8} {:>2} bars  {}",
+            n + 1,
+            g.name,
+            g.bars,
+            tracks.join(" ")
+        );
+    }
+    let song = &set.song;
+    if !song.steps.is_empty() {
+        out.push_str("song:\n");
+    }
+    for (i, s) in song.steps.iter().enumerate() {
+        let _ = writeln!(
+            out,
+            "  {:>2} {:<8} x{}{}",
+            i + 1,
+            set.groups[s.group].name,
+            s.repeat + 1,
+            if s.skip { " skip" } else { "" }
+        );
+    }
+    if song.loop_on {
+        let step = |s: Option<usize>| s.map_or("-".into(), |s| (s + 1).to_string());
+        let _ = writeln!(out, "  loop {}-{}", step(song.loop_a), step(song.loop_b));
+    }
+    out
+}
+
+fn lane_name(id: u32) -> String {
+    match id {
+        0 => "chanAT".into(),
+        0x79 => "bend".into(),
+        id => format!("cc{}", id.wrapping_sub(1)),
+    }
+}
+
+/// One line: which pattern, its size, its event counts and lane point counts.
+pub fn pattern_summary(p: &Pattern, lanes: &[Lane]) -> String {
+    let mut counts: Vec<(&str, usize)> = Vec::new();
+    for e in &p.events {
+        let name = e.kind.name();
+        if matches!(e.kind, Kind::Fill | Kind::Other(0x96)) {
+            continue;
+        }
+        match counts.iter_mut().find(|(n, _)| *n == name) {
+            Some((_, c)) => *c += 1,
+            None => counts.push((name, 1)),
+        }
+    }
+    let mut out = format!("T{:02}-{} {} {} bars", p.track, p.variation, p.name, p.bars);
+    for (name, count) in counts {
+        let _ = write!(out, " {name} {count}");
+    }
+    for l in lanes.iter().filter(|l| !l.points.is_empty()) {
+        let _ = write!(out, " {} {}pts", lane_name(l.id), l.points.len());
+    }
+    out.push('\n');
+    out
+}
+
+/// Every event as `tick kind fields`, then each non-empty lane's points.
+pub fn pattern_events(p: &Pattern, lanes: &[Lane]) -> String {
+    let mut out = String::new();
+    for e in &p.events {
+        let fields = match &e.kind {
+            Kind::Note {
+                ch,
+                note,
+                vel,
+                off_vel,
+                gate,
+            } => {
+                format!("ch={ch} note={note} vel={vel} off={off_vel} gate={gate}")
+            }
+            Kind::PolyAt { ch, note, val } => format!("ch={ch} note={note} val={val}"),
+            Kind::Cc { ch, num, val } => format!("ch={ch} num={num} val={val}"),
+            Kind::Pc { ch, prog } => format!("ch={ch} prog={prog}"),
+            Kind::ChanAt { ch, val } => format!("ch={ch} val={val}"),
+            Kind::Bend { ch, val } => format!("ch={ch} val={val}"),
+            Kind::Tempo { bpm_x100 } => format!("bpm={}", f64::from(*bpm_x100) / 100.0),
+            Kind::TimeSig { num, den, clocks } => format!("{num}/{den} clocks={clocks}"),
+            Kind::SysEx { payload } => {
+                let hex: Vec<String> = payload.iter().map(|b| format!("{b:02x}")).collect();
+                format!("len={} {}", payload.len(), hex.join(""))
+            }
+            Kind::Fill => continue,
+            Kind::Other(k) => format!("kind={k:#04x}"),
+        };
+        let _ = writeln!(out, "{:>7} {:<7} {fields}", e.tick, e.kind.name());
+    }
+    for l in lanes.iter().filter(|l| !l.points.is_empty()) {
+        let _ = writeln!(out, "lane {} ({} points)", lane_name(l.id), l.points.len());
+        let pts: Vec<String> = l.points.iter().map(|(t, v)| format!("{t}:{v}")).collect();
+        let _ = writeln!(out, "   {}", pts.join(" "));
+    }
+    out
 }

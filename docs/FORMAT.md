@@ -48,7 +48,8 @@ and library import (`import.rs` skips `.sqs`, `.smp`, `.xml`), still ignore them
   its SQS to the new path — verified: extracting PRISMA's scenes from the backup reproduces the
   instrument's export `SEQ/` byte for byte.
   Roland's own scene packs (`SCENE_FANTOM_EX.zip`) are this export layout.
-- SQS (big-endian; the decoder reads all 1436 corpus files, size + MD5 + trailer checked):
+- SQS (big-endian; `fantom_core::sequence` reads all 1436 corpus files, size + MD5 + trailer
+  checked; some header fields from the instrument; tags C = corpus, IN = instrument only, I = inferred):
 
   | Off | Field |
   |-----|-------|
@@ -56,7 +57,17 @@ and library import (`import.rs` skips `.sqs`, `.smp`, `.xml`), still ignore them
   | `0x04` | u32 file size |
   | `0x08`, `0x0C` | version major, minor (1.02 / 1.05 / 1.08 seen) |
   | `0x10` | ticks per quarter, `480` |
-  | `0xE10` | 128 × 0x30 pattern headers, track-major (16 tracks × 8 variations): `+0x00` event count, `+0x0C` bars, `+0x14` name (16) |
+  | `0x14` | track count, `16` (C) |
+  | `0x20` | lanes per pattern: `13` from v1.06, else `0` (C) |
+  | `0x30` | u32[16] per-track output route, file 0..3 = raw 1,2,3,0; corpus 2 (IN) |
+  | `0x70`, `0x74` | time signature numerator, denominator of bar 1; corpus 4/4 (3/4 in 4 files) (C) |
+  | `0x7E` | u8 sequence type, 0 = sequencer, 1 = SMF player (IN) |
+  | `0xF0` | u32 song loop switch (IN) |
+  | `0xF4`, `0xF8` | s32 song loop A, B step, 0-based, -1 none (IN) |
+  | `0x110 + 0x20*i`, i<32 | song step: s32 group (0-based, -1 = no step), u32 repeat (plays-1, I), u32 skip (C) |
+  | `0x510 + 0x70*g`, g<16 | pattern group: `+0` u8 1 = unused / 0 = used; `+4` s32[16] variation per track (0..7, -1 none); `+0x44` u32 bars; `+0x48` char[8] name (C) |
+  | `0xC10 + 0x20*t`, t<16 | track state: s32 active variation (-1 none, C), u32 mute, u32 solo (IN) |
+  | `0xE10` | 128 × 0x30 pattern headers, track-major (16 tracks × 8 variations): `+0x00` event count, `+0x0C` bars, `+0x14` name (**8** chars) |
   | `0x2610` | MD5 of bytes `0..0x2610` |
   | `0x2620` | events, 16 bytes each, patterns in table order |
   | v1.06+ | then 128 × 13 automation lanes: `u32 id, u32 n`, 8 bytes, `n` × (u32 LE, u32 LE) |
