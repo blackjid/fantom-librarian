@@ -795,7 +795,8 @@ complete decoder; all other bytes must remain opaque.
 | `MDLa` | `0x06B8` | Model filter resonance (LE u16) | 863 -> 0 |
 | `MDLa` | `0x06D0` | Model ENV2 attack (LE u16) | unknown -> 299 |
 | `ACBa` | `0x1B70` | ACB VCO1 wave | TRI -> SAW |
-| `ACBa` | `0x1BE4` | ACB ENV1 sustain | 0 -> 176 |
+| `ACBa` | `0x1BC8` | ACB filter cutoff (`FLT_lpf`) | 199 -> 144 |
+| `ACBa` | `0x1BE4` | ACB ENV1 sustain (`FLT_sus`) | 0 -> 176 |
 | `ACBa` | `0x1D40` | ACB effect type | Phaser -> Fuzz |
 | `ACBa` | `0x1B5C` | ACB LFO rate (float mirror `/255` at `0x1D54`) | 155 -> 142 |
 
@@ -876,8 +877,8 @@ Offsets record-relative.
   Words before `0x1b44` are system/performance blocks, mostly zero in tones.
 - Key offsets: LFO rate `0x1b4c`, OSC1 wave `0x1b60`, cutoff `0x1bb8`, FLT sustain `0x1bd4`, effect type `0x1d30`.
 - `PAT2_LFO_rate` (`0x1d44`) and `PAT2_FLT_lpf` (`0x1fa0`) are float32 = int / 255; edits must move them.
-- Proven by `TONEMAP4_ACB` → `5_ACB`: 11 changed bytes, all named. Names are firmware labels; only those
-  four edits are panel-confirmed. Only JUPITER-8 records exist in the corpus.
+- Proven by `TONEMAP4_ACB` → `5_ACB`: 11 changed bytes, all named; `fantom tones set` reproduces it.
+  Names are firmware labels. Only JUPITER-8 records exist in the corpus.
 
 ### `MDLa` — MODEL tone layout (CONFIRMED for analog)
 

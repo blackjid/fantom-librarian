@@ -638,7 +638,7 @@ fn named_tone_area(area: &str) -> fantom_core::Result<()> {
     match area_tag(area)?.as_slice() {
         b"ACBa" => Ok(()),
         _ => Err(fantom_core::Error::Unrecognized(format!(
-            "named parameters are not supported yet for {area} (only ACBa)"
+            "named parameters are supported for ACBa only so far, not {area}"
         ))),
     }
 }

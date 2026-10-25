@@ -6,3 +6,6 @@
 /fixtures-local/
 
 .DS_Store
+
+# Python bytecode from tools/
+__pycache__/
