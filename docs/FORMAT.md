@@ -783,7 +783,7 @@ complete decoder; all other bytes must remain opaque.
 | `ACBa` | `0x1B70` | ACB VCO1 wave | TRI -> SAW |
 | `ACBa` | `0x1BE4` | ACB ENV1 sustain | 0 -> 176 |
 | `ACBa` | `0x1D40` | ACB effect type | Phaser -> Fuzz |
-| `ACBa` | `0x1D54` | ACB LFO rate | 155 -> 142 |
+| `ACBa` | `0x1B5C` | ACB LFO rate (float mirror `/255` at `0x1D54`) | 155 -> 142 |
 
 The edits also change a small number of neighboring/derived fields. No scene or system bytes
 changed in these captures. The offsets are relative to the area start (including its 16-byte
@@ -845,6 +845,25 @@ TONE` slots read 7.
 the corpus (16 SVDs). The name is 16 bytes at `+0x1C44`, **each 4-byte word byte-reversed**; it
 decodes cleanly in every record. So a backup names its ACB tones even though SysEx can't (see
 SysEx below).
+
+### `ACBa` — ACB tone layout (CONFIRMED for the tone block)
+
+9984-byte record, a SYSTEM-8 plug-out patch.
+Offsets record-relative.
+
+| Off | Size | Content |
+|-----|------|---------|
+| `0x00` | 16 | header: `+4/+5` `01 01` (unknown), `+6` `0x1000`, `+8` `0x1000 \| model` |
+| `0x10` | 4 × 2419 | u32 LE words, one per parameter; names, order and ranges from the instrument's parameter tables |
+| `0x25dc` | 292 | unknown |
+
+- Tone data lives in `0x1b44`–`0x25db`: LFO, OSC1, OSC2, MIX, PIT, FLT, AMP, EFX, CTRL, EXTEND, then
+  PAT (name `0x1c44`, patch params), then `PAT2_*` (per-section copies incl. DLY/CHO/FL/MFX/REV, CHORD).
+  Words before `0x1b44` are system/performance blocks, mostly zero in tones.
+- Key offsets: LFO rate `0x1b4c`, OSC1 wave `0x1b60`, cutoff `0x1bb8`, FLT sustain `0x1bd4`, effect type `0x1d30`.
+- `PAT2_LFO_rate` (`0x1d44`) and `PAT2_FLT_lpf` (`0x1fa0`) are float32 = int / 255; edits must move them.
+- Proven by `TONEMAP4_ACB` → `5_ACB`: 11 changed bytes, all named. Names are the instrument's labels; only those
+  four edits are panel-confirmed. Only JUPITER-8 records exist in the corpus.
 
 ### `MDLa` — MODEL tone layout (CONFIRMED for analog)
 
