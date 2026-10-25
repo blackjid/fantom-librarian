@@ -70,7 +70,25 @@ and library import (`import.rs` skips `.sqs`, `.smp`, `.xml`), still ignore them
 - Ratings: `<tone msb lsb pc rating>`; follow a user tone when it moves.
 - `.SMP` (`RFWV`): 0x200-byte big-endian header — u32 file size − 8, rate (`48000` only), channels
   1–2, bits `16`; `+0x20` MD5 of bytes `4..0x14` (the instrument checks it); random filler to 0x200;
-  then interleaved 16-bit PCM. `PADCONF.BIN` (`RFPD`) holds per-pad file size, start/end, level.
+  then interleaved 16-bit **big-endian** PCM; file size = 0x200 + frames × channels × 2 (320/320
+  files, 5 sets). The factory pads are the `LIBRARY` WAVs byte-swapped (64/64).
+- `PADCONF.BIN` (`RFPD`, big-endian): `0x00` magic, `0x04` pad count `64`, `0x08` `0x01000000`,
+  `0x0C` payload size `0x1900`; 64 × 76-byte records from `0x10` (index = (bank−1)×16 + pad−1);
+  64 × 24-byte names from `0x1310` (16 chars, NUL, 7 spaces); user sets add a u32 tail, `0x7f` —
+  PAD SAMPLER LEV, inferred. Record:
+
+  | Off | Field |
+  |-----|-------|
+  | `0x00` | `.SMP` file size |
+  | `0x04` | start, byte offset in the file (default `0x200`) |
+  | `0x08` | end, byte offset (default file size) |
+  | `0x0C` | level 0–127 |
+  | `0x10` | 0/1 — GATE? |
+  | `0x14` | loop, `0` or `0x7fffffff` (matches every loop vs one-shot pad, inferred) |
+  | `0x18` | always 0 — FX SW? |
+  | `0x1C`, `0x20`, `0x24` | `0xffffffff`, `0`, `0x2580`: constant, unknown |
+
+  No time-stretch, BPM or mute-group fields. GATE and FX SW need a hardware toggle to confirm.
 - The EX update's `_DATA/FACTORY/` holds the factory `FANTOM.SVD`, its `SEQ/` (82 SQS),
   `PAD_SMPL/` and a WAV `LIBRARY/` (the `*_95_Am` / `*_80_Am` construction kits), with
   `check.md5` per folder. `TESTv1`'s `*_95_Am` samples, from this library, carry the `SMPd` Lock bit —
