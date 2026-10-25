@@ -539,6 +539,7 @@ fn run_show(file: &PathBuf, scene: usize, all: bool) -> fantom_core::Result<Stri
     if !arps.is_empty() {
         let _ = writeln!(out, "arpeggio: zone {}", arps.join(", "));
     }
+    out.push_str(&scene_patterns(file, scene - 1));
 
     // What this one scene needs, rather than what its whole file does: the zones above are only
     // half the story if the sounds they play are not where this scene is going.
@@ -550,6 +551,33 @@ fn run_show(file: &PathBuf, scene: usize, all: bool) -> fantom_core::Result<Stri
         out.push_str(&report);
     }
     Ok(out)
+}
+
+/// The sequencer patterns beside `file` for 0-based scene `index`, one line each; empty without any.
+fn scene_patterns(file: &Path, index: usize) -> String {
+    let Some(bytes) = fantom_core::sequence::slot_path(index)
+        .and_then(|path| std::fs::read(bank_dir(file).join(path)).ok())
+    else {
+        return String::new();
+    };
+    let mut out = String::new();
+    match fantom_core::sequence::patterns(&bytes) {
+        Ok(patterns) if patterns.is_empty() => {}
+        Ok(patterns) => {
+            let _ = writeln!(out, "patterns:");
+            for p in patterns {
+                let _ = writeln!(
+                    out,
+                    "  T{:02}-{} {:<16} {} bars",
+                    p.track, p.variation, p.name, p.bars
+                );
+            }
+        }
+        Err(error) => {
+            let _ = writeln!(out, "patterns: unreadable ({error})");
+        }
+    }
+    out
 }
 
 /// Pan, formatted by the parameter table itself rather than by a rule restated here.
@@ -573,13 +601,19 @@ fn run_tones(file: &PathBuf) -> fantom_core::Result<String> {
         ("TYPE", Align::Left),
         ("INDEX", Align::Right),
         ("NAME", Align::Left),
+        ("MODEL", Align::Left),
     ]);
     for tone in tones {
+        let model = tone.model_id.map(|id| {
+            fantom_core::model::model_label(tone.tone_type, id)
+                .map_or_else(|| format!("#{id}"), str::to_string)
+        });
         table.row(vec![
             render::area_tag(&tone.area),
             tone.tone_type.label().to_string(),
             tone.index.to_string(),
             tone.name,
+            model.unwrap_or_default(),
         ]);
     }
     out.push_str(&table.render());

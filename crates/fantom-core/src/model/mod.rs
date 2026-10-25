@@ -237,17 +237,34 @@ impl ToneType {
 
 /// The model a record's selector names — see `crate::address::AreaSpec::model_id`.
 ///
-/// Only what has been checked against an instrument or Roland's own sound list is here; every
-/// other number is left to be reported as itself rather than guessed at.
+/// Named as the scene names the same bank (`JP8`, `JU106`) where one exists, else as the instrument
+/// does. From the instrument's type tables, confirmed by data for `MODEL` 7 and 9 and `ACB` JUPITER-8.
 ///
-/// - `MODEL` 7 is JUPITER-8 — panel-confirmed on a FANTOM-6, and the value an empty `INITIAL TONE`
-///   slot carries.
-/// - `ACB` 4102 is JUPITER-8 — every ACB record in the fixtures reads it, and their names are
-///   copies of `Soft & Subtle`, which the FANTOM Sound List gives as JUPITER-8 tone 1
-///   (MSB 107, LSB 64, the `JP8` bank).
+/// - `MODEL`: the type number; 16, the wavetable engine, is n/zyme by elimination.
+/// - `ACB`: `0x1000 | id`, `id` indexing the instrument's ACB model table.
 pub fn model_label(engine: ToneType, id: u32) -> Option<&'static str> {
+    const ACB: [&str; 12] = [
+        "SYSTEM-1",
+        "SH101",
+        "SH-2",
+        "SYSTEM-100",
+        "PROMARS",
+        "SYSTEM-8",
+        "JP8",
+        "JU106",
+        "JX3P",
+        "TB-303",
+        "JUNO-60",
+        "JUPITER-4",
+    ];
     match (engine, id) {
-        (ToneType::Model, 7) | (ToneType::Acb, 4102) => Some("JP8"),
+        (ToneType::Model, 7) => Some("JP8"),
+        (ToneType::Model, 8) => Some("JX8P"),
+        (ToneType::Model, 9) => Some("JU106"),
+        (ToneType::Model, 10) => Some("SH101"),
+        (ToneType::Model, 15) => Some("JD800"),
+        (ToneType::Model, 16) => Some("n/zyme"),
+        (ToneType::Acb, id) if id & !0xff == 0x1000 => ACB.get((id & 0xff) as usize).copied(),
         _ => None,
     }
 }

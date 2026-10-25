@@ -73,3 +73,21 @@ fn extracting_scenes_lays_out_their_patterns_like_export_scene() {
         "patterns differ from the instrument's export"
     );
 }
+
+/// `scenes show` lists the patterns recorded beside the scene.
+#[test]
+fn showing_a_scene_lists_its_patterns() {
+    let Some(export) = private("backup/ROLAND/SOUND/PRISMA/FANTOM.SVD") else {
+        return;
+    };
+    let output = Command::new(env!("CARGO_BIN_EXE_fantom"))
+        .args(["scenes", "show"])
+        .arg(&export)
+        .arg("1")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let text = String::from_utf8(output.stdout).unwrap();
+    assert!(text.contains("T07-2 INIT PTN         8 bars"), "{text}");
+    assert_eq!(text.matches(" bars").count(), 5, "{text}");
+}
