@@ -118,6 +118,7 @@ fn setting_the_engine_edits_reproduces_the_instruments_model_record() {
     std::fs::create_dir_all(&out).unwrap();
 
     let (mut reproduced, mut skipped) = (Vec::new(), Vec::new());
+    let mut name_only = 0;
     for (from, before) in &files {
         for (to, after) in &files {
             let (a, b) = (records(before, b"MDLa"), records(after, b"MDLa"));
@@ -154,10 +155,26 @@ fn setting_the_engine_edits_reproduces_the_instruments_model_record() {
                 .status()
                 .unwrap();
             assert!(status.success(), "{label}");
-            if records(&edited, b"MDLa")[0] != b[0] {
-                skipped.push(format!(
-                    "{label}: the record differs outside the engine edits"
-                ));
+            let mine = records(&edited, b"MDLa").swap_remove(0);
+            if mine != b[0] {
+                // The tone name, category and MFX are not engine parameters; everything else must agree.
+                let masked = |r: &[u8]| {
+                    let mut r = r.to_vec();
+                    r[0x10..0x21].fill(0);
+                    r[0x50..0x84].fill(0);
+                    r
+                };
+                let (x, y) = (masked(&mine), masked(&b[0]));
+                let at: Vec<String> = (0..x.len())
+                    .filter(|&i| x[i] != y[i])
+                    .map(|i| format!("{i:#x}"))
+                    .collect();
+                assert!(
+                    at.is_empty(),
+                    "{label}: differs outside name and MFX at {at:?}"
+                );
+                name_only += 1;
+                skipped.push(format!("{label}: only the name, category or MFX differs"));
                 continue;
             }
             if std::fs::read(&edited).unwrap() == std::fs::read(after).unwrap() {
@@ -168,6 +185,14 @@ fn setting_the_engine_edits_reproduces_the_instruments_model_record() {
         }
     }
     eprintln!("reproduced:\n  {}", reproduced.join("\n  "));
+    eprintln!(
+        "{} reproduced, {name_only} equal but for name/MFX",
+        reproduced.len()
+    );
+    assert!(
+        skipped.iter().all(|s| !s.contains("is locked")),
+        "{skipped:?}"
+    );
     eprintln!("not reproducible:\n  {}", skipped.join("\n  "));
     assert!(
         reproduced

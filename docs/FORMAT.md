@@ -905,17 +905,56 @@ Offsets record-relative.
   `+65`. Key offsets: FILTER FREQ `+0x36`, RESO `+0x38`, MOD DEPTH `+0x28`, ENV2 ATTACK `+0x50`.
 - Proven by every controlled TONEMAP MOD diff (21 pairs, 5 parameters, 0 unexplained bytes); the
   factory INITIAL TONE equals the firmware JP8 init tone.
-- **PCM mirror (JP-8, record offsets, u16 LE).** Editing a field moves these (`fantom tones set`):
-  - MOD DEPTH → XMOD12_DEPTH `0x5c8`, copied.
-  - FILTER FREQ → CUTOFF `0x100`, `0x17c`; FILTER RESO → RESO `0x106`, `0x182`.
-  - ENV2 ATTACK → AENV T1 `0x38a`, `0x39a`; ENV2 RELEASE → AENV T4 `0x390`, `0x3a0`.
-  - The conversion is the firmware's piecewise cubic: 7 knots over 0–1023, `idx = int(6/1023 × (x+1))`,
-    `t = (x − xk)/(xk+1 − xk)`, `y = yk + (c + (b + t·a)·t)·(x − xk)`, float32, truncated; `x = 1023`
-    gives the last knot. Matches the four values of each of 10 JP-8 records.
-  - Proven only for FILTER TYPE 1 and PARAMETER EXPANSION SWITCH 0 (FREQ, RESO), AMP and FILTER
-    ENV SELECT 0 (ATTACK, RELEASE); other states are refused.
-  - Fields with no mirror (no setter, absent from the dependency step): 7, 10–14, 17, 18, 20, 25–34, 39–43, 45, 55, 62, 68, 69, 71–73, 75 by field index.
-    Every other field writes the tone with a transform not yet checked; `tones set` refuses them.
+- **PCM mirror (JP-8).** The instrument runs a field's setter (48 of 88 fields have one) with the old
+  state, stores the value, then a dependency step for that index (6, 8, 16, 19, 24, 36, 44, 50, 57, 82 re-run other setters). Setters write tone
+  parameters by (block id, parameter id); `PCMT_PTL` 25, `PTL_PENV/FENV/AENV/LFO` 26–29,
+  `PCMS_PTL` 33 etc. map to offsets through the SysEx-map layout (`params::mdl::TONE_TARGETS`).
+  Offsets are record offsets, `a,b` = partial 1, 2; u16 LE where wider than a byte.
+  - Curve: 7 (or 11) knots, `i = int((n−1)/hi × (x+1))`, `t = (x−xi)/(xi+1−xi)`,
+    `y = yi + (c + (b + t·a)·t)·(x−xi)`, float32, truncated to i16; `x = hi` gives the last
+    knot; signed curves mirror negatives. Tables in `params::mdl`.
+  - Mirrored (edits move these; reproduced on all 10 corpus records, field has ≥2 values there):
+    - LFO WAVE FORM (0,3,4,7 only) → `0x3c8,0x430`, `0x3fc,0x464`, copy. LFO RATE → `0x3cc`,
+      `0x400` (partial 1 only), curve. LFO DELAY → `0x3d0,0x438` and fade `0x3d4,0x43c`, curves.
+    - OSC1 WAVE FORM (11, 12, 13/14) → OSC_TYPE/VA_FORM/SYNC `0x5e0,0x5e1,0x5e2`: (2,0,45),
+      (1,0,0), (1,1,0). OSC2 WAVE FORM (10, 12, 13, 15) → `0x604…0x606` (2,0,46), (1,0,0),
+      (1,1,0), (4,0,0). OSC1 PULSE WIDTH MODE and both waves → PW `0x5e4,0x608`, PWM `0x5e5,0x609`.
+    - OSC1 FEET → `0xda` (1…4: −12, 0, 12, 24). OSC2 COARSE TUNE → `0x156` (−12…24), `0x176` = 100;
+      OSC2 FINE TUNE → `0x157`. MOD DEPTH → `0x5c8`. FILTER HPF → `0x5e8,0x60c`, curve.
+    - OSC1/2 LEVEL → `0x5c0`, `0x5cc`/`0x5cd`, attenuation `0x5ef`/`0x613` from the wave and MOD
+      MODE (X-MOD: level curve /2 to `0x5cc`/`0x5cd`, attenuation = the wave's maximum).
+    - FILTER FREQ → `0x100,0x17c`; RESO → `0x106,0x182` (type 1 curve; type 2, 3 lines with floor
+      and ceiling; the expansion switch passes the value through). FILTER ENV DEPTH `u` → fine
+      depth `0x5f2,0x616` = `u mod 63`, depth `0x328,0x340` = `u / 63`. FILTER SLOPE → `0x5eb,0x60f`.
+    - AMP LEVEL → `0x24`, curve. PITCH DRIFT → `0x5ae`. CONDITION → `0x5b0`. PORTAMENT TIME →
+      `0x36`, curve. BENDER FILTER DEPTH → PTL `+66` (`0x11a,0x196`), MODULATION LFO DEPTH → PTL
+      `+74` (`0x122,0x19e`), curves.
+    - ENV1 DECAY → PENV T3 `0x2d0,0x2e8`, FENV T3 `0x332,0x34a`; SUSTAIN → PENV L3 `0x2da,0x2f2`,
+      FENV L3 `0x33c,0x354`; RELEASE → PENV T4 `0x2d2,0x2ea`, FENV T4 `0x334,0x34c` (FENV only for
+      FILTER ENV SELECT 0). ENV2 ATTACK/DECAY/SUSTAIN/RELEASE → AENV T1 `0x38a,0x39a`, T3
+      `0x38e,0x39e`, L3 `0x396,0x3a6`, T4 `0x390,0x3a0` (and FENV when FILTER ENV SELECT 1).
+    - OSC1 DEST SELECT re-runs OSC1 MOD / PITCH ENV DEPTH: `0x3d7,0x43f` and PENV depth
+      `0x2c8,0x2e0` go to partial 1, 2 or both.
+  - Proven only where the mirror's inputs are as recorded: a setter that reads a field the corpus
+    never varies is accepted at that value (`params::mdl::JP8_PINNED`: OSC1 MOD 0, PITCH ENV DEPTH
+    0, PULSE WIDTH 0, OSC2 MODE 0, MOD MODE 3, FILTER TYPE 1, FILTER/AMP ENV SELECT 0, EXPANSION 0).
+    An edit whose writes differ from loading the whole new state, or that writes nonzero to a
+    parameter with no known place (PTL `0x789`, `0x792`, `0x794`, `0x796`), is refused.
+    `mdl::mirror_consistent` loads every field in index order and compares: all corpus JP-8 records
+    agree everywhere the setters write (name, category and MFX are not engine-derived).
+  - Decoded, firmware-only (field values constant in the corpus, so refused): OSC1 MOD,
+    OSC1 PITCH ENV DEPTH, OSC1 PULSE WIDTH (curves, see `pulse_width`), OSC2 LOW FREQ PITCH →
+    `0x61a` (−0x11b/1024 + 0x48, 0x25…0x48; 0 when OSC2 MODE 0), OSC2 MODE, MOD MODE → `0x5bc`
+    (1, 3 else 0), FILTER TYPE → `0x5ee,0x612` (1…3) and refilters FREQ/RESO/ENV DEPTH, FILTER KEY
+    FOLLOW → `0x102,0x17e`, FILTER MOD → `0x3d8,0x440`, AMP MOD STEP → `0x3d9,0x441` (0, 25, 70, 98),
+    ENV1 ATTACK → PENV T1 `0x2cc,0x2e4`, FENV T1 `0x32e,0x346`, ENV1/2 KEY FOLLOW STEP → `0x10f,0x18b`
+    / `0x110,0x18c`, FILTER/AMP ENV SELECT (re-run ENV1/ENV2 setters), BENDER PITCH DEPTH `v` →
+    `0x38,0x39` = `v/100`, `0x5ac,0x5ad` = `v%100`, PORTAMENT MODE → `0x31,0x32`, PORTAMENT CURVE
+    TYPE → `0x40` (0, 0, 1, 2), KEY MODE → `0x2e`, `0x2d`, unison `0x5a8,0x5aa`, EXPANSION SWITCH
+    (re-runs LFO RATE and the filter), AFTER TOUCH SENS (unlocated PTL parameters).
+  - Fields with no mirror (no setter, absent from the dependency step): 7, 10–14, 17, 18, 20,
+    25–34, 39–43, 45, 55, 62, 68, 69, 71–73, 75 by field index.
+  - The parameter store's range clamp is not modelled (outputs stay in range).
   - JUNO-106 differs (FREQ 0 → 30, RESO 614 → 524, not these curves); JX-8P, SH-101, JD-800, WT
     edits are refused.
 - JD-800: 4 partials × 80 B, FxB at `+320`, COM at `+352`. WT: OSC `+0`, MOD `+108`, PTL `+228`,

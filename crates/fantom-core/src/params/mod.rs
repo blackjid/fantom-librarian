@@ -81,30 +81,42 @@ pub enum MdlMirror {
     Free,
     /// Selects the engine itself.
     Locked,
-    /// Moves mirrored fields by a transform not yet checked against recorded data.
+    /// Moves mirrored fields by a firmware transform that no recorded tone exercises enough to
+    /// prove.
     Unproven,
-    /// MOD DEPTH, copied to the partial's cross-mod depth.
-    ModDepth,
-    /// FILTER FREQ, through a curve to both partials' cutoff.
-    FilterFreq,
-    /// FILTER RESO, through a curve to both partials' resonance.
-    FilterReso,
-    /// ENV2 ATTACK, through a curve to both partials' amp envelope T1.
-    Env2Attack,
-    /// ENV2 RELEASE, through a curve to both partials' amp envelope T4.
-    Env2Release,
+    /// Moves mirrored fields by a firmware transform reproduced on every recorded JP-8 tone.
+    Mirrored,
 }
 
-/// A piecewise-cubic curve of the firmware's engine-to-tone conversion (seven knots).
+/// A piecewise-cubic curve of the firmware's engine-to-tone conversion.
 ///
 /// `x` carries one extra entry: the firmware reads it for the top knot's segment.
 #[derive(Debug)]
 pub struct MdlCurve {
-    pub x: [i16; 8],
-    pub y: [i16; 7],
-    pub a: [f32; 7],
-    pub b: [f32; 7],
-    pub c: [f32; 7],
+    /// Negative inputs are mirrored: the curve of `-p`, negated.
+    pub signed: bool,
+    pub lo: i16,
+    pub hi: i16,
+    pub x: &'static [i16],
+    pub y: &'static [i16],
+    pub a: &'static [f32],
+    pub b: &'static [f32],
+    pub c: &'static [f32],
+}
+
+/// A ZEN-Core tone field the JP-8 setters write, named by the firmware's block and parameter id.
+#[derive(Debug)]
+pub struct MdlTarget {
+    pub block: u8,
+    pub param: u16,
+    /// Offset within one instance of the block; [`MdlTarget::UNLOCATED`] where the layout has no
+    /// name for it.
+    pub offset: u16,
+    pub size: u8,
+}
+
+impl MdlTarget {
+    pub const UNLOCATED: u16 = 0xFFFF;
 }
 
 /// How an ACB word is stored.

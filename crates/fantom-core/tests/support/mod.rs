@@ -72,3 +72,30 @@ fn private_root() -> PathBuf {
 fn required() -> bool {
     std::env::var(REQUIRE_VAR).is_ok_and(|v| v == "require")
 }
+
+/// Every file under the private corpus with one of `extensions` (lowercase, no dot), sorted.
+/// Empty when the corpus is absent.
+#[allow(dead_code)]
+pub fn private_files(extensions: &[&str]) -> Vec<PathBuf> {
+    fn walk(dir: &Path, extensions: &[&str], out: &mut Vec<PathBuf>) {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                walk(&path, extensions, out);
+            } else if path
+                .extension()
+                .and_then(|e| e.to_str())
+                .is_some_and(|e| extensions.contains(&e.to_ascii_lowercase().as_str()))
+            {
+                out.push(path);
+            }
+        }
+    }
+    let mut out = Vec::new();
+    walk(&private_root(), extensions, &mut out);
+    out.sort();
+    out
+}

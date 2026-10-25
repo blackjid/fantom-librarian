@@ -4,29 +4,22 @@
 //! and the engine block at `0x670` described by [`params::mdl`]. The instrument keeps derived
 //! values of some engine fields in the ZEN-Core tone, so an edit must move those too; only JP-8
 //! edits whose mirror is proven against recorded tones are accepted. Layout and the mirror rules
-//! are in `docs/FORMAT.md`.
+//! are in `docs/FORMAT.md`; the firmware's setters are ported in [`jp8`].
 
+mod jp8;
+
+use std::collections::BTreeMap;
 use std::fmt;
 
 use crate::container::{patch_record, Raw, RecordTable, Svd};
-use crate::params::mdl::{
-    ANALOG, ATTACK_CURVE, ENGINE_BASE, FREQ_CURVE, JD800, RECORD_LEN, RELEASE_CURVE, RESO_CURVE, WT,
-};
-use crate::params::{MdlCurve, MdlMirror, MdlParam};
+use crate::params::mdl::{ANALOG, ENGINE_BASE, JD800, JP8_PINNED, RECORD_LEN, WT};
+use crate::params::{MdlMirror, MdlParam};
 use crate::{Error, Result};
 
 const TAG: &[u8; 4] = b"MDLa";
 const TYPE_AT: usize = 8;
 /// Record type of a JUPITER-8 tone, the one engine whose mirrors are decoded.
 const JP8: u32 = 7;
-
-// Mirror targets in the ZEN-Core tone, record offsets of little-endian u16 fields. Each partial's
-// copy sits 0x7c (cutoff, resonance) or 0x10 (envelope) after the first.
-const CUTOFF: [usize; 2] = [0x100, 0x17c];
-const RESONANCE: [usize; 2] = [0x106, 0x182];
-const AENV_T1: [usize; 2] = [0x38a, 0x39a];
-const AENV_T4: [usize; 2] = [0x390, 0x3a0];
-const XMOD_DEPTH: [usize; 1] = [0x5c8];
 
 /// Which engine a record's type selects.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -259,70 +252,130 @@ fn parse(param: &MdlParam, text: &str) -> Result<i32> {
     Ok(value)
 }
 
-/// The ZEN-Core fields that must change with `param` set to `value`, as (offset, bytes).
-///
-/// Rules proven by 10 recorded JP-8 tones (see `docs/FORMAT.md`); a state outside the recorded
-/// ones is refused rather than guessed.
-fn mirror(record: &[u8], param: &MdlParam, value: i32) -> Result<Vec<(usize, Vec<u8>)>> {
-    let id = param.id;
-    let current = |name: &str| {
-        let p = ANALOG
-            .iter()
-            .find(|p| p.id == name)
-            .expect("table has the field");
-        read(record, p)
-    };
-    let needs = |ok: bool, what: &str| {
-        if ok {
-            Ok(())
-        } else {
-            Err(Error::Unrecognized(format!(
-                "cannot set {id}: its mirror is proven only with {what}"
-            )))
-        }
-    };
-    let (targets, mirrored): (&[usize], i32) = match param.mirror {
-        MdlMirror::ModDepth => (&XMOD_DEPTH, value),
-        MdlMirror::FilterFreq | MdlMirror::FilterReso => {
-            needs(
-                current("FILTER TYPE") == 1 && current("PARAMETER EXPANSION SWITCH") == 0,
-                "FILTER TYPE 1 and PARAMETER EXPANSION SWITCH 0",
-            )?;
-            if param.mirror == MdlMirror::FilterFreq {
-                (&CUTOFF, curve(&FREQ_CURVE, value))
-            } else {
-                (&RESONANCE, curve(&RESO_CURVE, value))
-            }
-        }
-        MdlMirror::Env2Attack | MdlMirror::Env2Release => {
-            needs(
-                current("AMP ENV SELECT") == 0 && current("FILTER ENV SELECT") == 0,
-                "AMP ENV SELECT 0 and FILTER ENV SELECT 0",
-            )?;
-            if param.mirror == MdlMirror::Env2Attack {
-                (&AENV_T1, curve(&ATTACK_CURVE, value))
-            } else {
-                (&AENV_T4, curve(&RELEASE_CURVE, value))
-            }
-        }
-        _ => return Ok(Vec::new()),
-    };
-    let bytes = (mirrored as u16).to_le_bytes().to_vec();
-    Ok(targets.iter().map(|&at| (at, bytes.clone())).collect())
+/// The engine fields of a JP-8 record, as the firmware's setters see them.
+fn jp8_fields(record: &[u8]) -> jp8::Fields {
+    let mut fields = [0; jp8::FIELDS];
+    for (f, param) in fields.iter_mut().zip(ANALOG) {
+        *f = read(record, param);
+    }
+    fields
 }
 
-/// The firmware's piecewise-cubic conversion, in its own float32 arithmetic.
-fn curve(c: &MdlCurve, p: i32) -> i32 {
-    let p = p.clamp(0, 1023);
-    if p == 1023 {
-        return i32::from(c.y[6]);
+/// The ZEN-Core fields that must change with `param` set to `value`, as (offset, bytes).
+///
+/// The firmware's own setters decide (`jp8`). A setter that reads a field the recorded tones never
+/// vary is trusted only at the recorded value, a write to a tone parameter whose place is not
+/// known is refused unless it writes zero, and an edit whose writes differ from loading the whole
+/// new state is refused rather than guessed.
+fn mirror(record: &[u8], param: &MdlParam, value: i32) -> Result<Vec<(usize, Vec<u8>)>> {
+    if param.mirror != MdlMirror::Mirrored {
+        return Ok(Vec::new());
     }
-    let segment = ((6.0f32 / 1023.0) * (p + 1) as f32) as usize;
-    let dx = (p - i32::from(c.x[segment])) as f32;
-    let width = i32::from(c.x[segment + 1]) - i32::from(c.x[segment]);
-    let t = dx / width as f32;
-    let shape = c.c[segment] + (c.b[segment] + t * c.a[segment]) * t;
-    i32::from((f32::from(c.y[segment]) + shape * dx) as i32 as i16)
+    let id = param.id;
+    let k = ANALOG
+        .iter()
+        .position(|p| std::ptr::eq(p, param))
+        .expect("a JP-8 table entry");
+    let fields = jp8_fields(record);
+    let effect = jp8::set_field(&fields, record, k, value);
+    let outside: Vec<String> = JP8_PINNED
+        .iter()
+        .filter(|&&(i, pinned)| i != k && effect.reads >> i & 1 == 1 && fields[i] != pinned)
+        .map(|&(i, pinned)| format!("{} {pinned}", ANALOG[i].id))
+        .collect();
+    if !outside.is_empty() {
+        return Err(Error::Unrecognized(format!(
+            "cannot set {id}: its mirror is proven only with {}",
+            outside.join(" and ")
+        )));
+    }
+    let mut targets = BTreeMap::new();
+    for w in &effect.writes {
+        match jp8::locate(w) {
+            Some(place) => {
+                targets.insert(place, w.value);
+            }
+            None if w.value == 0 => {}
+            None => {
+                return Err(Error::Unrecognized(format!(
+                    "cannot set {id}: it would write {} to tone parameter {:#x} of block {}, \
+                     whose place in the tone is not known",
+                    w.value, w.param, w.block
+                )))
+            }
+        }
+    }
+    let mut after = fields;
+    after[k] = value;
+    let whole = final_writes(&after, record);
+    for (place, v) in &targets {
+        if whole.get(place).is_some_and(|w| w != v) {
+            return Err(Error::Unrecognized(format!(
+                "cannot set {id}: the edit and a full reload of the new state disagree at \
+                 {:#x}, so the mirror is not proven for this state",
+                place.0
+            )));
+        }
+    }
+    Ok(targets
+        .into_iter()
+        .map(|((at, size), v)| (at, v.to_le_bytes()[..size].to_vec()))
+        .collect())
+}
+
+/// What loading `fields` leaves in each tone field the setters write: the last write wins.
+fn final_writes(fields: &jp8::Fields, record: &[u8]) -> BTreeMap<(usize, usize), i32> {
+    let mut last = BTreeMap::new();
+    for w in jp8::all_writes(fields, record) {
+        if let Some(place) = jp8::locate(&w) {
+            last.insert(place, w.value);
+        }
+    }
+    last
+}
+
+/// A ZEN-Core tone field that does not hold what the engine block implies.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MirrorMismatch {
+    /// Record offset and width in bytes.
+    pub offset: usize,
+    pub size: usize,
+    pub stored: i32,
+    pub expected: i32,
+}
+
+/// Every tone field a JP-8 record's engine block determines that holds something else.
+///
+/// The check loads the engine fields through the firmware's setters (every field set, in index
+/// order) and compares what they write with the tone bytes; the name, the MFX and the fields no
+/// setter writes are not looked at. An empty list means the tone is what the instrument would hold.
+pub fn mirror_mismatches(record: &[u8]) -> Result<Vec<MirrorMismatch>> {
+    let (engine, kind) = engine_of(record)?;
+    if engine != MdlEngine::Analog || kind != JP8 || record.len() != RECORD_LEN {
+        return Err(Error::Unrecognized(
+            "only JP-8 records have a decoded mirror".into(),
+        ));
+    }
+    let mut mismatches = Vec::new();
+    for ((offset, size), expected) in final_writes(&jp8_fields(record), record) {
+        let stored = jp8::read_le(record, offset, size);
+        let mask = (1i64 << (8 * size)) - 1;
+        if i64::from(expected) & mask != i64::from(stored) {
+            mismatches.push(MirrorMismatch {
+                offset,
+                size,
+                stored,
+                expected: (i64::from(expected) & mask) as i32,
+            });
+        }
+    }
+    Ok(mismatches)
+}
+
+/// Whether `record` is a JP-8 record whose tone agrees with its engine block everywhere the
+/// engine determines it.
+pub fn mirror_consistent(record: &[u8]) -> bool {
+    mirror_mismatches(record).is_ok_and(|m| m.is_empty())
 }
 
 #[cfg(test)]
@@ -398,6 +451,8 @@ mod tests {
     /// Recorded JP-8 tones: engine value -> value the instrument stored in the ZEN-Core tone.
     #[test]
     fn curves_reproduce_recorded_tones() {
+        use crate::params::mdl::{ATTACK_CURVE, FREQ_CURVE, RELEASE_CURVE, RESO_CURVE};
+        use crate::params::MdlCurve;
         let cases: [(&MdlCurve, &[(i32, i32)]); 4] = [
             (
                 &FREQ_CURVE,
@@ -423,7 +478,7 @@ mod tests {
         ];
         for (c, points) in cases {
             for &(from, to) in points {
-                assert_eq!(curve(c, from), to, "{from}");
+                assert_eq!(jp8::curve(c, from), to, "{from}");
             }
         }
     }
@@ -459,11 +514,11 @@ mod tests {
         set_mdl_param(&mut raw, 0, "MOD DEPTH", "1068").unwrap();
         assert_eq!(get(&raw, "FILTER FREQ"), 566);
         for (offsets, want) in [
-            (CUTOFF.as_slice(), 586),
-            (RESONANCE.as_slice(), 795),
-            (AENV_T1.as_slice(), 21),
-            (AENV_T4.as_slice(), 456),
-            (XMOD_DEPTH.as_slice(), 1068),
+            ([0x100, 0x17c].as_slice(), 586),
+            ([0x106, 0x182].as_slice(), 795),
+            ([0x38a, 0x39a].as_slice(), 21),
+            ([0x390, 0x3a0].as_slice(), 456),
+            ([0x5c8].as_slice(), 1068),
         ] {
             for &at in offsets {
                 assert_eq!(u16_at(&raw, at), want, "{at:#x}");
@@ -472,10 +527,48 @@ mod tests {
     }
 
     #[test]
+    fn the_other_proven_fields_move_their_mirrors() {
+        let mut raw = svz(7, false);
+        for (name, value) in [
+            ("LFO WAVE FORM", "7"),
+            ("LFO RATE", "505"),
+            ("OSC1 FEET", "3"),
+            ("OSC2 COARSE TUNE", "7"),
+            ("FILTER HPF", "88"),
+            ("AMP LEVEL", "85"),
+            ("ENV1 DECAY", "320"),
+            ("PITCH DRIFT", "35"),
+        ] {
+            set_mdl_param(&mut raw, 0, name, value).unwrap();
+        }
+        let b = |at| u16_at(&raw, at) & 0xff;
+        assert_eq!([b(0x3c8), b(0x3fc), b(0x430), b(0x464)], [7; 4]);
+        assert_eq!(b(0xda), 12);
+        assert_eq!(b(0x156), 7);
+        assert_eq!(b(0x24), 112);
+        assert_eq!(b(0x5ae), 35);
+        assert_eq!(u16_at(&raw, 0x3cc), 544);
+        assert_eq!(u16_at(&raw, 0x5e8), 311);
+        // ENV1 DECAY goes to the pitch and filter envelopes of both partials
+        assert_eq!(u16_at(&raw, 0x2d0), u16_at(&raw, 0x2e8));
+        assert_eq!(u16_at(&raw, 0x332), u16_at(&raw, 0x34a));
+        assert_ne!(u16_at(&raw, 0x332), 0);
+    }
+
+    #[test]
+    fn a_mirror_that_reads_a_pinned_field_is_refused_off_its_recorded_value() {
+        let mut raw = svz(7, false);
+        let before = raw.bytes().to_vec();
+        let err = set_mdl_param(&mut raw, 0, "OSC1 WAVE FORM", "12").unwrap_err();
+        assert!(err.to_string().contains("MOD MODE 3"), "{err}");
+        assert_eq!(raw.bytes(), before);
+    }
+
+    #[test]
     fn a_parameter_with_an_unproven_mirror_is_refused() {
         let mut raw = svz(7, false);
         let before = raw.bytes().to_vec();
-        let err = set_mdl_param(&mut raw, 0, "LFO RATE", "10").unwrap_err();
+        let err = set_mdl_param(&mut raw, 0, "FILTER KEY FOLLOW", "1").unwrap_err();
         assert!(err.to_string().contains("not proven"), "{err}");
         assert!(set_mdl_param(&mut raw, 0, "Model", "2").is_err());
         assert_eq!(raw.bytes(), before);
