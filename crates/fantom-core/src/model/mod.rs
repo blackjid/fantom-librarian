@@ -237,11 +237,9 @@ impl ToneType {
 
 /// The model a record's selector names — see `crate::address::AreaSpec::model_id`.
 ///
-/// Named as the scene names the same bank (`JP8`, `JU106`) where one exists, else as the instrument
-/// does. From the instrument's type tables, confirmed by data for `MODEL` 7 and 9 and `ACB` JUPITER-8.
-///
-/// - `MODEL`: the type number; 16, the wavetable engine, is n/zyme by elimination.
-/// - `ACB`: `0x1000 | id`, `id` indexing the instrument's ACB model table.
+/// Bank labels where a bank exists, else the instrument's spelling; from the instrument's type tables.
+/// Data-confirmed: `MODEL` 7, 9 and `ACB` JUPITER-8. `MODEL` 16 is the wavetable engine, n/zyme by
+/// elimination. `ACB` is `0x1000 | id`.
 pub fn model_label(engine: ToneType, id: u32) -> Option<&'static str> {
     const ACB: [&str; 12] = [
         "SYSTEM-1",

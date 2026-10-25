@@ -20,7 +20,7 @@ pub(crate) enum Command {
         #[command(subcommand)]
         command: ScenesCommand,
     },
-    /// List user tones bundled in a file.
+    /// List, show, edit and extract the user tones bundled in a file.
     Tones {
         #[command(subcommand)]
         command: TonesCommand,
