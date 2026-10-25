@@ -284,6 +284,10 @@ cargo run -p fantom-cli -- tones list path/to/FANTOM.SVD
 cargo run -p fantom-cli -- tones show path/to/FANTOM.SVD 0
 cargo run -p fantom-cli -- tones set path/to/FANTOM.SVD 0 LFO_rate=142 FLT_lpf=144 -o edited.SVD
 
+# The same for a MODEL (JP-8) tone; its ZEN-Core mirror follows, and unproven parameters are refused.
+cargo run -p fantom-cli -- tones show path/to/FANTOM.SVD 0 --area MDLa
+cargo run -p fantom-cli -- tones set path/to/FANTOM.SVD 0 --area MDLa "FILTER FREQ=566" ENV2_ATTACK=299 -o edited.SVD
+
 # List the user samples and multisamples a file carries.
 cargo run -p fantom-cli -- samples list path/to/FANTOM.SVD
 
