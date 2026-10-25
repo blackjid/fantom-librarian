@@ -46,9 +46,24 @@ and library import (`import.rs` skips `.sqs`, `.smp`, `.xml`), still ignore them
   its SQS to the new path — verified: extracting PRISMA's scenes from the backup reproduces the
   instrument's export `SEQ/` byte for byte.
   Roland's own scene packs (`SCENE_FANTOM_EX.zip`) are this export layout.
-- SQS: big-endian, `CSQS`, u32 file size, u32 version `1`, …, `480` (ticks per quarter), `16`
-  (tracks). An empty set is 0x2624 bytes ending in 128 × 0x30 pattern headers (16 tracks × 8, name
-  first, `INIT PTN`) from `0xE24`; with recorded patterns the layout shifts — not decoded.
+- SQS (big-endian; the decoder reads all 1436 corpus files, size + MD5 + trailer checked):
+
+  | Off | Field |
+  |-----|-------|
+  | `0x00` | `CSQS` |
+  | `0x04` | u32 file size |
+  | `0x08`, `0x0C` | version major, minor (1.02 / 1.05 / 1.08 seen) |
+  | `0x10` | ticks per quarter, `480` |
+  | `0xE10` | 128 × 0x30 pattern headers, track-major (16 tracks × 8 variations): `+0x00` event count, `+0x0C` bars, `+0x14` name (16) |
+  | `0x2610` | MD5 of bytes `0..0x2610` |
+  | `0x2620` | events, 16 bytes each, patterns in table order |
+  | v1.06+ | then 128 × 13 automation lanes: `u32 id, u32 n`, 8 bytes, `n` × (u32 LE, u32 LE) |
+  | end | `~"CSQS"` |
+
+  Event: `+0` u16 delta ticks; `+2` note number, or ≥ `0x80` a kind (`8C` end, `8D` poly AT, `8E` CC,
+  `8F` PC, `90` channel AT, `91` bend, `F0` SysEx, `FB` time sig, `FD` tempo, `80` filler); `+3` low
+  nibble channel; `+6` velocity / CC number; `+7` note-off velocity / CC value; `+12` u32 gate.
+  Note/CC/bend export to SMF plays back plausibly; the other kinds' operands are inferred.
 - Chain XML: `<CHAIN_SET_NAME ChainSetName>`, `<CHAINn SceneIdx>` (0-based scene index — the
   the instrument stores it raw, as for SQS paths; inferred), `<MARKERn ChainIdx NameIndex>` (62 marker
   labels 0–9, A–Z, a–z). Reordering scenes must remap `SceneIdx`.
