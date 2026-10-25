@@ -852,7 +852,7 @@ TONE` slots read 7.
 |------|-------|-------|-------|
 | `MDLa` | 7 | JUPITER-8 (`JP8`) | Panel-confirmed; also what an `INITIAL TONE` slot carries |
 | `ACBa` | 4102 | JUPITER-8 (`JP8`) | Its records are copies of `Soft & Subtle`, JUPITER-8 tone 1 in the Sound List (107/64) |
-| `MDLa` | 9 | unknown | — |
+| `MDLa` | 9 | JUNO-106 | `JUNO Heartbeat`; instrument |
 
 **ACB: the model ID is the low byte, and the name is in the record** (CONFIRMED). `+0x06` u16 `0x1000`;
 `+0x08` u16 `0x1000 | id`, where `id` indexes the instrument's model table: 0 SYSTEM-1, 1 SH-101, 2 SH-2, 3 SYSTEM-100, 4 PROMARS,
@@ -955,8 +955,22 @@ Offsets record-relative.
   - Fields with no mirror (no setter, absent from the dependency step): 7, 10–14, 17, 18, 20,
     25–34, 39–43, 45, 55, 62, 68, 69, 71–73, 75 by field index.
   - The parameter store's range clamp is not modelled (outputs stay in range).
-  - JUNO-106 differs (FREQ 0 → 30, RESO 614 → 524, not these curves); JX-8P, SH-101, JD-800, WT
-    edits are refused.
+  - Other analog models: same scheme, own setters, dependency step and curves, reimplemented in
+    `mdl/{juno,jx8p,sh101}.rs` and checked against the instrument on random states (writes and
+    fields read). Only the JP-8 edit gate and `JP8_PINNED` exist.
+
+    - Setters write partials 0–3 (JUNO-106, SH-101) or 1, 0, 3 (JX-8P). JUNO-106 FILTER FREQ 0 → 30,
+      RESO 614 → 524 (own curves). FILTER TYPE 0 is the curve (JP-8: 1); 2, 3 lines; the rest write
+      nothing. KEY MODE unison detune 2 / 0x14 / 10 (JUNO-106 / JX-8P / SH-101), JP-8 `0x1e`.
+    - Curve mode 2 (SH-101 MODULATION LFO DEPTH): `t = (x − xi) / 7`,
+      `y = i16(i32((c + (b + t·a)·t)·t·7)) + yi`.
+    - SH-101 OSC3 WAVE FORM and OSC1 FEET set the sub-oscillator (partial 2) tune; NOISE LEVEL is
+      partial 3's attenuation. JX-8P MIXER DYNAMICS writes `PCMT_PMT` (block 24), HPF STEP and
+      JUNO-106 HPF STEP write the EQ (`PTL_EQ`, block 30).
+    - Each init tone agrees with its setters everywhere they write (JX-8P 135 fields, SH-101 112,
+      JUNO-106 114); `JUNO Heartbeat` agrees too.
+    - Edits are refused: JUNO-106 has one recorded tone (no field is shown to vary), JX-8P and
+      SH-101 have none.
 - JD-800: 4 partials × 80 B, FxB at `+320`, COM at `+352`. WT: OSC `+0`, MOD `+108`, PTL `+228`,
   EQ `+316`, CTRL `+332` (44 B stored; names unknown). Both from the instrument (base +
   tone × 396); the JD-800 init tone decodes fully in range. No JD-800/WT/JX-8P/SH-101 record exists in the corpus.
