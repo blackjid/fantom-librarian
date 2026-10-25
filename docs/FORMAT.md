@@ -904,8 +904,20 @@ Offsets record-relative.
   descriptors. Fields are u8 or u16 LE, signed ones stored as display values; pad byte at
   `+65`. Key offsets: FILTER FREQ `+0x36`, RESO `+0x38`, MOD DEPTH `+0x28`, ENV2 ATTACK `+0x50`.
 - Proven by every controlled TONEMAP MOD diff (21 pairs, 5 parameters, 0 unexplained bytes); the
-  factory INITIAL TONE equals the firmware JP8 init tone. Editing a parameter must also move its PCM
-  mirror (cutoff/reso in partials 1–2, AENV T1/T4, XMOD depth).
+  factory INITIAL TONE equals the firmware JP8 init tone.
+- **PCM mirror (JP-8, record offsets, u16 LE).** Editing a field moves these (`fantom tones set`):
+  - MOD DEPTH → XMOD12_DEPTH `0x5c8`, copied.
+  - FILTER FREQ → CUTOFF `0x100`, `0x17c`; FILTER RESO → RESO `0x106`, `0x182`.
+  - ENV2 ATTACK → AENV T1 `0x38a`, `0x39a`; ENV2 RELEASE → AENV T4 `0x390`, `0x3a0`.
+  - The conversion is the firmware's piecewise cubic: 7 knots over 0–1023, `idx = int(6/1023 × (x+1))`,
+    `t = (x − xk)/(xk+1 − xk)`, `y = yk + (c + (b + t·a)·t)·(x − xk)`, float32, truncated; `x = 1023`
+    gives the last knot. Matches the four values of each of 10 JP-8 records.
+  - Proven only for FILTER TYPE 1 and PARAMETER EXPANSION SWITCH 0 (FREQ, RESO), AMP and FILTER
+    ENV SELECT 0 (ATTACK, RELEASE); other states are refused.
+  - Fields with no mirror (no setter, absent from the dependency step): 7, 10–14, 17, 18, 20, 25–34, 39–43, 45, 55, 62, 68, 69, 71–73, 75 by field index.
+    Every other field writes the tone with a transform not yet checked; `tones set` refuses them.
+  - JUNO-106 differs (FREQ 0 → 30, RESO 614 → 524, not these curves); JX-8P, SH-101, JD-800, WT
+    edits are refused.
 - JD-800: 4 partials × 80 B, FxB at `+320`, COM at `+352`. WT: OSC `+0`, MOD `+108`, PTL `+228`,
   EQ `+316`, CTRL `+332` (44 B stored; names unknown). Both from the firmware (base +
   tone × 396); the JD-800 init tone decodes fully in range. No JD-800/WT/JX-8P/SH-101 record exists in the corpus.

@@ -8,6 +8,7 @@
 //!   Knows about the file envelope, not the musical meaning of its contents.
 //! - [`model`] — the domain: [`model::Scene`], [`model::Zone`], [`model::ToneRef`], metadata.
 //! - [`acb`] — reading and editing ACB tone parameters by name.
+//! - [`mdl`] — the same for MODEL tones (`MDLa`), keeping the ZEN-Core mirror of an edit in step.
 //! - [`address`] — the one table saying which area a tone address indexes, and at which record.
 //! - [`codec`] — maps container bytes onto [`model`] types (read now, write later).
 //! - [`params`] — Roland's parameter map, file bytes against SysEx addresses, for tones and scenes.
@@ -37,6 +38,7 @@ pub mod convert;
 pub mod diff;
 pub mod expansions;
 pub mod factory;
+pub mod mdl;
 pub mod model;
 pub mod origin;
 pub mod params;

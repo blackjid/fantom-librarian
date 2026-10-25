@@ -1,3 +1,4 @@
+use crate::checksum::crc32;
 use crate::container::{Area, Raw, Svd};
 use crate::{Error, Result};
 
@@ -130,6 +131,40 @@ impl<'a> RecordTable<'a> {
     pub fn record_offset(&self, index: usize) -> usize {
         self.area_offset + self.info_len + index * self.record_size
     }
+}
+
+/// Write `patches` (record-relative offset, bytes) into record `index` of the `tag` area, then
+/// refresh the record's CRC-32 info word when the area carries one (an `.svz`; an SVD has none).
+pub fn patch_record(
+    raw: &mut Raw,
+    tag: &[u8; 4],
+    index: usize,
+    patches: &[(usize, &[u8])],
+) -> Result<()> {
+    let svd = Svd::parse(raw)?;
+    let table = RecordTable::from_svd(raw, &svd, tag)?.ok_or_else(|| {
+        Error::Unrecognized(format!("no {} area in file", String::from_utf8_lossy(tag)))
+    })?;
+    if table.record(index).is_none() {
+        return Err(Error::Unrecognized(format!("record {index} out of range")));
+    }
+    let start = table.record_offset(index);
+    let size = table.record_size;
+    let info_at =
+        (table.info_stride() == 4).then(|| table.area_offset + RecordTable::HEADER_LEN + index * 4);
+    for (offset, bytes) in patches {
+        if offset + bytes.len() > size {
+            return Err(Error::Unrecognized(format!(
+                "patch at {offset} leaves the {size}-byte record"
+            )));
+        }
+        raw.patch_bytes(start + offset, bytes);
+    }
+    if let Some(at) = info_at {
+        let sum = crc32(&raw.bytes()[start..start + size]);
+        raw.patch_bytes(at, &sum.to_le_bytes());
+    }
+    Ok(())
 }
 
 fn read_u32(bytes: &[u8], at: usize, tag: &str) -> Result<u32> {

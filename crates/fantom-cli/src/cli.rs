@@ -155,14 +155,14 @@ pub(crate) enum TonesCommand {
         file: PathBuf,
         /// Tone record number, as `tones list` prints it.
         index: usize,
-        /// Area holding the tone. Only `ACBa` is supported so far.
+        /// Area holding the tone: `ACBa` or `MDLa`.
         #[arg(long, default_value = "ACBa", value_name = "TAG")]
         area: String,
-        /// Include zero and reserved parameters.
+        /// Include zero and reserved parameters (`ACBa`; `MDLa` always lists every one).
         #[arg(long)]
         all: bool,
     },
-    /// Set tone parameters by name, e.g. `LFO_rate=142`.
+    /// Set tone parameters by name, e.g. `LFO_rate=142` or `"FILTER FREQ=566"` (MODEL: `_` for a space).
     Set {
         file: PathBuf,
         /// Tone record number, as `tones list` prints it.
@@ -170,7 +170,7 @@ pub(crate) enum TonesCommand {
         /// `NAME=VALUE` assignments, checked against the parameter's range.
         #[arg(required = true, num_args = 1.., value_name = "NAME=VALUE")]
         assignments: Vec<String>,
-        /// Area holding the tone. Only `ACBa` is supported so far.
+        /// Area holding the tone: `ACBa` or `MDLa`.
         #[arg(long, default_value = "ACBa", value_name = "TAG")]
         area: String,
         #[command(flatten)]
