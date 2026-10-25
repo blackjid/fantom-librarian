@@ -776,7 +776,7 @@ complete decoder; all other bytes must remain opaque.
 | `DCWa` | `0x008D` | V-Piano lid | 3 -> 5 |
 | `DCWa` | `0x0090` | V-Piano hammer noise (signed) | +2 -> -2 (`02 -> FE`) |
 | `DCWa` | `0x0096` | V-Piano key-off noise | OFF -> 4 |
-| `MDLa` | `0x05D8` | Model OSC cross-mod | 1143 -> 1068 |
+| `MDLa` | `0x05D8` | Model OSC cross-mod (PCM mirror of MDLSYN0 MOD DEPTH at area `0x06A8`) | 1143 -> 1068 |
 | `MDLa` | `0x06B6` | Model filter cutoff (LE u16) | 962 -> 566 |
 | `MDLa` | `0x06B8` | Model filter resonance (LE u16) | 863 -> 0 |
 | `MDLa` | `0x06D0` | Model ENV2 attack (LE u16) | unknown -> 299 |
@@ -845,6 +845,36 @@ TONE` slots read 7.
 the corpus (16 SVDs). The name is 16 bytes at `+0x1C44`, **each 4-byte word byte-reversed**; it
 decodes cleanly in every record. So a backup names its ACB tones even though SysEx can't (see
 SysEx below).
+
+### `MDLa` — MODEL tone layout (CONFIRMED for analog)
+
+2048-byte record.
+
+| Off | Size | Content |
+|-----|------|---------|
+| `0x00` | 16 | header: `+5` 2 analog / 1 JD-800, WT; `+6` u16 class; `+8` u32 type |
+| `0x10` | 1632 | a ZEN-Core tone (PCM layout); the engine mirrors derived values here |
+| `0x670` | 112 / 396 / 376 | engine block: analog / JD-800 / WT |
+
+| Class | Type | Engine | Basis |
+|-------|------|--------|-------|
+| 2 | 7 | JP-8 | panel, data, instrument |
+| 2 | 8 | JX-8P | instrument |
+| 2 | 9 | JUNO-106 | data (`JUNO Heartbeat`), instrument |
+| 2 | 10 | SH-101 | instrument |
+| 5 | 15 | JD-800 | instrument: engine size, init tone |
+| 6 | 16 | WT | instrument, by elimination |
+
+- Analog: `0x670` byte = model (1 JP8, 2 JX8P, 3 JUNO106, 4 SH101; type = model + 6); the block is
+  the map's `[MDLSYN0]`, offsets and ranges from the instrument's parameter
+  descriptors. Fields are u8 or u16 LE, signed ones stored as display values; pad byte at
+  `+65`. Key offsets: FILTER FREQ `+0x36`, RESO `+0x38`, MOD DEPTH `+0x28`, ENV2 ATTACK `+0x50`.
+- Proven by every controlled TONEMAP MOD diff (21 pairs, 5 parameters, 0 unexplained bytes); the
+  factory INITIAL TONE equals the instrument's JP8 init tone. Editing a parameter must also move its PCM
+  mirror (cutoff/reso in partials 1–2, AENV T1/T4, XMOD depth).
+- JD-800: 4 partials × 80 B, FxB at `+320`, COM at `+352`, from descriptors and the instrument's init
+  tone. WT: block sizes known, placement inside its 376 B a guess. No JD-800/WT/JX-8P/SH-101 record
+  exists in the corpus.
 
 ### `SYSa` — system settings (CONFIRMED)
 
