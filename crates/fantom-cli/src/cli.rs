@@ -150,6 +150,32 @@ pub(crate) enum TonesCommand {
     List {
         file: PathBuf,
     },
+    /// Show a tone's parameters by name: those not zero or reserved, or every one with `--all`.
+    Show {
+        file: PathBuf,
+        /// Tone record number, as `tones list` prints it.
+        index: usize,
+        /// Area holding the tone. Only `ACBa` is supported so far.
+        #[arg(long, default_value = "ACBa", value_name = "TAG")]
+        area: String,
+        /// Include zero and reserved parameters.
+        #[arg(long)]
+        all: bool,
+    },
+    /// Set tone parameters by name, e.g. `LFO_rate=142`.
+    Set {
+        file: PathBuf,
+        /// Tone record number, as `tones list` prints it.
+        index: usize,
+        /// `NAME=VALUE` assignments, checked against the parameter's range.
+        #[arg(required = true, num_args = 1.., value_name = "NAME=VALUE")]
+        assignments: Vec<String>,
+        /// Area holding the tone. Only `ACBa` is supported so far.
+        #[arg(long, default_value = "ACBa", value_name = "TAG")]
+        area: String,
+        #[command(flatten)]
+        write: WriteOptions,
+    },
     /// Build an `.svz` tone export carrying the selected tones and the samples they play.
     Extract {
         /// A backup or scene export to take the tones from, or an `.svz` to repackage.
