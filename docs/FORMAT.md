@@ -839,6 +839,13 @@ TONE` slots read 7.
 | `ACBa` | 4102 | JUPITER-8 (`JP8`) | Its records are copies of `Soft & Subtle`, JUPITER-8 tone 1 in the Sound List (107/64) |
 | `MDLa` | 9 | unknown | — |
 
+**ACB: the model ID is the low byte, and the name is in the record** (CONFIRMED). `+0x06` u16 `0x1000`;
+`+0x08` u16 `0x1000 | id`, where `id` indexes the instrument's model table: 0 SYSTEM-1, 1 SH-101, 2 SH-2, 3 SYSTEM-100, 4 PROMARS,
+5 SYSTEM-8, 6 JUPITER-8, 7 JUNO-106, 8 JX-3P, 9 TB-303, 10 JUNO-60, 11 JUPITER-4. Only 6 appears in
+the corpus (16 SVDs). The name is 16 bytes at `+0x1C44`, **each 4-byte word byte-reversed**; it
+decodes cleanly in every record. So a backup names its ACB tones even though SysEx can't (see
+SysEx below).
+
 ### `SYSa` — system settings (CONFIRMED)
 
 Of 904 bytes: 739
