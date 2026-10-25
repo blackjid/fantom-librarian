@@ -104,6 +104,23 @@ pub(crate) enum ScenesCommand {
         #[arg(long)]
         include_disabled: bool,
     },
+    /// Show one scene's sequencer pattern: summary, events (`--events`), or an SMF (`--mid`).
+    Pattern {
+        /// A backup or scene export `FANTOM.SVD`; the pattern file is read from beside it.
+        file: PathBuf,
+        /// Scene number, 1-based (as printed by `scenes list`).
+        scene: usize,
+        /// Track, 1-16.
+        track: usize,
+        /// Variation, 1-8.
+        variation: usize,
+        /// Dump every event and automation point.
+        #[arg(long)]
+        events: bool,
+        /// Write the pattern as a Standard MIDI File.
+        #[arg(long, value_name = "OUT")]
+        mid: Option<PathBuf>,
+    },
     /// Rename a scene.
     Rename {
         file: PathBuf,

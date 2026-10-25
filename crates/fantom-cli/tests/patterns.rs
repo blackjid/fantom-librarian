@@ -89,5 +89,66 @@ fn showing_a_scene_lists_its_patterns() {
     assert!(output.status.success());
     let text = String::from_utf8(output.stdout).unwrap();
     assert!(text.contains("T07-2 INIT PTN         8 bars"), "{text}");
-    assert_eq!(text.matches(" bars").count(), 5, "{text}");
+    assert_eq!(
+        text.lines().filter(|l| l.ends_with(" bars")).count(),
+        5,
+        "{text}"
+    );
+}
+
+fn fantom(args: &[&str], file: &Path) -> String {
+    let output = Command::new(env!("CARGO_BIN_EXE_fantom"))
+        .args(args)
+        .arg(file)
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    String::from_utf8(output.stdout).unwrap()
+}
+
+/// `scenes show` lists a scene's pattern groups and song steps; `scenes pattern` dumps one pattern.
+#[test]
+fn showing_a_scene_lists_its_song_and_a_pattern_dumps() {
+    let Some(narf) = private("backup/NARF/FANTOM.SVD") else {
+        return;
+    };
+    let list = fantom(&["scenes", "list"], &narf);
+    let number = list
+        .lines()
+        .find(|l| l.contains("Blue Monday"))
+        .and_then(|l| l.split_whitespace().next())
+        .unwrap()
+        .to_string();
+    let output = Command::new(env!("CARGO_BIN_EXE_fantom"))
+        .args(["scenes", "show"])
+        .arg(&narf)
+        .arg(&number)
+        .output()
+        .unwrap();
+    let text = String::from_utf8(output.stdout).unwrap();
+    let (_, tail) = text.split_once("groups:\n").expect(&text);
+    let (groups, song) = tail.split_once("song:\n").expect(&text);
+    assert_eq!(groups.lines().count(), 5, "{text}");
+    assert!(groups.contains("Intro 2   4 bars  T02-3 T10-2"), "{text}");
+    let song: Vec<_> = song
+        .lines()
+        .take(7)
+        .map(|l| l.split_whitespace().last().unwrap())
+        .collect();
+    assert_eq!(song, ["x2", "x1", "x1", "x10", "x1", "x4", "x1"], "{text}");
+
+    let out = std::env::temp_dir().join(format!("fantom-cli-pattern-{}.mid", std::process::id()));
+    let dump = Command::new(env!("CARGO_BIN_EXE_fantom"))
+        .args(["scenes", "pattern"])
+        .arg(&narf)
+        .args([&number, "10", "2", "--events", "--mid"])
+        .arg(&out)
+        .output()
+        .unwrap();
+    assert!(dump.status.success());
+    let dump = String::from_utf8(dump.stdout).unwrap();
+    assert!(dump.starts_with("T10-2 Verse 2 bars note "), "{dump}");
+    assert!(dump.contains(" note    ch=9 note="), "{dump}");
+    assert!(std::fs::read(&out).unwrap().starts_with(b"MThd"));
+    let _ = std::fs::remove_file(&out);
 }
