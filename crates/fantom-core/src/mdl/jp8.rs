@@ -1,23 +1,9 @@
-//! The JUPITER-8 model: how an engine field lands in
-//! the ZEN-Core tone of the same record.
-//!
-//! The per-field setters and the dependency switch.
-//! The firmware sets a field by running its setter with the new value, storing the value, then
-//! running the switch for that field index, which re-runs the setters of the fields that depend
-//! on it. Each setter writes tone parameters named by the firmware's (block, parameter) pair;
-//! [`locate`] turns a pair into a record offset. Names and offsets are in `docs/FORMAT.md`.
+//! The JUPITER-8 model: its per-field setters and dependency switch. The machinery is in [`super::engine`].
 
-use std::cell::Cell;
-
+use super::engine::*;
 use crate::params::mdl::*;
-use crate::params::MdlCurve;
-use crate::params::MdlTarget;
 
-/// Number of engine fields of an analog model.
-pub(super) const FIELDS: usize = 88;
-
-/// The engine fields of a record, by firmware index, as the setters see them.
-pub(super) type Fields = [i32; FIELDS];
+pub(super) const MODEL: Model = Model { setter, depend };
 
 // Firmware indices of the fields the setters read besides their own.
 const OSC1_DEST: usize = 6;
@@ -32,181 +18,10 @@ const FILTER_ENV_SELECT: usize = 50;
 const AMP_ENV_SELECT: usize = 57;
 const EXPANSION: usize = 82;
 
-// Firmware block ids.
-const CMN: u8 = 22;
-const PTL: u8 = 25;
-const PENV: u8 = 26;
-const FENV: u8 = 27;
-const AENV: u8 = 28;
-const LFO: u8 = 29;
-const S_CMN: u8 = 31;
-const S_PMT: u8 = 32;
-const S_PTL: u8 = 33;
-
 /// AMP MOD STEP to LFO 1 amp depth.
 const AMP_MOD_STEP: [i32; 4] = [0, 25, 70, 98];
 /// PORTAMENT CURVE TYPE to the tone's curve.
 const PORTA_CURVE: [i32; 4] = [0, 0, 1, 2];
-
-/// One tone parameter a setter wrote: the firmware's block, instance (partial) and parameter.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) struct Write {
-    pub block: u8,
-    pub inst: u8,
-    pub param: u16,
-    pub value: i32,
-}
-
-/// Where a write lands in the record: offset and width in bytes. `None` for a parameter whose
-/// place in the tone layout is not known.
-pub(super) fn locate(w: &Write) -> Option<(usize, usize)> {
-    let t: &MdlTarget = TONE_TARGETS
-        .iter()
-        .find(|t| t.block == w.block && t.param == w.param)?;
-    if t.offset == MdlTarget::UNLOCATED {
-        return None;
-    }
-    let starts = TONE_BLOCKS.iter().find(|(b, _)| *b == w.block)?.1;
-    let inst = if starts.len() == 1 {
-        0
-    } else {
-        usize::from(w.inst)
-    };
-    Some((
-        0x10 + usize::from(*starts.get(inst)?) + usize::from(t.offset),
-        usize::from(t.size),
-    ))
-}
-
-/// The firmware's piecewise-cubic conversion, in its own float32 arithmetic.
-pub(super) fn curve(c: &MdlCurve, p: i32) -> i32 {
-    let neg = c.signed && p < 0;
-    let p = if neg {
-        i32::from((p as i16).wrapping_neg())
-    } else {
-        p
-    };
-    let (lo, hi) = (i32::from(c.lo), i32::from(c.hi));
-    let p = p.min(hi).max(lo);
-    let last = c.y[c.y.len() - 1];
-    let signed = |v: i16| i32::from(if neg { v.wrapping_neg() } else { v });
-    if p == hi {
-        return signed(last);
-    }
-    let pos = ((c.y.len() - 1) as f32 / hi as f32) * (p + 1) as f32;
-    let i = if pos > 0.0 {
-        pos as i32 as usize & 0xff
-    } else {
-        0
-    };
-    let dx = (p - i32::from(c.x[i])) as f32;
-    let width = i32::from(c.x[i + 1]) - i32::from(c.x[i]);
-    let t = dx / width as f32;
-    let shape = c.c[i] + (c.b[i] + t * c.a[i]) * t;
-    signed((f32::from(c.y[i]) + shape * dx) as i32 as i16)
-}
-
-struct Ctx<'a> {
-    f: &'a Fields,
-    /// The record's tone bytes, for the one setter that reads the tone back.
-    tone: &'a [u8],
-    reads: Cell<u128>,
-    out: Vec<Write>,
-}
-
-impl Ctx<'_> {
-    /// Another field's value; remembered, for the proven-state check.
-    fn f(&self, i: usize) -> i32 {
-        self.reads.set(self.reads.get() | 1u128 << i);
-        self.f[i]
-    }
-
-    fn put(&mut self, block: u8, inst: u8, param: u16, value: i32) {
-        self.out.push(Write {
-            block,
-            inst,
-            param,
-            value,
-        });
-    }
-
-    /// `put` to partial 1 and partial 2.
-    fn put2(&mut self, block: u8, param: u16, value: i32) {
-        self.put(block, 0, param, value);
-        self.put(block, 1, param, value);
-    }
-
-    fn tone(&self, block: u8, param: u16) -> i32 {
-        let w = Write {
-            block,
-            inst: 0,
-            param,
-            value: 0,
-        };
-        locate(&w).map_or(0, |(at, size)| read_le(self.tone, at, size))
-    }
-}
-
-/// A C `short` parameter: the low 16 bits, sign-extended.
-fn short(v: i32) -> i32 {
-    i32::from(v as i16)
-}
-
-pub(super) fn read_le(bytes: &[u8], at: usize, size: usize) -> i32 {
-    bytes[at..at + size]
-        .iter()
-        .rev()
-        .fold(0, |v, &b| v << 8 | i32::from(b))
-}
-
-/// What setting one field does.
-pub(super) struct Effect {
-    pub writes: Vec<Write>,
-    /// Bit `i` set: the setters read field `i`.
-    pub reads: u128,
-}
-
-/// Setting field `k` to `new` while the others hold `fields` (`fields[k]` is the old value): the
-/// field's setter with the old state, then the dependency switch with the new one.
-pub(super) fn set_field(fields: &Fields, tone: &[u8], k: usize, new: i32) -> Effect {
-    let mut after = *fields;
-    after[k] = new;
-    let mut c = Ctx {
-        f: fields,
-        tone,
-        reads: Cell::new(0),
-        out: Vec::new(),
-    };
-    setter(&mut c, k, new);
-    let (mut writes, reads) = (c.out, c.reads.get());
-    let mut c = Ctx {
-        f: &after,
-        tone,
-        reads: Cell::new(reads),
-        out: Vec::new(),
-    };
-    depend(&mut c, k);
-    writes.append(&mut c.out);
-    Effect {
-        writes,
-        reads: c.reads.get(),
-    }
-}
-
-/// Every write of loading `fields`: each field set in index order with all of them in place.
-pub(super) fn all_writes(fields: &Fields, tone: &[u8]) -> Vec<Write> {
-    let mut c = Ctx {
-        f: fields,
-        tone,
-        reads: Cell::new(0),
-        out: Vec::new(),
-    };
-    for (k, &v) in fields.iter().enumerate() {
-        setter(&mut c, k, v);
-        depend(&mut c, k);
-    }
-    c.out
-}
 
 /// The dependency switch: fields whose setters depend on field `k`.
 fn depend(c: &mut Ctx, k: usize) {
@@ -356,20 +171,13 @@ fn setter(c: &mut Ctx, k: usize, v: i32) {
             let u = curve(&MOD_LFO_CURVE, short(v));
             c.put2(PTL, 0x780, u);
         }
-        78 => {
-            if (v as u32) <= 0x4b0 {
-                c.put(S_CMN, 0, 0x844, v % 100);
-                c.put(S_CMN, 0, 0x845, v % 100);
-                c.put(CMN, 0, 0x715, v / 100);
-                c.put(CMN, 0, 0x716, v / 100);
-            }
-        }
+        78 => bender_depth(c, v, 0x4b0),
         79 => {
             let u = curve(&PORTA_TIME_CURVE, short(v));
             c.put(CMN, 0, 0x714, u);
         }
         80 => porta_mode(c, v),
-        81 => key_mode(c, v),
+        81 => key_mode(c, v, 0x1e),
         83 => c.put(S_CMN, 0, 0x848, v),
         84 => c.put(CMN, 0, 0x71d, PORTA_CURVE[v as usize & 3]),
         85 => c.put2(PTL, 0x792, v),
@@ -495,13 +303,6 @@ fn low_freq_depth(v: i32) -> i32 {
     ((t >> 10) + 0x48).clamp(0x25, 0x48)
 }
 
-/// `(v * k) >> 10` with the compiler's round-toward-zero, floored at zero.
-fn scale10(v: i32, k: i32) -> i32 {
-    let t = v * k;
-    let t = if t < 0 { t + 0x3ff } else { t };
-    (t >> 10) & !(t >> 31)
-}
-
 /// The level pair the mixer sends to the ring and cross-mod stages and the partial's attenuation.
 fn osc_level(c: &mut Ctx, v: i32, wave: i32, other: bool) {
     let v = short(v);
@@ -621,12 +422,6 @@ fn filter_freq(c: &mut Ctx, v: i32) {
     c.put2(PTL, 0x764, v);
 }
 
-/// `(v * k) >> 10`, rounding toward zero.
-fn scale_signed(v: i32, k: i32) -> i32 {
-    let t = v * k;
-    (if t < 0 { t + 0x3ff } else { t }) >> 10
-}
-
 fn filter_reso(c: &mut Ctx, v: i32) {
     let mut v = v;
     if c.f(EXPANSION) == 0 {
@@ -738,42 +533,4 @@ fn env2_sustain(c: &mut Ctx, v: i32) {
 
 fn env2_release(c: &mut Ctx, v: i32) {
     env2(c, &RELEASE_CURVE, 0x6ef, 0x6e4, v);
-}
-
-fn porta_mode(c: &mut Ctx, v: i32) {
-    match v {
-        0 | 1 => {
-            c.put(CMN, 0, 0x710, v);
-            c.put(CMN, 0, 0x711, 0);
-        }
-        2 => {
-            c.put(CMN, 0, 0x710, 1);
-            c.put(CMN, 0, 0x711, 1);
-        }
-        _ => {}
-    }
-}
-
-/// KEY MODE: mono/poly and analog feel in the common block; the two unison modes also switch the
-/// unison on (if it is off) and set its detune. Reads the unison switch back from the tone.
-fn key_mode(c: &mut Ctx, v: i32) {
-    let unison = c.tone(S_CMN, 0x841);
-    match v {
-        0 | 1 => {
-            c.put(CMN, 0, 0x70d, 1 - v);
-            c.put(CMN, 0, 0x70c, 0);
-            if unison != 0 {
-                c.put(S_CMN, 0, 0x841, 0);
-            }
-        }
-        2 | 3 => {
-            c.put(CMN, 0, 0x70d, 3 - v);
-            c.put(CMN, 0, 0x70c, 5);
-            if unison == 0 {
-                c.put(S_CMN, 0, 0x841, 1);
-            }
-            c.put(S_CMN, 0, 0x843, 0x1e);
-        }
-        _ => {}
-    }
 }

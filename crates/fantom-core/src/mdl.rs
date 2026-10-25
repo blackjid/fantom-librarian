@@ -3,10 +3,16 @@
 //! A record is 2048 bytes: a header whose `+8` type picks the engine, a ZEN-Core tone at `0x10`,
 //! and the engine block at `0x670` described by [`params::mdl`]. The instrument keeps derived
 //! values of some engine fields in the ZEN-Core tone, so an edit must move those too; only JP-8
-//! edits whose mirror is proven against recorded tones are accepted. Layout and the mirror rules
-//! are in `docs/FORMAT.md`; the firmware's setters are ported in [`jp8`].
+//! edits whose mirror is proven against recorded tones are accepted. The instrument's setters are
+//! reimplemented for all four analog models ([`jp8`], [`juno`], [`jx8p`], [`sh101`]) and
+//! [`mirror_mismatches`] checks a record of any of them against its engine block. Layout and the
+//! mirror rules are in `docs/FORMAT.md`.
 
+mod engine;
 mod jp8;
+mod juno;
+mod jx8p;
+mod sh101;
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -15,10 +21,11 @@ use crate::container::{patch_record, Raw, RecordTable, Svd};
 use crate::params::mdl::{ANALOG, ENGINE_BASE, JD800, JP8_PINNED, RECORD_LEN, WT};
 use crate::params::{MdlMirror, MdlParam};
 use crate::{Error, Result};
+use engine::{locate, read_le, Fields, Model, FIELDS};
 
 const TAG: &[u8; 4] = b"MDLa";
 const TYPE_AT: usize = 8;
-/// Record type of a JUPITER-8 tone, the one engine whose mirrors are decoded.
+/// Record type of a JUPITER-8 tone, the one engine whose edits are accepted.
 const JP8: u32 = 7;
 
 /// Which engine a record's type selects.
@@ -172,22 +179,24 @@ fn edit_of(kind: u32, param: &MdlParam) -> MdlEdit {
 
 fn refuse_locked(kind: u32, param: &MdlParam) -> Result<()> {
     let id = param.id;
-    let why = if kind != JP8 {
-        match kind {
-            7..=10 => {
-                "only JP8 edits are supported: the other analog models' mirrors are not decoded"
-            }
-            _ => "JD-800 and WT edits are not supported: their engine side effects are not decoded",
-        }
-        .to_string()
-    } else {
-        match param.mirror {
+    let why = match kind {
+        JP8 => match param.mirror {
             MdlMirror::Locked => "it selects the engine".to_string(),
             MdlMirror::Unproven => {
                 "it moves fields of the ZEN-Core tone, and that transform is not proven".to_string()
             }
             _ => return Ok(()),
-        }
+        },
+        9 => "JUNO-106 edits are not supported: its setters are decoded, but the recorded tone \
+              is the only evidence and proves no field"
+            .to_string(),
+        8 | 10 => format!(
+            "{} edits are not supported: its setters are decoded, but no tone of this model has \
+             been recorded to prove them",
+            if kind == 8 { "JX-8P" } else { "SH-101" }
+        ),
+        _ => "JD-800 and WT edits are not supported: their engine side effects are not decoded"
+            .to_string(),
     };
     Err(Error::Unrecognized(format!("cannot set {id}: {why}")))
 }
@@ -252,9 +261,20 @@ fn parse(param: &MdlParam, text: &str) -> Result<i32> {
     Ok(value)
 }
 
-/// The engine fields of a JP-8 record, as the firmware's setters see them.
-fn jp8_fields(record: &[u8]) -> jp8::Fields {
-    let mut fields = [0; jp8::FIELDS];
+/// The setter model of an analog record type (7 JP-8, 8 JX-8P, 9 JUNO-106, 10 SH-101).
+fn model_of(kind: u32) -> Option<&'static Model> {
+    match kind {
+        7 => Some(&jp8::MODEL),
+        8 => Some(&jx8p::MODEL),
+        9 => Some(&juno::MODEL),
+        10 => Some(&sh101::MODEL),
+        _ => None,
+    }
+}
+
+/// The engine fields of an analog record, as the firmware's setters see them.
+fn analog_fields(record: &[u8]) -> Fields {
+    let mut fields = [0; FIELDS];
     for (f, param) in fields.iter_mut().zip(ANALOG) {
         *f = read(record, param);
     }
@@ -276,8 +296,8 @@ fn mirror(record: &[u8], param: &MdlParam, value: i32) -> Result<Vec<(usize, Vec
         .iter()
         .position(|p| std::ptr::eq(p, param))
         .expect("a JP-8 table entry");
-    let fields = jp8_fields(record);
-    let effect = jp8::set_field(&fields, record, k, value);
+    let fields = analog_fields(record);
+    let effect = jp8::MODEL.set_field(&fields, record, k, value);
     let outside: Vec<String> = JP8_PINNED
         .iter()
         .filter(|&&(i, pinned)| i != k && effect.reads >> i & 1 == 1 && fields[i] != pinned)
@@ -291,7 +311,7 @@ fn mirror(record: &[u8], param: &MdlParam, value: i32) -> Result<Vec<(usize, Vec
     }
     let mut targets = BTreeMap::new();
     for w in &effect.writes {
-        match jp8::locate(w) {
+        match locate(w) {
             Some(place) => {
                 targets.insert(place, w.value);
             }
@@ -307,7 +327,7 @@ fn mirror(record: &[u8], param: &MdlParam, value: i32) -> Result<Vec<(usize, Vec
     }
     let mut after = fields;
     after[k] = value;
-    let whole = final_writes(&after, record);
+    let whole = final_writes(&jp8::MODEL, &after, record);
     for (place, v) in &targets {
         if whole.get(place).is_some_and(|w| w != v) {
             return Err(Error::Unrecognized(format!(
@@ -324,10 +344,10 @@ fn mirror(record: &[u8], param: &MdlParam, value: i32) -> Result<Vec<(usize, Vec
 }
 
 /// What loading `fields` leaves in each tone field the setters write: the last write wins.
-fn final_writes(fields: &jp8::Fields, record: &[u8]) -> BTreeMap<(usize, usize), i32> {
+fn final_writes(model: &Model, fields: &Fields, record: &[u8]) -> BTreeMap<(usize, usize), i32> {
     let mut last = BTreeMap::new();
-    for w in jp8::all_writes(fields, record) {
-        if let Some(place) = jp8::locate(&w) {
+    for w in model.all_writes(fields, record) {
+        if let Some(place) = locate(&w) {
             last.insert(place, w.value);
         }
     }
@@ -344,21 +364,25 @@ pub struct MirrorMismatch {
     pub expected: i32,
 }
 
-/// Every tone field a JP-8 record's engine block determines that holds something else.
+/// Every tone field an analog record's engine block determines that holds something else.
 ///
-/// The check loads the engine fields through the firmware's setters (every field set, in index
-/// order) and compares what they write with the tone bytes; the name, the MFX and the fields no
-/// setter writes are not looked at. An empty list means the tone is what the instrument would hold.
+/// The check loads the engine fields through the firmware's setters for the record's model (every
+/// field set, in index order) and compares what they write with the tone bytes; the name, the MFX
+/// and the fields no setter writes are not looked at. An empty list means the tone is what the
+/// instrument would hold.
 pub fn mirror_mismatches(record: &[u8]) -> Result<Vec<MirrorMismatch>> {
-    let (engine, kind) = engine_of(record)?;
-    if engine != MdlEngine::Analog || kind != JP8 || record.len() != RECORD_LEN {
-        return Err(Error::Unrecognized(
-            "only JP-8 records have a decoded mirror".into(),
-        ));
+    if record.len() != RECORD_LEN {
+        return Err(Error::Unrecognized(format!(
+            "MDLa record size is {}, expected {RECORD_LEN}",
+            record.len()
+        )));
     }
+    let (_, kind) = engine_of(record)?;
+    let model = model_of(kind)
+        .ok_or_else(|| Error::Unrecognized("only analog records have a decoded mirror".into()))?;
     let mut mismatches = Vec::new();
-    for ((offset, size), expected) in final_writes(&jp8_fields(record), record) {
-        let stored = jp8::read_le(record, offset, size);
+    for ((offset, size), expected) in final_writes(model, &analog_fields(record), record) {
+        let stored = read_le(record, offset, size);
         let mask = (1i64 << (8 * size)) - 1;
         if i64::from(expected) & mask != i64::from(stored) {
             mismatches.push(MirrorMismatch {
@@ -372,7 +396,7 @@ pub fn mirror_mismatches(record: &[u8]) -> Result<Vec<MirrorMismatch>> {
     Ok(mismatches)
 }
 
-/// Whether `record` is a JP-8 record whose tone agrees with its engine block everywhere the
+/// Whether `record` is an analog record whose tone agrees with its engine block everywhere the
 /// engine determines it.
 pub fn mirror_consistent(record: &[u8]) -> bool {
     mirror_mismatches(record).is_ok_and(|m| m.is_empty())
@@ -383,6 +407,7 @@ mod tests {
     use super::*;
     use crate::checksum::crc32;
     use crate::container::PREAMBLE_LEN;
+    use crate::params::MdlCurve;
 
     fn u16_at(raw: &Raw, record_at: usize) -> u16 {
         let svd = Svd::parse(raw).unwrap();
@@ -478,7 +503,39 @@ mod tests {
         ];
         for (c, points) in cases {
             for &(from, to) in points {
-                assert_eq!(jp8::curve(c, from), to, "{from}");
+                assert_eq!(engine::curve(c, from), to, "{from}");
+            }
+        }
+    }
+
+    /// Points of the other models' curves, from the firmware.
+    #[test]
+    fn the_other_models_curves_reproduce_the_firmware() {
+        use crate::params::mdl::{
+            JUNO_FREQ_CURVE, JUNO_RESO_CURVE, JX8P_FENV_DEPTH_CURVE, SH101_MOD_LFO_CURVE,
+            SH101_PW_ENV_CURVE,
+        };
+        let cases: [(&MdlCurve, &[(i32, i32)]); 5] = [
+            (
+                &JUNO_FREQ_CURVE,
+                &[(0, 30), (1, 30), (500, 593), (1023, 1000)],
+            ),
+            (&JUNO_RESO_CURVE, &[(614, 524), (0, 0), (1023, 1000)]),
+            // mode 2: the abscissa scaled by 7, signed
+            (
+                &SH101_MOD_LFO_CURVE,
+                &[(7, 1), (30, 14), (63, 46), (-5, 0), (-63, -46), (40, 22)],
+            ),
+            (&SH101_PW_ENV_CURVE, &[(0, 0), (64, 15), (127, 29)]),
+            // mode 4, signed
+            (
+                &JX8P_FENV_DEPTH_CURVE,
+                &[(-1000, -3954), (-1, -15), (333, 2377), (1023, 3969)],
+            ),
+        ];
+        for (c, points) in cases {
+            for &(from, to) in points {
+                assert_eq!(engine::curve(c, from), to, "{from}");
             }
         }
     }
@@ -594,7 +651,7 @@ mod tests {
 
     #[test]
     fn other_engines_are_read_only() {
-        for kind in [9, 15, 16] {
+        for kind in [8, 9, 10, 15, 16] {
             let mut raw = svz(kind, false);
             let (_, fields) = read_mdl_params(&raw, 0).unwrap();
             assert!(fields.iter().all(|f| f.edit == MdlEdit::Locked));
