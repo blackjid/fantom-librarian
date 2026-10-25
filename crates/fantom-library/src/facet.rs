@@ -314,8 +314,10 @@ mod tests {
     fn a_tone_offers_the_model_its_record_names() {
         // A confirmed selector reads as the bank a scene would call it by.
         assert_eq!(models_of(&tone("MODEL", Some(7))), ["MODEL JP8"]);
-        // An unconfirmed one still tells its model from another, by number.
-        assert_eq!(models_of(&tone("MODEL", Some(9))), ["MODEL #9"]);
+        assert_eq!(models_of(&tone("MODEL", Some(9))), ["MODEL JU106"]);
+        assert_eq!(models_of(&tone("ACB", Some(0x1007))), ["ACB JU106"]);
+        // An unknown one still tells its model from another, by number.
+        assert_eq!(models_of(&tone("MODEL", Some(3))), ["MODEL #3"]);
         // Every other engine is one model, and says nothing.
         assert!(models_of(&tone("ZEN-Core", None)).is_empty());
     }

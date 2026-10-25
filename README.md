@@ -274,10 +274,10 @@ cargo run -p fantom-cli -- diff before.SVD after.SVD --area DCWa --context 4
 cargo run -p fantom-cli -- scenes list path/to/FANTOM.SVD
 
 # Show one scene with its zones (type, bank, tone, switch, key range, level).
-# Use --include-disabled for off zones.
+# Use --include-disabled for off zones. Lists its sequencer patterns when SEQ/ sits beside the file.
 cargo run -p fantom-cli -- scenes show path/to/FANTOM.SVD 385
 
-# List the tones bundled in a file.
+# List the tones bundled in a file, with the model of each MODEL and ACB tone.
 cargo run -p fantom-cli -- tones list path/to/FANTOM.SVD
 
 # List the user samples and multisamples a file carries.
