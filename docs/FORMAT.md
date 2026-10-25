@@ -912,7 +912,7 @@ Offsets record-relative.
 ### `SYSa` — system settings (CONFIRMED)
 
 Of 904 bytes: 739
-named (622 fields), 144 reserved, 21 block padding. SC/SL/SCMP/SYS_EQ/IN_EQ come from the firmware's
+named (622 fields), 165 reserved or block padding. SC/SL/SCMP/SYS_EQ/IN_EQ come from the firmware's
 parameter descriptors; Input Reverb, TFX and Input MFX are packed from the MIDI Implementation
 like scene blocks (signed where the map biases).
 
@@ -922,7 +922,11 @@ like scene blocks (signed where the map biases).
 - `SC:CLOCK_*` is the last clock the user set (or the factory value), not the backup date.
 - User backups differ in plausible settings: USB driver, LED brightness, encoder speed, zone
   INT/EXT, pad mode, remote keyboard.
-- Unverified: Input Reverb parameter meanings, control-source sensitivity encoding.
+- Input Reverb types: 0 OFF, 1 INTEGRA-7, 2 Warm Hall, 3 Hall, 4 GS, 5 SRV-2000, 6 SRV-2000
+  NON-LINEAR, 7 GM2, 8 Modulation, 9 Shimmer. Parameters 1–20 per type (`by_type` in the layout):
+  order from the firmware's parameter names, ranges from the Parameter Guide; types 1–5, 9 agree with
+  209 corpus reverb blocks, 6–8 unseen. Factory: INTEGRA-7, HALL1.
+- Unverified: TFX / Input MFX per-type meanings, control-source sensitivity encoding.
 
 ## SVZ tone export — CONFIRMED
 
