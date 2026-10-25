@@ -165,7 +165,28 @@ USDa`; a scene export carries only the subset its scenes need, plus `SYSa`.
 | `MLSa` | User multisamples (128) |
 | `USDa` | User sample waveform data (`SMPd` sections) |
 | `ACBa` | ACB user tones — EX firmware only; 1024 slots in a backup |
-| `SYSa` | System settings — one 904-byte record, the in-RAM settings struct; decoded, see A restore also requires `PRFa` ≥ 512, `PATa` ≥ 2048, `RHYa`/`INSa` ≥ 128
+| `SYSa` | System settings — one 904-byte record, the in-RAM settings struct; decoded; `fantom system show` / `diff` (read-only) |
+| `DIFa` | Origin stamp: product code and serial of the writing device — see below |
+
+**Record sizes and USER slots, from the EX firmware's writers:**
+
+| Area | Record | Backup slots |
+|------|--------|--------------|
+| `PRFa` | 3572 | 512 |
+| `PATa` | 1632 | 2048 |
+| `RHYa` / `INSa` | 3328 / 19008 | 128 |
+| `DCWa` | 684 | 128 |
+| `VTWa` | 300 | 128 |
+| `SNAa` | 156 | 256 |
+| `ZAPa` / `ZEPa` | 1696 | 128 |
+| `MDLa` | 2048 | 1024 |
+| `ACBa` | 9984 | 1024 (EX only) |
+| `SYSa` | 904 | 1 |
+| `DIFa` | 32 | 1 |
+
+**What import checks** (backup restore and scene import): the `SVD5` magic, then
+each area looked up by tag *and* `KY19` stamp, its size non-negative, records starting at the
+declared `info_length`. A restore also requires `PRFa` ≥ 512, `PATa` ≥ 2048, `RHYa`/`INSa` ≥ 128
 records and a `SYSa`; a missing optional area only marks it partial. No checksum, and no `DIFa`.
 
 ### PRFa area = Scenes: 16-byte header, then fixed-stride records

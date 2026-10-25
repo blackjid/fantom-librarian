@@ -282,6 +282,10 @@ cargo run -p fantom-cli -- pads list path/to/backup
 cargo run -p fantom-cli -- pads wav path/to/backup 1 3 pad.wav
 cargo run -p fantom-cli -- pads wavs path/to/backup wavs/
 
+# Show the system settings (--all: reserved and at-init too), or only what differs between two files.
+cargo run -p fantom-cli -- system show path/to/FANTOM.SVD
+cargo run -p fantom-cli -- system diff a/FANTOM.SVD b/FANTOM.SVD
+
 # List the tones bundled in a file, with the model of each MODEL and ACB tone.
 cargo run -p fantom-cli -- tones list path/to/FANTOM.SVD
 
