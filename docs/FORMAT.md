@@ -60,10 +60,24 @@ and library import (`import.rs` skips `.sqs`, `.smp`, `.xml`), still ignore them
   | v1.06+ | then 128 × 13 automation lanes: `u32 id, u32 n`, 8 bytes, `n` × (u32 LE, u32 LE) |
   | end | `~"CSQS"` |
 
-  Event: `+0` u16 delta ticks; `+2` note number, or ≥ `0x80` a kind (`8C` end, `8D` poly AT, `8E` CC,
-  `8F` PC, `90` channel AT, `91` bend, `F0` SysEx, `FB` time sig, `FD` tempo, `80` filler); `+3` low
-  nibble channel; `+6` velocity / CC number; `+7` note-off velocity / CC value; `+12` u32 gate.
-  Note/CC/bend export to SMF plays back plausibly; the other kinds' operands are inferred.
+  Event (16 B): `+0` u16 delta = gap **after** the event (tick = sum of earlier deltas); `+2` kind;
+  `+3` low nibble channel. Deltas sum to 61440 (≤ v1.06) / 122880; a final filler pads to that.
+
+  | `+2` | Kind | Fields | |
+  |------|------|--------|-|
+  | `<80` | note | note `+2`, velocity `+6`, release `+7`, u32 gate `+12` | C |
+  | `80` | filler | advances time only | C |
+  | `8D` | poly AT | note `+6`, value `+7` | C |
+  | `8E` | CC | number `+6`, value `+7` (v1.02; later in lanes) | C |
+  | `8F` | PC | program `+6` | instrument |
+  | `90` | channel AT | value `+6` | C |
+  | `91` | bend | `+7<<7 \| +6`, centre 8192 | C |
+  | `FD` | tempo | u32 BPM×100 `+12` | instrument |
+  | `FB` | time sig | u32 **LE** numerator `+8`, denominator `+12` | instrument |
+  | `95` / `96` | SysEx | head: u32 length `+12`; then ⌈len/10⌉ events of 10 bytes at `+6` | instrument |
+
+  Lanes (13 per pattern, fixed order): ids `02 08 0B 0C 11–14 41 48 4B 00 79` = CC1, 7, 10, 11, 16–19,
+  64, 71, 74, channel AT, bend (id = CC + 1; 0 AT; `79` 14-bit bend). Points: absolute tick, value.
 - Chain XML: `<CHAIN_SET_NAME ChainSetName>`, `<CHAINn SceneIdx>` (0-based scene index — the
   the instrument stores it raw, as for SQS paths; inferred), `<MARKERn ChainIdx NameIndex>` (62 marker
   labels 0–9, A–Z, a–z). Reordering scenes must remap `SceneIdx`.
