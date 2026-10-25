@@ -9,6 +9,7 @@ use fantom_core::container::Raw;
 use fantom_core::origin::Origin;
 use fantom_core::params::{self, AcbKind};
 use fantom_core::requirements::{ExpansionInventory, Holding};
+use fantom_core::sequence::SeqSet;
 
 mod cli;
 mod render;
@@ -71,6 +72,14 @@ fn main() -> ExitCode {
                 scene,
                 include_disabled,
             } => run_show(&file, scene, include_disabled),
+            ScenesCommand::Pattern {
+                file,
+                scene,
+                track,
+                variation,
+                events,
+                mid,
+            } => run_pattern(&file, scene, track, variation, events, mid.as_deref()),
             ScenesCommand::Rename {
                 file,
                 scene,
@@ -612,31 +621,70 @@ fn run_show(file: &PathBuf, scene: usize, all: bool) -> fantom_core::Result<Stri
     Ok(out)
 }
 
-/// The sequencer patterns beside `file` for 0-based scene `index`, one line each; empty without any.
+/// The scene's `SeqSet.SQS` beside `file`, parsed; `None` without one.
+fn scene_seqset(file: &Path, index: usize) -> Option<fantom_core::Result<SeqSet>> {
+    let bytes = fantom_core::sequence::slot_path(index)
+        .and_then(|path| std::fs::read(bank_dir(file).join(path)).ok())?;
+    Some(SeqSet::parse(&bytes))
+}
+
+/// The sequencer patterns, groups and song beside `file` for 0-based scene `index`; empty without any.
 fn scene_patterns(file: &Path, index: usize) -> String {
-    let Some(bytes) = fantom_core::sequence::slot_path(index)
-        .and_then(|path| std::fs::read(bank_dir(file).join(path)).ok())
-    else {
-        return String::new();
-    };
     let mut out = String::new();
-    match fantom_core::sequence::patterns(&bytes) {
-        Ok(patterns) if patterns.is_empty() => {}
-        Ok(patterns) => {
-            let _ = writeln!(out, "patterns:");
-            for p in patterns {
+    match scene_seqset(file, index) {
+        None => {}
+        Some(Err(error)) => {
+            let _ = writeln!(out, "patterns: unreadable ({error})");
+        }
+        Some(Ok(set)) => {
+            let mut used = set.used().peekable();
+            if used.peek().is_some() {
+                let _ = writeln!(out, "patterns:");
+            }
+            for p in used {
                 let _ = writeln!(
                     out,
                     "  T{:02}-{} {:<16} {} bars",
                     p.track, p.variation, p.name, p.bars
                 );
             }
-        }
-        Err(error) => {
-            let _ = writeln!(out, "patterns: unreadable ({error})");
+            out.push_str(&render::groups_and_song(&set));
         }
     }
     out
+}
+
+fn run_pattern(
+    file: &Path,
+    scene: usize,
+    track: usize,
+    variation: usize,
+    events: bool,
+    mid: Option<&Path>,
+) -> fantom_core::Result<String> {
+    let missing = |what: &str| fantom_core::Error::Unrecognized(what.into());
+    let set = scene_seqset(file, scene.wrapping_sub(1))
+        .ok_or_else(|| missing(&format!("scene {scene} has no SeqSet.SQS")))??;
+    let (pattern, lanes) = set
+        .pattern(track, variation)
+        .ok_or_else(|| missing("track must be 1-16, variation 1-8"))?;
+    let mut out = render::pattern_summary(pattern, lanes);
+    if events {
+        out.push_str(&render::pattern_events(pattern, lanes));
+    }
+    if let Some(path) = mid {
+        let used: Vec<_> = lanes
+            .iter()
+            .filter(|l| !l.points.is_empty())
+            .cloned()
+            .collect();
+        std::fs::write(
+            path,
+            fantom_core::sequence::to_smf(pattern, set.tpqn, &used),
+        )?;
+        let _ = writeln!(out, "wrote {}", path.display());
+    }
+    Ok(out)
 }
 
 /// Pan, formatted by the parameter table itself rather than by a rule restated here.

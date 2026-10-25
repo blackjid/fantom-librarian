@@ -19,6 +19,7 @@ binrw = "0.15"
 thiserror = "2"
 clap = { version = "4", features = ["derive"] }
 insta = "1"
+md-5 = "0.11"
 fantom-core = { path = "crates/fantom-core" }
 fantom-library = { path = "crates/fantom-library" }
 midir = "0.11"
