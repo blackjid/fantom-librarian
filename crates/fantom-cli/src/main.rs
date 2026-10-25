@@ -633,12 +633,19 @@ fn run_tones(file: &PathBuf) -> fantom_core::Result<String> {
     Ok(out)
 }
 
-/// Fail unless `area` is one whose tone parameters can be read and edited by name.
-fn named_tone_area(area: &str) -> fantom_core::Result<()> {
+/// An area whose tone parameters can be read and edited by name.
+#[derive(Clone, Copy)]
+enum NamedArea {
+    Acb,
+    Mdl,
+}
+
+fn named_tone_area(area: &str) -> fantom_core::Result<NamedArea> {
     match area_tag(area)?.as_slice() {
-        b"ACBa" => Ok(()),
+        b"ACBa" => Ok(NamedArea::Acb),
+        b"MDLa" => Ok(NamedArea::Mdl),
         _ => Err(fantom_core::Error::Unrecognized(format!(
-            "named parameters are supported for ACBa only so far, not {area}"
+            "named parameters are supported for ACBa and MDLa only so far, not {area}"
         ))),
     }
 }
@@ -650,15 +657,22 @@ fn run_tone_show(
     area: &str,
     all: bool,
 ) -> fantom_core::Result<String> {
-    named_tone_area(area)?;
+    let kind = named_tone_area(area)?;
     let raw = Raw::open(file)?;
+    match kind {
+        NamedArea::Acb => show_acb(&raw, index, area, all),
+        NamedArea::Mdl => show_mdl(&raw, index, area),
+    }
+}
+
+fn show_acb(raw: &Raw, index: usize, area: &str, all: bool) -> fantom_core::Result<String> {
     let mut table = Table::new(vec![
         ("NAME", Align::Left),
         ("VALUE", Align::Right),
         ("MIN", Align::Right),
         ("MAX", Align::Right),
     ]);
-    let fields = fantom_core::acb::read_acb_params(&raw, index)?;
+    let fields = fantom_core::acb::read_acb_params(raw, index)?;
     let total = fields.len();
     let mut shown = 0;
     for field in fields {
@@ -683,6 +697,38 @@ fn run_tone_show(
     Ok(out)
 }
 
+/// A MODEL tone's engine parameters, each with whether `tones set` accepts it.
+fn show_mdl(raw: &Raw, index: usize, area: &str) -> fantom_core::Result<String> {
+    use fantom_core::mdl::MdlEdit;
+    let (kind, fields) = fantom_core::mdl::read_mdl_params(raw, index)?;
+    let mut table = Table::new(vec![
+        ("NAME", Align::Left),
+        ("VALUE", Align::Right),
+        ("MIN", Align::Right),
+        ("MAX", Align::Right),
+        ("SET", Align::Left),
+    ]);
+    for field in &fields {
+        table.row(vec![
+            field.param.id.to_string(),
+            field.to_string(),
+            field.param.min.to_string(),
+            field.param.max.to_string(),
+            match field.edit {
+                MdlEdit::Free => "free",
+                MdlEdit::Mirrored => "mirrored",
+                MdlEdit::Locked => "locked",
+            }
+            .to_string(),
+        ]);
+    }
+    let model =
+        fantom_core::model::model_label(fantom_core::model::ToneType::Model, kind).unwrap_or("?");
+    let mut out = format!("{area}[{index}]: {model}, {} parameters\n", fields.len());
+    out.push_str(&table.render());
+    Ok(out)
+}
+
 /// Apply `NAME=VALUE` assignments to a tone.
 fn run_tone_set(
     file: &PathBuf,
@@ -691,7 +737,7 @@ fn run_tone_set(
     area: &str,
     write: &WriteOptions,
 ) -> fantom_core::Result<String> {
-    named_tone_area(area)?;
+    let kind = named_tone_area(area)?;
     let pairs = assignments
         .iter()
         .map(|a| {
@@ -705,7 +751,10 @@ fn run_tone_set(
         &format!("set {} on {area}[{index}]", assignments.join(" ")),
         |raw| {
             for (name, value) in pairs {
-                fantom_core::acb::set_acb_param(raw, index, name, value)?;
+                match kind {
+                    NamedArea::Acb => fantom_core::acb::set_acb_param(raw, index, name, value)?,
+                    NamedArea::Mdl => fantom_core::mdl::set_mdl_param(raw, index, name, value)?,
+                }
             }
             Ok(())
         },

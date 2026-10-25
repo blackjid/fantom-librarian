@@ -67,7 +67,7 @@ pub const COMMON_AREAS: [&[u8; 4]; 2] = [b"SYSa", b"DIFa"];
 
 pub use msmp::{key_map as multisample_key_map, KeyMap};
 pub use raw::Raw;
-pub use records::RecordTable;
+pub use records::{patch_record, RecordTable};
 pub use sample::{Multisample, SampleBank, SampleData, SampleSlot, PANEL_SLOTS};
 pub(crate) use svd::ascii_trim;
 pub use svd::{Area, Kind, Svd, PREAMBLE_LEN};

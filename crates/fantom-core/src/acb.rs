@@ -5,8 +5,7 @@
 
 use std::fmt;
 
-use crate::checksum::crc32;
-use crate::container::{Raw, RecordTable, Svd};
+use crate::container::{patch_record, Raw, RecordTable, Svd};
 use crate::params::acb::{ACB, RECORD_LEN};
 use crate::params::{AcbKind, AcbParam};
 use crate::{Error, Result};
@@ -69,22 +68,17 @@ pub fn set_acb_param(raw: &mut Raw, index: usize, name: &str, value: &str) -> Re
         .mirror
         .map(|offset| (offset, (new as i64 as f32 / 255.0).to_bits()));
 
-    let svd = Svd::parse(raw)?;
-    let table = table(raw, &svd)?;
-    record(&table, index)?;
-    let start = table.record_offset(index);
-    let info_at =
-        (table.info_stride() == 4).then(|| table.area_offset + RecordTable::HEADER_LEN + index * 4);
-
-    raw.patch_bytes(start + param.offset as usize, &new.to_le_bytes());
-    if let Some((offset, bits)) = mirror {
-        raw.patch_bytes(start + offset as usize, &bits.to_le_bytes());
+    {
+        let svd = Svd::parse(raw)?;
+        record(&table(raw, &svd)?, index)?;
     }
-    if let Some(at) = info_at {
-        let sum = crc32(&raw.bytes()[start..start + RECORD_LEN]);
-        raw.patch_bytes(at, &sum.to_le_bytes());
+    let new_bytes = new.to_le_bytes();
+    let mirror_bytes = mirror.map(|(offset, bits)| (offset as usize, bits.to_le_bytes()));
+    let mut patches: Vec<(usize, &[u8])> = vec![(param.offset as usize, &new_bytes)];
+    if let Some((offset, bytes)) = &mirror_bytes {
+        patches.push((*offset, bytes));
     }
-    Ok(())
+    patch_record(raw, TAG, index, &patches)
 }
 
 fn table<'a>(raw: &'a Raw, svd: &Svd) -> Result<RecordTable<'a>> {
@@ -192,6 +186,7 @@ fn encode(param: &AcbParam, text: &str) -> Result<u32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::checksum::crc32;
     use crate::container::PREAMBLE_LEN;
 
     /// An SVZ whose `ACBa` area holds one zeroed record and a CRC-32 info word.
