@@ -11,6 +11,7 @@
 //!   tables; ACB has no SysEx map.
 //! - [`mdl`] — the engine block of a 2048-byte MODEL record (`MDLa`), from the
 //!   instrument's parameter descriptors.
+//! - [`sysa`] — the 904-byte system settings record (`SYSa`).
 //!
 //! The tone and scene tables come from different sources, for the reason recorded in
 //! `docs/FORMAT.md`: the upstream editor data covers tones, drum kits and the MODEL engines but has
@@ -19,6 +20,7 @@
 pub mod acb;
 pub mod mdl;
 pub mod scene;
+pub mod sysa;
 pub mod tone;
 
 /// One parameter, in both representations.
@@ -56,6 +58,35 @@ pub struct AcbParam {
     /// Offset of the float32 word that must hold this value / 255 (see `docs/FORMAT.md`).
     pub mirror: Option<u16>,
     pub reserved: bool,
+}
+
+/// One field of the `SYSa` record. Not SysEx-addressable here, so it does not share [`Param`].
+#[derive(Debug)]
+pub struct SysParam {
+    /// `GROUP:name`.
+    pub id: &'static str,
+    /// Offset within the record.
+    pub offset: u16,
+    /// Width in bytes, 1 or 2; little-endian.
+    pub size: u8,
+    pub signed: bool,
+    /// Init value; absent for fields taken from the MIDI Implementation.
+    pub init: Option<i64>,
+    /// Added to the stored value to get the wire value (16-bit fields are stored centred).
+    pub bias: i32,
+    pub reserved: bool,
+    /// Names of stored values.
+    pub labels: &'static [(i64, &'static str)],
+    /// Input Reverb parameters: what the field means under each reverb type.
+    pub by_type: &'static [SysReverb],
+}
+
+/// A reverb parameter's name and range under one reverb type.
+#[derive(Debug)]
+pub struct SysReverb {
+    pub reverb_type: i64,
+    pub name: &'static str,
+    pub range: &'static str,
 }
 
 /// One engine field of a MODEL tone record. Not SysEx-addressable, so it does not share [`Param`].

@@ -24,6 +24,7 @@
 //! - [`sequence`] — where a scene's sequencer patterns sit beside its bank.
 //! - [`chain`] — scene chains (setlists) beside the bank, read-only.
 //! - [`pad`] — pad sampler audio (`.SMP`) and settings (`PADCONF.BIN`) beside the bank, read-only.
+//! - [`sysa`] — system settings (`SYSa`) by name, read-only.
 //! - [`checksum`] / [`verify`] — the CRC-32 Roland stores per record, and checking a file against it.
 //!
 //! The layout was reverse-engineered from a Roland FANTOM-6 and validated against panel ground
@@ -52,6 +53,7 @@ pub mod requirements;
 pub mod role;
 pub mod samplebank;
 pub mod sequence;
+pub mod sysa;
 pub mod tonebank;
 pub mod verify;
 
