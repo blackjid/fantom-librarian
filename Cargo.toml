@@ -22,7 +22,7 @@ insta = "1"
 fantom-core = { path = "crates/fantom-core" }
 fantom-library = { path = "crates/fantom-library" }
 midir = "0.11"
-rusqlite = { version = "0.40", features = ["bundled"] }
+rusqlite = { version = "0.41", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.11"
