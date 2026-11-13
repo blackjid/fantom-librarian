@@ -5,6 +5,6 @@
 # rust-toolchain.toml: the environment variable wins over that file, so only one of them can be
 # the answer.
 [tools]
-node = "26.13.0"
+node = "26.13.1"
 pnpm = "12.18.0"
 rust = { version = "1.99.1", components = "rustfmt,clippy" }
